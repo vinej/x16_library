@@ -190,6 +190,126 @@ fx_clear
     lda #0
     jmp fx_fill
 
+; ---------------------------------------------------------------------
+; fx_copy -- VRAM to VRAM through the 32-bit cache (~4x a byte loop)
+;   in:  X16_P0/P1/P2 = source address (17-bit)
+;        X16_P3/P4/P5 = destination address, 4-BYTE ALIGNED
+;        X16_P6/P7    = byte count
+;
+; With Cache Fill enabled, each DATA1 read latches a byte into the
+; cache; after four, one DATA0 write (mask 0) flushes all four to the
+; aligned destination. The 0-3 leftover bytes are copied singly with
+; FX off. The source needs no alignment.
+; ---------------------------------------------------------------------
+fx_copy
+    +vera_dcsel 2
+    stz VERA_FX_CTRL            ; mode 0 while the ports are aimed
+    stz VERA_FX_MULT            ; multiplier off, cache index to 0
+
+    +vera_addrsel 1             ; port 1 reads the source
+    lda X16_P0
+    sta VERA_ADDR_L
+    lda X16_P1
+    sta VERA_ADDR_M
+    lda X16_P2
+    and #VERA_ADDR_H_BANK
+    ora #(VERA_INC_1 << 4)
+    sta VERA_ADDR_H
+    +vera_addrsel 0             ; port 0 writes quads
+    lda X16_P3
+    sta VERA_ADDR_L
+    lda X16_P4
+    sta VERA_ADDR_M
+    lda X16_P5
+    and #VERA_ADDR_H_BANK
+    ora #(VERA_INC_4 << 4)
+    sta VERA_ADDR_H
+
+    +vera_dcsel 2
+    lda #(VERA_FX_CACHE_FILL | VERA_FX_CACHE_WRITE)
+    sta VERA_FX_CTRL
+
+    ; quads = count >> 2, remainder = count & 3
+    lda X16_P6
+    and #$03
+    sta X16_T3
+    lda X16_P7
+    sta X16_T2
+    lda X16_P6
+    sta X16_T1
+    lsr X16_T2
+    ror X16_T1
+    lsr X16_T2
+    ror X16_T1
+
+    lda X16_T1
+    ora X16_T2
+    beq @tail
+
+    ldx X16_T1
+    ldy X16_T2
+    txa
+    beq @full
+    iny
+@full
+@quad
+    lda VERA_DATA1              ; four reads fill the cache...
+    lda VERA_DATA1
+    lda VERA_DATA1
+    lda VERA_DATA1
+    stz VERA_DATA0              ; ...one write flushes it (mask 0)
+    dex
+    bne @quad
+    dey
+    bne @quad
+
+@tail
+    +vera_dcsel 2
+    stz VERA_FX_CTRL            ; leftovers are plain byte copies
+    +vera_dcsel 0
+
+    lda X16_T3
+    beq @done
+    lda VERA_ADDR_H             ; port 0 sits just past the quads:
+    and #$0F                    ; step it by 1 for the tail
+    ora #(VERA_INC_1 << 4)
+    sta VERA_ADDR_H
+    ldx X16_T3
+@rest
+    lda VERA_DATA1
+    sta VERA_DATA0
+    dex
+    bne @rest
+@done
+    +vera_addrsel 0
+    rts
+
+; ---------------------------------------------------------------------
+; fx_transp_on / fx_transp_off -- transparent VRAM writes
+;
+; While on, a ZERO byte written to DATA0/DATA1 (or sitting in a flushed
+; cache) leaves the target byte alone -- colour 0 acts as transparency
+; for blits done with plain writes or fx_copy-style cache flushes.
+;
+; NOTE: the other fx_* helpers reset FX_CTRL on exit, which turns
+; transparency off again. Enable it, do your writes, disable it.
+; ---------------------------------------------------------------------
+fx_transp_on
+    +vera_dcsel 2
+    lda VERA_FX_CTRL
+    ora #VERA_FX_TRANSPARENT
+    sta VERA_FX_CTRL
+    +vera_dcsel 0
+    rts
+
+fx_transp_off
+    +vera_dcsel 2
+    lda VERA_FX_CTRL
+    and #($FF - VERA_FX_TRANSPARENT)
+    sta VERA_FX_CTRL
+    +vera_dcsel 0
+    rts
+
 ; =====================================================================
 ; FX line draw helper (Addr1 Mode 1)
 ;

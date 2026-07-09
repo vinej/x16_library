@@ -21,7 +21,7 @@
 
 X16_USE_ALL = 1
 
-!ifndef X16LIB_ORG { X16LIB_ORG = $8000 }
+!ifndef X16LIB_ORG { X16LIB_ORG = $6800 }
 
 * = X16LIB_ORG
 

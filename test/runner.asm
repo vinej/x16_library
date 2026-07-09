@@ -141,6 +141,22 @@ main
     jsr test_fx_line
     jsr test_fx_triangle
     jsr test_pcm_stream
+    jsr test_irq_remove_aflow
+
+    jsr test_irq_save_regs
+    jsr test_math_rnd
+    jsr test_math_sin
+    jsr test_math_atan2
+    jsr test_math_lerp
+    jsr test_clip_line
+    jsr test_gfx_circle
+    jsr test_gfx_text
+    jsr test_psg_env
+    jsr test_fx_copy
+    jsr test_fx_transp
+    jsr test_buffers
+    jsr test_adpcm
+    jsr test_dos
 
     jsr t_summary
     rts
@@ -4914,13 +4930,18 @@ test_sprcol_regs
     and #VERA_IRQ_SPRCOL
     beq @fail
 
+    ; The Z result must be derived from the mask, not smuggled back in
+    ; by plp -- so enter each call with the OPPOSITE flag state.
     lda #$30                    ; groups 4 and 5 collided, twice over
     sta irq_sprcol_mask
+    lda #0                      ; hostile: Z set on entry...
     jsr sprite_collisions
+    beq @fail                   ; ...a $30 mask must clear it
     cmp #$30
     bne @fail
-    jsr sprite_collisions       ; the read cleared it
-    bne @fail
+    lda #1                      ; hostile: Z clear on entry...
+    jsr sprite_collisions       ; (the read above cleared the mask)
+    bne @fail                   ; ...an empty mask must set it
 
     jsr irq_sprcol_remove
     lda VERA_IEN
@@ -5224,6 +5245,992 @@ test_pcm_stream
     ldy #>@name
     jmp t_result
 @name !text "PCM_STREAM", $00
+
+; =====================================================================
+; irq_remove while a PCM stream is still refilling must take AFLOW out
+; of IEN. AFLOW has no ISR acknowledge -- it clears only when the FIFO
+; refills -- so once CINV is back on the KERNAL, an armed AFLOW keeps
+; the IRQ line asserted and the machine livelocks. (Proven windowed:
+; without AFLOW in irq_remove's mask this hangs the emulator; here it
+; is pinned at register level so the headless run guards it too.)
+; =====================================================================
+test_irq_remove_aflow
+    lda #0
+    jsr pcm_rate
+    lda #$0F
+    jsr pcm_ctrl
+    jsr pcm_reset
+
+    lda #<$2000                 ; any readable RAM does as sample data
+    sta X16_P0
+    lda #>$2000
+    sta X16_P1
+    lda #<5120                  ; bigger than the FIFO: AFLOW gets armed
+    sta X16_P2
+    lda #>5120
+    sta X16_P3
+    lda #0                      ; rate 0: prime but do not play
+    jsr pcm_stream_start
+
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    beq @fail                   ; precondition: the stream armed AFLOW
+
+    jsr irq_remove              ; unhook mid-stream, like a rude caller
+
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    bne @fail                   ; AFLOW must be gone with the hook
+    jsr pcm_stream_active
+    bne @fail                   ; and the stream must know it is dead
+
+    jsr pcm_reset
+    lda #0
+    bra @report
+@fail
+    jsr pcm_stream_stop
+    jsr pcm_reset
+    jsr irq_remove
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "IRQ_REMOVE_AFLOW", $00
+
+; =====================================================================
+; ============ Prog8-parity features (2026-07): vreg saving, ==========
+; ============ math, clipping, circles, text, envelopes,     ==========
+; ============ fx copy/transparency, DOS, buffers, ADPCM     ==========
+; =====================================================================
+
+; =====================================================================
+; irq_save_regs / irq_restore_regs must round-trip r0-r15 and the
+; library's parameter block -- the state an IRQ callback that calls
+; library routines would otherwise corrupt.
+; =====================================================================
+test_irq_save_regs
+    ldx #31                     ; pattern into r0-r15
+@fill_r
+    txa
+    eor #$5A
+    sta r0L,x
+    dex
+    bpl @fill_r
+    ldx #15                     ; ...and into X16_P0..T7
+@fill_p
+    txa
+    eor #$C3
+    sta X16_P0,x
+    dex
+    bpl @fill_p
+
+    jsr irq_save_regs
+
+    ldx #31                     ; trash everything
+    lda #$EE
+@trash_r
+    sta r0L,x
+    dex
+    bpl @trash_r
+    ldx #15
+@trash_p
+    sta X16_P0,x
+    dex
+    bpl @trash_p
+
+    jsr irq_restore_regs
+
+    ldx #31
+@check_r
+    txa
+    eor #$5A
+    cmp r0L,x
+    bne @fail
+    dex
+    bpl @check_r
+    ldx #15
+@check_p
+    txa
+    eor #$C3
+    cmp X16_P0,x
+    bne @fail
+    dex
+    bpl @check_p
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "IRQ_SAVE_REGS", $00
+
+; =====================================================================
+; The PRNG: deterministic from a seed, actually changes, and a zero
+; seed is nudged off xorshift's fixed point.
+; =====================================================================
+test_math_rnd
+    lda #$34
+    ldx #$12
+    jsr rnd_seed
+    jsr rnd16
+    sta @first
+    stx @first+1
+
+    jsr rnd16                   ; must differ from the first draw
+    cmp @first
+    bne @differs
+    cpx @first+1
+    beq @fail
+@differs
+    lda #$34                    ; same seed: same sequence
+    ldx #$12
+    jsr rnd_seed
+    jsr rnd16
+    cmp @first
+    bne @fail
+    cpx @first+1
+    bne @fail
+
+    lda #0                      ; the all-zero seed must not stick
+    tax
+    jsr rnd_seed
+    jsr rnd16
+    ora rnd_state+1
+    beq @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@first !word 0
+@name  !text "MATH_RND", $00
+
+; =====================================================================
+; The sine tables at their anchor points, and the signed/unsigned pair.
+; =====================================================================
+test_math_sin
+    lda #0
+    jsr sin8
+    bne @fail                   ; sin(0) = 0
+    lda #64
+    jsr sin8
+    cmp #127
+    bne @fail                   ; sin(90) = 127
+    lda #128
+    jsr sin8
+    bne @fail
+    lda #192
+    jsr sin8
+    cmp #<-127
+    bne @fail
+    lda #0
+    jsr cos8
+    cmp #127
+    bne @fail
+    lda #64
+    jsr sin8u
+    cmp #255
+    bne @fail
+    lda #192
+    jsr sin8u
+    cmp #1
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "MATH_SIN", $00
+
+; =====================================================================
+; atan2 at the four cardinals, the four diagonals, and one odd vector
+; where a small tolerance is allowed.
+; =====================================================================
+test_math_atan2
+    lda #10
+    ldx #0
+    jsr atan2
+    bne @fail                   ; east = 0
+    lda #0
+    ldx #10
+    jsr atan2
+    cmp #64                     ; down = 64
+    bne @fail
+    lda #<-10
+    ldx #0
+    jsr atan2
+    cmp #128
+    bne @fail
+    lda #0
+    ldx #<-10
+    jsr atan2
+    cmp #192
+    bne @fail
+    lda #10
+    ldx #10
+    jsr atan2
+    cmp #32
+    bne @fail
+    lda #<-10
+    ldx #10
+    jsr atan2
+    cmp #96
+    bne @fail
+    lda #10
+    ldx #<-10
+    jsr atan2
+    cmp #224
+    bne @fail
+
+    lda #7                      ; atan2(7,3): ideally 16.5 -- allow 15..18
+    ldx #3
+    jsr atan2
+    cmp #15
+    bcc @fail
+    cmp #19
+    bcs @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "MATH_ATAN2", $00
+
+; =====================================================================
+; lerp8: exact at both ends, the documented value in the middle, and
+; downhill interpolation.
+; =====================================================================
+test_math_lerp
+    lda #10
+    sta X16_P0
+    lda #20
+    sta X16_P1
+    lda #0
+    jsr lerp8
+    cmp #10
+    bne @fail
+    lda #255
+    jsr lerp8
+    cmp #20
+    bne @fail
+    lda #128                    ; 10 + (10 * 129) / 256 = 15
+    jsr lerp8
+    cmp #15
+    bne @fail
+
+    lda #20                     ; downhill: b < a
+    sta X16_P0
+    lda #10
+    sta X16_P1
+    lda #255
+    jsr lerp8
+    cmp #10
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "MATH_LERP", $00
+
+; =====================================================================
+; Cohen-Sutherland: inside untouched, outside rejected, and edge
+; crossings landing exactly on the boundary.
+; =====================================================================
+!macro cset16 .addr, .value {
+    lda #<(.value)
+    sta .addr
+    lda #>(.value)
+    sta .addr + 1
+}
+
+test_clip_line
+    ; fully inside: accepted, coordinates untouched
+    +cset16 clipl_x0, 5
+    +cset16 clipl_y0, 5
+    +cset16 clipl_x1, 50
+    +cset16 clipl_y1, 40
+    jsr clip_line
+    bcs @fail_far
+    lda X16_P0
+    cmp #5
+    bne @fail_far
+    lda X16_P3
+    cmp #50
+    bne @fail_far
+
+    ; fully off the right: rejected
+    +cset16 clipl_x0, 400
+    +cset16 clipl_y0, 10
+    +cset16 clipl_x1, 500
+    +cset16 clipl_y1, 20
+    jsr clip_line
+    bcc @fail_far
+    bra @cross
+
+@fail_far
+    jmp @fail
+
+@cross
+    ; crossing the right edge: (300,100)-(340,120) clips to x=319.
+    ; The OUTSIDE endpoint is the one moved: y = 120 - 420/40 with the
+    ; division truncating toward zero, so 110 (the exact crossing is
+    ; 109.5).
+    +cset16 clipl_x0, 300
+    +cset16 clipl_y0, 100
+    +cset16 clipl_x1, 340
+    +cset16 clipl_y1, 120
+    jsr clip_line
+    bcs @fail
+    lda clipl_x1
+    cmp #<319
+    bne @fail
+    lda clipl_x1+1
+    cmp #>319
+    bne @fail
+    lda clipl_y1
+    cmp #110
+    bne @fail
+
+    ; entering from above: (10,-10)-(30,10) clips to (20,0)
+    +cset16 clipl_x0, 10
+    +cset16 clipl_y0, -10
+    +cset16 clipl_x1, 30
+    +cset16 clipl_y1, 10
+    jsr clip_line
+    bcs @fail
+    lda clipl_x0
+    cmp #20
+    bne @fail
+    lda clipl_y0
+    bne @fail
+    lda clipl_y0+1
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "CLIP_LINE", $00
+
+; =====================================================================
+; gfx_circle and gfx_disc: the four cardinal points of the outline,
+; a hollow centre, a filled centre, and clean edges.
+; =====================================================================
+test_gfx_circle
+    +vera_addr 0, VRAM_BITMAP + 40*320, VERA_INC_1
+    lda #$00
+    ldx #<6400                  ; clear rows 40..59
+    ldy #>6400
+    jsr vera_fill
+
+    +i16_const X16_P0, 50       ; outline at (50,50), r 5
+    lda #50
+    sta X16_P2
+    lda #$D5
+    sta X16_P3
+    lda #5
+    sta X16_P4
+    jsr gfx_circle
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 50*320 + 55, VERA_INC_1
+    +chkv $D5                   ; (55,50)
+    +chkv $00                   ; (56,50) is outside
+    +vera_addr 1, VRAM_BITMAP + 50*320 + 45, VERA_INC_1
+    +chkv $D5                   ; (45,50)
+    +vera_addr 1, VRAM_BITMAP + 55*320 + 50, VERA_INC_1
+    +chkv $D5                   ; (50,55)
+    +vera_addr 1, VRAM_BITMAP + 45*320 + 50, VERA_INC_1
+    +chkv $D5                   ; (50,45)
+    +vera_addr 1, VRAM_BITMAP + 50*320 + 50, VERA_INC_1
+    +chkv $00                   ; hollow centre
+
+    +i16_const X16_P0, 100      ; disc at (100,50), r 4
+    lda #50
+    sta X16_P2
+    lda #$D6
+    sta X16_P3
+    lda #4
+    sta X16_P4
+    jsr gfx_disc
+
+    +vera_addr 1, VRAM_BITMAP + 50*320 + 100, VERA_INC_1
+    +chkv $D6                   ; filled centre
+    +vera_addr 1, VRAM_BITMAP + 50*320 + 104, VERA_INC_1
+    +chkv $D6                   ; right extreme
+    +chkv $00                   ; ...and no further
+    +vera_addr 1, VRAM_BITMAP + 54*320 + 100, VERA_INC_1
+    +chkv $D6                   ; bottom extreme
+    +vera_addr 1, VRAM_BITMAP + 55*320 + 100, VERA_INC_1
+    +chkv $00
+
+    ; a circle hanging off the left edge must simply clip
+    +i16_const X16_P0, 2
+    lda #50
+    sta X16_P2
+    lda #$D7
+    sta X16_P3
+    lda #5
+    sta X16_P4
+    jsr gfx_circle
+    +vera_addr 1, VRAM_BITMAP + 50*320 + 7, VERA_INC_1
+    +chkv $D7                   ; the on-screen extreme survived
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_CIRCLE", $00
+
+; =====================================================================
+; Bitmap text. Screen code $A0 (reverse space) is a solid 8x8 block --
+; exactly predictable. Then gfx_text's ASCII conversion and pen
+; advance are proven by drawing "H" and comparing the cell byte-for-
+; byte against gfx_char of screen code 8.
+; =====================================================================
+test_gfx_text
+    +vera_addr 0, VRAM_BITMAP + 20*320, VERA_INC_1
+    lda #$00
+    ldx #<3200                  ; clear rows 20..29
+    ldy #>3200
+    jsr vera_fill
+
+    +i16_const X16_P0, 10       ; the solid block
+    lda #20
+    sta X16_P2
+    lda #$E1
+    sta X16_P3
+    lda #$A0
+    jsr gfx_char
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 20*320 + 9, VERA_INC_1
+    +chkv $00                   ; left neighbour clear
+    +chkv $E1                   ; (10,20)
+    +vera_addr 1, VRAM_BITMAP + 20*320 + 17, VERA_INC_1
+    +chkv $E1                   ; (17,20)
+    +chkv $00                   ; (18,20) clear
+    +vera_addr 1, VRAM_BITMAP + 27*320 + 10, VERA_INC_1
+    +chkv $E1                   ; (10,27)
+    +vera_addr 1, VRAM_BITMAP + 28*320 + 10, VERA_INC_1
+    +chkv $00                   ; row 28 untouched
+
+    ; gfx_char(8) at (60,20) vs gfx_text "H" at (80,20)
+    +i16_const X16_P0, 60
+    lda #20
+    sta X16_P2
+    lda #8                      ; screen code of 'H'
+    jsr gfx_char
+    +i16_const X16_P0, 80
+    lda #<@h
+    ldx #>@h
+    jsr gfx_text
+    lda X16_P0                  ; the pen advanced one cell
+    cmp #88
+    bne @fail
+
+    ldx #0                      ; compare the two 8x8 cells row by row
+@rows
+    txa
+    pha
+    ; read cell A row into @rowbuf
+    stz X16_T0
+    txa
+    clc
+    adc #20                     ; y = 20 + row
+    sta X16_P2
+    jsr @row_addr60
+    ldy #0
+@grab
+    lda VERA_DATA1
+    sta @rowbuf,y
+    iny
+    cpy #8
+    bne @grab
+    jsr @row_addr80
+    ldy #0
+@cmp
+    lda VERA_DATA1
+    cmp @rowbuf,y
+    bne @fail_pop
+    iny
+    cpy #8
+    bne @cmp
+    pla
+    tax
+    inx
+    cpx #8
+    bne @rows
+
+    lda #0
+    bra @report
+@fail_pop
+    pla
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+
+; point port 1 at (60, X16_P2) / (80, X16_P2)
+@row_addr60
+    lda #60
+    bra @row_addr
+@row_addr80
+    lda #80
+@row_addr
+    sta X16_T2
+    ; addr = P2*320 + T2
+    lda X16_P2
+    stz X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    sta X16_T0
+    clc
+    lda X16_T1
+    adc X16_P2
+    sta X16_T1
+    clc
+    lda X16_T0
+    adc X16_T2
+    sta X16_T0
+    lda X16_T1
+    adc #0
+    sta X16_T1
+    +vera_addrsel 1
+    lda X16_T0
+    sta VERA_ADDR_L
+    lda X16_T1
+    sta VERA_ADDR_M
+    lda #(VERA_INC_1 << 4)
+    sta VERA_ADDR_H
+    rts
+
+@h      !text "H", $00
+@rowbuf !fill 8, 0
+@name   !text "GFX_TEXT", $00
+
+; =====================================================================
+; The PSG envelope: attack ramps to the peak, sustain holds it, the
+; release fades to silence and disarms -- all observed through the
+; voice's VRAM shadow, pan bits intact.
+; =====================================================================
+test_psg_env
+    ldx #2                      ; voice 2: pan both, volume 0
+    lda #0
+    ldy #PSG_PAN_BOTH
+    jsr psg_set_vol
+
+    lda #2                      ; peak 40, attack 8, sustain 3, release 10
+    ldy #40
+    sty X16_P0
+    ldy #8
+    sty X16_P1
+    ldy #3
+    sty X16_P2
+    ldy #10
+    sty X16_P3
+    jsr psg_env_start
+
+    jsr psg_env_tick            ; one tick: volume 8
+    jsr @vol2
+    cmp #(PSG_PAN_BOTH | 8)
+    bne @fail
+
+    jsr psg_env_tick            ; four more: at the 40 peak
+    jsr psg_env_tick
+    jsr psg_env_tick
+    jsr psg_env_tick
+    jsr @vol2
+    cmp #(PSG_PAN_BOTH | 40)
+    bne @fail
+
+    jsr psg_env_tick            ; three sustain ticks: unchanged
+    jsr psg_env_tick
+    jsr psg_env_tick
+    jsr @vol2
+    cmp #(PSG_PAN_BOTH | 40)
+    bne @fail
+
+    jsr psg_env_tick            ; release: 30, 20, 10, 0
+    jsr psg_env_tick
+    jsr psg_env_tick
+    jsr psg_env_tick
+    jsr @vol2
+    cmp #PSG_PAN_BOTH           ; silent, pan preserved
+    bne @fail
+    lda env_stage+2
+    bne @fail                   ; ...and disarmed
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+
+@vol2                           ; A = voice 2's volume/pan shadow byte
+    +vera_addr 1, VRAM_PSG + (2*4) + 2, VERA_INC_1
+    lda VERA_DATA1
+    rts
+@name !text "PSG_ENV", $00
+
+; =====================================================================
+; fx_copy moves 13 bytes (three quads and a 1-byte tail) and stops.
+; =====================================================================
+test_fx_copy
+    jsr vera_has_fx
+    bcs @go
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@go
+    +vera_addr 0, TESTVRAM + $B00, VERA_INC_1
+    ldx #0
+@src
+    txa
+    eor #$A7
+    sta VERA_DATA0
+    inx
+    cpx #16
+    bne @src
+
+    +vera_addr 0, TESTVRAM + $B40, VERA_INC_1   ; scrub the target
+    lda #$00
+    ldx #16
+    ldy #0
+    jsr vera_fill
+
+    lda #<(TESTVRAM + $B00)
+    sta X16_P0
+    lda #>(TESTVRAM + $B00)
+    sta X16_P1
+    lda #^(TESTVRAM + $B00)
+    sta X16_P2
+    lda #<(TESTVRAM + $B40)                     ; 4-byte aligned
+    sta X16_P3
+    lda #>(TESTVRAM + $B40)
+    sta X16_P4
+    lda #^(TESTVRAM + $B40)
+    sta X16_P5
+    lda #13
+    sta X16_P6
+    stz X16_P7
+    jsr fx_copy
+
+    +vera_addr 1, TESTVRAM + $B40, VERA_INC_1
+    ldx #0
+@check
+    txa
+    eor #$A7
+    cmp VERA_DATA1
+    bne @fail
+    inx
+    cpx #13
+    bne @check
+    lda VERA_DATA1              ; the 14th byte stayed clear
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "FX_COPY", $00
+
+; =====================================================================
+; Transparent writes: while enabled, writing zero leaves the target
+; byte alone; nonzero still lands; disabling restores normal writes.
+; =====================================================================
+test_fx_transp
+    jsr vera_has_fx
+    bcs @go
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@go
+    +vpoke TESTVRAM + $B80, $AA
+
+    jsr fx_transp_on
+    +vera_addr 0, TESTVRAM + $B80, VERA_INC_0
+    stz VERA_DATA0              ; a zero write must bounce off
+    +vera_addr 1, TESTVRAM + $B80, VERA_INC_0
+    lda VERA_DATA1
+    cmp #$AA
+    bne @fail
+
+    +vera_addr 0, TESTVRAM + $B80, VERA_INC_0
+    lda #$BB                    ; nonzero still writes
+    sta VERA_DATA0
+    +vera_addr 1, TESTVRAM + $B80, VERA_INC_0
+    lda VERA_DATA1
+    cmp #$BB
+    bne @fail
+
+    jsr fx_transp_off
+    +vera_addr 0, TESTVRAM + $B80, VERA_INC_0
+    stz VERA_DATA0              ; and now zero writes again
+    +vera_addr 1, TESTVRAM + $B80, VERA_INC_0
+    lda VERA_DATA1
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    jsr fx_transp_off
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "FX_TRANSP", $00
+
+; =====================================================================
+; The ring buffer is FIFO across an index wrap; the stack is LIFO;
+; both report empty/full through the carry.
+; =====================================================================
+test_buffers
+    jsr rb_init
+    jsr rb_get
+    bcc @fail                   ; empty reads carry set
+
+    ; push/pop 300 pairs so head and tail wrap the 8-bit index
+    stz @i
+@wrap
+    lda @i
+    jsr rb_put
+    bcs @fail
+    lda @i
+    eor #$FF
+    jsr rb_put
+    bcs @fail
+    jsr rb_get
+    bcs @fail
+    cmp @i
+    bne @fail
+    jsr rb_get
+    bcs @fail
+    eor #$FF
+    cmp @i
+    bne @fail
+    inc @i
+    bne @wrap                   ; 256 rounds = 512 puts: plenty of wrap
+    jsr rb_count
+    bne @fail                   ; balanced: empty again
+
+    jsr stk_init
+    lda #1
+    jsr stk_push
+    lda #2
+    jsr stk_push
+    lda #3
+    jsr stk_push
+    jsr stk_depth
+    cmp #3
+    bne @fail
+    jsr stk_pop
+    cmp #3
+    bne @fail
+    jsr stk_pop
+    cmp #2
+    bne @fail
+    jsr stk_pop
+    cmp #1
+    bne @fail
+    jsr stk_pop
+    bcc @fail                   ; empty
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@i    !byte 0
+@name !text "BUFFERS", $00
+
+; =====================================================================
+; IMA ADPCM against an independent reference: these 8 bytes were
+; decoded by CPython's audioop (nibble-swapped, since audioop eats the
+; high nibble first while IMA WAV -- and this decoder -- take the low
+; one). 16 samples plus the exact final decoder state must match.
+; =====================================================================
+test_adpcm
+    jsr adpcm_init
+    lda #<@packed
+    sta X16_P0
+    lda #>@packed
+    sta X16_P1
+    lda #<@out
+    sta X16_P2
+    lda #>@out
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    stz X16_P5
+    jsr adpcm_block
+
+    ldx #0
+@check
+    lda @out,x
+    cmp @expect,x
+    bne @fail
+    inx
+    cpx #32
+    bne @check
+
+    lda adpcm_pred              ; final predictor -164 = $FF5C
+    cmp #$5C
+    bne @fail
+    lda adpcm_pred+1
+    cmp #$FF
+    bne @fail
+    lda adpcm_index             ; final step index 29
+    cmp #29
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@packed !byte $17, $28, $93, $4C, $E5, $0A, $71, $BF
+@expect                         ; audioop's 16 little-endian samples
+    !byte $0b, $00, $11, $00, $10, $00, $17, $00
+    !byte $21, $00, $1e, $00, $13, $00, $20, $00
+    !byte $32, $00, $11, $00, $fb, $ff, $ff, $ff
+    !byte $09, $00, $3d, $00, $cd, $ff, $5c, $ff
+@out    !fill 32, 0
+@name   !text "ADPCM", $00
+
+; =====================================================================
+; The DOS command channel: a syntax error is reported as one, the
+; status clears, and mkdir/rename/delete/rmdir all round-trip on the
+; hostfs device.
+; =====================================================================
+test_dos
+    lda #<@badcmd               ; nonsense command: an error class code
+    ldx #>@badcmd
+    ldy #2
+    jsr dos_cmd
+    bcc @fail_far               ; must be >= 20
+    jsr dos_status              ; reading it cleared it
+    bcs @fail_far
+
+    lda #<@dirname              ; make a directory...
+    ldx #>@dirname
+    ldy #4
+    jsr dos_mkdir
+    bcs @fail_far
+    bra @files
+
+@fail_far
+    jmp @fail
+
+@files
+    ; save a file, rename it, delete it under its new name
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #11
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    lda #<@fname                ; any 8 bytes will do as content
+    sta X16_P5
+    lda #>@fname
+    sta X16_P6
+    lda #<(@fname + 8)
+    sta X16_T6
+    lda #>(@fname + 8)
+    sta X16_T7
+    jsr fs_save
+    bcs @fail
+
+    lda #<@fname                ; old name in the parameter block
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #11
+    sta X16_P2
+    lda #<@fname2               ; new name in A/X/Y
+    ldx #>@fname2
+    ldy #11
+    jsr dos_rename
+    bcs @fail
+
+    lda #<@fname2
+    ldx #>@fname2
+    ldy #11
+    jsr dos_delete
+    bcs @fail
+
+    lda #<@dirname              ; leave the fsroot as we found it
+    ldx #>@dirname
+    ldy #4
+    jsr dos_rmdir
+    bcs @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@badcmd  !text "X9"
+@dirname !text "TDIR"
+@fname   !text "TESTDOS.BIN"
+@fname2  !text "TESTREN.BIN"
+@name    !text "DOS", $00
 
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"

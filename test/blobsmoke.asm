@@ -159,5 +159,5 @@ smoke_vera_fill
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"
 
-* = $8000
+* = X16LIB_ORG                  ; the org travels in the generated inc
 !binary "dist/x16lib.bin"

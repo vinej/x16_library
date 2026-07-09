@@ -65,14 +65,21 @@ psg_init
 
 ; ---------------------------------------------------------------------
 ; psg_set_freq -- in: X = voice, X16_P0/P1 = frequency word
+;
+; The HIGH byte is written first, stepping the port DOWNWARD from
+; offset 1. Low-byte-first leaves the voice running on new-low/old-high
+; for a few cycles -- an audible click on every pitch change.
 ; ---------------------------------------------------------------------
 psg_set_freq
-    lda #0
+    lda #1                      ; point at freq bits 15:8
     jsr psg_voice_ptr
-    lda X16_P0
-    sta VERA_DATA0
+    lda VERA_ADDR_H
+    ora #VERA_ADDR_H_DECR       ; ...and walk backwards
+    sta VERA_ADDR_H
     lda X16_P1
-    sta VERA_DATA0
+    sta VERA_DATA0              ; high byte first
+    lda X16_P0
+    sta VERA_DATA0              ; then low, at offset 0
     rts
 
 ; ---------------------------------------------------------------------
@@ -122,5 +129,155 @@ psg_note_off
     pla
     sta VERA_DATA0
     rts
+
+; =====================================================================
+; ASR envelopes -- the decay everybody hand-rolls in the frame loop
+; (bounce.asm included). Per voice: attack ramps the volume to a peak,
+; sustain holds it for a tick count, release ramps it back to silence.
+; Drive psg_env_tick once per frame -- from vsync_wait's loop or a
+; VSYNC callback (bracket library calls there with irq_save_regs).
+; =====================================================================
+
+; ---------------------------------------------------------------------
+; psg_env_start -- (re)trigger a voice's envelope
+;   in:  A = voice (0-15)
+;        X16_P0 = peak volume (0-63)
+;        X16_P1 = attack step per tick (0 = jump straight to the peak)
+;        X16_P2 = sustain ticks at the peak (0 = release immediately,
+;                 255 = until psg_env_release)
+;        X16_P3 = release step per tick (0 = hold until psg_env_stop)
+;
+; Set the voice's frequency, wave and pan first (psg_set_vol's pan is
+; preserved; only the volume bits are driven).
+; ---------------------------------------------------------------------
+psg_env_start
+    and #$0F
+    tax
+    lda X16_P0
+    and #$3F
+    sta env_peak,x
+    lda X16_P1
+    sta env_astep,x
+    lda X16_P2
+    sta env_sus,x
+    lda X16_P3
+    sta env_rstep,x
+    lda X16_P1
+    beq @instant
+    stz env_vol,x
+    lda #1                      ; stage 1: attack
+    sta env_stage,x
+    rts
+@instant
+    lda env_peak,x
+    sta env_vol,x
+    lda #2                      ; straight to sustain
+    sta env_stage,x
+    jmp .env_write              ; make the jump audible immediately
+
+; ---------------------------------------------------------------------
+; psg_env_release -- in: A = voice. Enter the release phase now.
+; psg_env_stop    -- in: A = voice. Silence and disarm immediately.
+; ---------------------------------------------------------------------
+psg_env_release
+    and #$0F
+    tax
+    lda env_stage,x
+    beq @done                   ; not playing
+    lda #3
+    sta env_stage,x
+@done
+    rts
+
+psg_env_stop
+    and #$0F
+    tax
+    stz env_stage,x
+    stz env_vol,x
+    jmp .env_write
+
+; ---------------------------------------------------------------------
+; psg_env_tick -- advance every armed envelope one step and write the
+; changed volumes to the PSG. Call once per frame. Clobbers A/X/Y and
+; the port-0 address.
+; ---------------------------------------------------------------------
+psg_env_tick
+    ldx #15
+@voice
+    lda env_stage,x
+    beq @next                   ; 0: idle
+    cmp #2
+    beq @sustain
+    bcc @attack                 ; 1
+
+    ; --- release ---
+    lda env_rstep,x
+    beq @next                   ; rstep 0: hold until psg_env_stop
+    sta X16_T0
+    lda env_vol,x
+    sec
+    sbc X16_T0
+    bcs @rel_ok
+    lda #0
+@rel_ok
+    sta env_vol,x
+    bne @write
+    stz env_stage,x             ; faded out: disarm
+    bra @write
+
+@attack
+    lda env_vol,x
+    clc
+    adc env_astep,x
+    cmp env_peak,x
+    bcc @att_ok
+    lda env_peak,x              ; reached (or overshot) the peak
+    pha
+    lda #2
+    sta env_stage,x
+    pla
+@att_ok
+    sta env_vol,x
+    bra @write
+
+@sustain
+    lda env_sus,x
+    cmp #255
+    beq @next                   ; 255: hold until psg_env_release
+    dec env_sus,x
+    bne @next
+    lda #3                      ; sustain over: release
+    sta env_stage,x
+    bra @next                   ; volume unchanged this tick
+
+@write
+    jsr .env_write
+@next
+    dex
+    bpl @voice
+    rts
+
+; write voice X's env_vol to its volume bits, preserving the pan bits
+; (via the host-readback shadow, like psg_note_off). Preserves X --
+; psg_voice_ptr does too.
+.env_write
+    lda #2
+    jsr psg_voice_ptr
+    lda VERA_DATA0              ; the shadow's pan bits
+    and #PSG_PAN_BOTH
+    ora env_vol,x
+    sta X16_T0
+    lda #2
+    jsr psg_voice_ptr
+    lda X16_T0
+    sta VERA_DATA0
+    rts
+
+env_stage !fill 16, 0
+env_vol   !fill 16, 0
+env_peak  !fill 16, 0
+env_astep !fill 16, 0
+env_sus   !fill 16, 0
+env_rstep !fill 16, 0
 
 }   ; !zone x16_psg

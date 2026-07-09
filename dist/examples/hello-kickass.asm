@@ -6,8 +6,8 @@
 //
 //   java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 //
-// The library blob sits at $8000; your program owns $0801-$7FFF.
-// The library claims zero page $22-$31 (X16_P0..X16_T7).
+// The library blob sits at X16LIB_ORG (exported by x16lib.inc); your
+// program owns $0801 up to it. The library claims zero page $22-$31.
 // ====================================================================
 
 .cpu _65c02
@@ -37,6 +37,6 @@ main:
 
 msg:    .byte 'H','E','L','L','O',' ','F','R','O','M',' ','K','I','C','K','A','S','S','!',' ',0
 
-.pc = $8000 "x16lib blob"
+.pc = X16LIB_ORG "x16lib blob"
 .var x16libData = LoadBinary("../x16lib.bin")
 .fill x16libData.getSize(), x16libData.get(i)

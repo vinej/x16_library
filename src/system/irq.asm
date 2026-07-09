@@ -123,10 +123,18 @@ irq_remove
     beq @done
     php
     sei
-    lda #(VERA_IRQ_LINE | VERA_IRQ_SPRCOL)
+    ; AFLOW must be in this mask. It cannot be acknowledged in ISR --
+    ; it clears only when the FIFO refills -- and once CINV is back on
+    ; the KERNAL, nothing refills: VERA holds the IRQ line asserted,
+    ; the KERNAL handler acks VSYNC and returns, and the machine
+    ; livelocks. Removing the hook mid-stream must take AFLOW with it.
+    lda #(VERA_IRQ_LINE | VERA_IRQ_SPRCOL | VERA_IRQ_AFLOW)
     trb VERA_IEN                ; ours alone; VSYNC stays for the KERNAL
     stz irq_line_armed
     stz irq_sprcol_armed
+!ifdef X16_USE_PCM_STREAM {
+    stz pcm_str_active          ; the stream cannot continue unhooked
+}
     lda irq_old_vector
     sta CINV
     lda irq_old_vector+1
@@ -237,8 +245,64 @@ sprite_collisions
     sei                         ; read-and-clear must be atomic against
     lda irq_sprcol_mask         ; the accumulating interrupt handler
     stz irq_sprcol_mask
-    plp
+    plp                         ; ...but plp restores the CALLER's flags,
+    ora #0                      ; so re-derive Z from A afterwards
     rts
+
+; ---------------------------------------------------------------------
+; irq_save_regs / irq_restore_regs -- bracket a callback that calls
+; library routines.
+;
+; The KERNAL's virtual registers r0-r15 ($02-$21) and the library's
+; X16_P0..X16_T7 block are ordinary zero page: whatever the interrupt
+; cut off may be holding live values there. mem_copy loads r0-r2 and
+; runs with interrupts enabled -- a callback that calls another mem_*,
+; mouse_get, or anything using the parameter block would corrupt the
+; interrupted copy's pointers on resume.
+;
+; A callback that only touches A/X/Y and its own variables needs
+; nothing. One that calls into the library does:
+;
+;       my_handler
+;           jsr irq_save_regs
+;           ...anything at all...
+;           jsr irq_restore_regs
+;           rts
+;
+; One buffer, no nesting -- interrupts do not nest here either.
+; Clobbers A and X.
+; ---------------------------------------------------------------------
+irq_save_regs
+    ldx #31
+@save_r
+    lda r0L,x                   ; r0-r15 at $02-$21
+    sta irq_zp_buf,x
+    dex
+    bpl @save_r
+    ldx #15
+@save_p
+    lda X16_P0,x                ; the library's parameter/scratch block
+    sta irq_zp_buf+32,x
+    dex
+    bpl @save_p
+    rts
+
+irq_restore_regs
+    ldx #31
+@rest_r
+    lda irq_zp_buf,x
+    sta r0L,x
+    dex
+    bpl @rest_r
+    ldx #15
+@rest_p
+    lda irq_zp_buf+32,x
+    sta X16_P0,x
+    dex
+    bpl @rest_p
+    rts
+
+irq_zp_buf !fill 48, 0
 
 ; ---------------------------------------------------------------------
 ; irq_frames

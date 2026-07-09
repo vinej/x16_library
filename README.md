@@ -97,7 +97,7 @@ never drift from the binary:
 produces
 
 ```
-dist\x16lib.bin          the whole library at $8000 (raw, currently ~7.7 KB)
+dist\x16lib.bin          the whole library at $6800 (raw, currently ~12 KB)
 dist\X16LIB.PRG          the same with a load header, for a runtime LOAD
 dist\ca65\x16lib.inc     constants + addresses + the macro layer, per dialect
 dist\64tass\x16lib.inc
@@ -106,8 +106,9 @@ dist\ca65\x16lib.cfg     ld65 linker config that embeds the blob
 dist\examples\           a working hello for each assembler
 ```
 
-Your program owns `$0801`–`$7FFF`; the library sits at `$8000` and claims
-zero page `$22`–`$31`, exactly as under ACME. Include the binding file, embed
+Your program owns `$0801` up to the library's org (the generated includes
+export it as `X16LIB_ORG`, currently `$6800`); the library claims zero page
+`$22`–`$31`, exactly as under ACME. Include the binding file, embed
 `x16lib.bin` at `$8000` (each example shows the dialect's way), and call the
 same routines with the same registers — `screen_puts`, `u16_to_dec`,
 `i16_divmod`, the data-port contract, everything in this README applies
@@ -131,8 +132,9 @@ Dialect notes, each learned the hard way:
   defines an identity encoding for byte-exact `.text`.
 - **ca65** wants `--cpu 65C02` (the VERA macros use `trb`/`tsb`), and finds
   the binary via `--bin-include-dir`. The supplied linker config pads the
-  gap to `$8000`, making one self-contained ~35 KB PRG; drop the `X16LIB`
-  area and `LOAD "X16LIB.PRG"` at run time if you want a small one.
+  gap to the library org, making one self-contained ~37 KB PRG; drop the
+  `X16LIB` area and `LOAD "X16LIB.PRG"` at run time if you want a small
+  one. (Keep `x16lib.cfg`'s `LIB` start equal to `X16LIB_ORG`.)
 - **KickAssembler** needs `.cpu _65c02` and `.encoding "ascii"` for CHROUT
   strings; the blob is embedded with `LoadBinary`/`.fill`.
 
@@ -144,9 +146,9 @@ generated bindings), and the three examples assemble with ca65 V2.19,
 to `dist.ps1` to re-run that check yourself.
 
 What the bindings do **not** give you: `X16_USE_*` module gating (the blob
-always contains everything — under 8 KB) and a movable `X16_ZP`. If you need
-either, or you want the routines inlined into your own PRG, use the ACME
-sources directly.
+always contains everything — currently ~12 KB) and a movable `X16_ZP`. If
+you need either, or you want the routines inlined into your own PRG, use
+the ACME sources directly.
 
 ## Conventions
 
@@ -173,10 +175,10 @@ treated as caller-save scratch.
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
-| `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line` |
-| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off`, `fx_line` (hardware Bresenham), `fx_triangle` (polygon-filler triangles) |
-| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions` |
-| `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off` |
+| `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_circle`, `gfx_disc`, `gfx_char`, `gfx_text` |
+| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off`, `fx_line` (hardware Bresenham), `fx_triangle` (polygon-filler triangles), `fx_copy` (cached VRAM→VRAM), `fx_transp_on`/`off` |
+| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions`, `irq_save_regs`/`irq_restore_regs` |
+| `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off`, `psg_env_start`/`release`/`stop`/`tick` (per-voice ASR envelopes) |
 | `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_note_bas`, `ym_release_note`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_get_pan`, `ym_get_vol` |
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
 | `X16_USE_PCM_STREAM` | `pcm_stream_start`/`stop`/`active` — AFLOW-interrupt streaming beyond the 4 KB FIFO (pulls in PCM and IRQ) |
@@ -185,6 +187,11 @@ treated as caller-save scratch.
 | `X16_USE_BANKALLOC` | `bank_alloc_init`, `bank_alloc`, `bank_free`, `bank_reserve` |
 | `X16_USE_MEM` | `mem_fill`, `mem_copy`, `mem_crc`, `mem_decompress` (KERNAL block ops, LZSA2) |
 | `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
+| `X16_USE_DOS` | `dos_cmd`, `dos_status`, `dos_delete`, `dos_rename`, `dos_mkdir`, `dos_rmdir`, `dos_chdir` — the command channel, so a failed save can say *why* |
+| `X16_USE_MATH` | `rnd_seed`/`rnd8`/`rnd16` (xorshift), `sin8`/`cos8`/`sin8u`/`cos8u` (built-at-assembly tables), `atan2`, `lerp8` |
+| `X16_USE_CLIP` | `clip_set`, `clip_line` (Cohen–Sutherland; feeds `gfx_line`/`fx_line`'s parameter block) |
+| `X16_USE_BUFFERS` | `rb_init`/`put`/`get`/`count` (ring buffer), `stk_init`/`push`/`pop`/`depth` |
+| `X16_USE_ADPCM` | `adpcm_init`, `adpcm_nibble`, `adpcm_block` — IMA ADPCM, 4:1 compressed PCM |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
@@ -244,6 +251,48 @@ clears only by refilling, so when the data runs out the streamer disables it
 in `IEN`; forget that in hand-rolled code and the interrupt storms. Set the
 format with `pcm_ctrl` first; the rate is passed to `pcm_stream_start` and
 playback starts only after the FIFO is primed, so it cannot underrun at t=0.
+
+**An IRQ callback that calls the library must save the zero page it
+borrows.** The KERNAL's virtual registers `r0`–`r15` and the library's
+`X16_P0..T7` block belong to whatever code the interrupt cut off —
+`mem_copy` runs on `r0`–`r2` with interrupts enabled, and a raster callback
+that calls another `mem_*` (or `mouse_get`) corrupts the interrupted copy's
+pointers on resume. Bracket such callbacks with `irq_save_regs` /
+`irq_restore_regs` (one 48-byte buffer, no nesting — interrupts don't nest
+here either). A callback that only touches A/X/Y and its own variables
+needs nothing.
+
+`psg_set_freq` writes the frequency **high byte first**, stepping the port
+downward: low-first leaves the voice at new-low/old-high for a few cycles,
+an audible click on every pitch change. `psg_env_start` +
+`psg_env_tick` (once per frame) run attack/sustain/release envelopes on all
+16 voices — the decay everybody hand-rolls in the frame loop, done once,
+with each voice's pan bits preserved.
+
+`clip_line` (Cohen–Sutherland) removes the drawers' documented "does not
+clip" sharp edge: give it a segment in 16-bit signed coordinates (±4095)
+and it rejects it (carry set) or loads the visible part straight into
+`gfx_line`/`fx_line`'s parameter block. `gfx_circle`/`gfx_disc` clip on
+their own; `gfx_char`/`gfx_text` draw the VRAM charset's glyphs into the
+bitmap, transparent background, ASCII conversion included.
+
+`util/math.asm` is the game-math kit: a 16-bit xorshift PRNG, 256-entry
+sine/cosine tables computed by the assembler, an octant-reduced `atan2`
+(byte angles: 256 = full circle, 0 = east, 64 = down-screen — the sine
+tables use the same convention, so `atan2` output feeds `sin8`/`cos8`
+directly), and `lerp8`.
+
+`adpcm_block` decodes IMA ADPCM — 16-bit samples stored as 4-bit deltas,
+low nibble first as in WAV blocks. Four-to-one compression is what makes
+`pcm_stream_start` practical from an SD card: decode a bank's worth, stream
+it, decode the next. `adpcm_pred`/`adpcm_index` are exposed because WAV
+block headers carry the initial decoder state.
+
+The `dos_*` routines finally answer *why* a file operation failed: every
+command sent to channel 15 is answered with a status line (`dos_msg`), and
+each wrapper returns the numeric code with carry set on the ≥20 error
+classes. `dos_status` also clears a pending error. Note the first read
+after power-on is code 73 — the DOS version banner — by design.
 
 `fx_line` draws the same endpoints as `gfx_line`, but VERA tracks the
 Bresenham internally and the CPU just strobes `DATA1` once per pixel.

@@ -29,13 +29,15 @@
 ;                     sprite_image, sprite_flags, sprite_z, sprite_size,
 ;                     sprite_init_all
 ;   X16_USE_BITMAP    gfx_init, gfx_clear, gfx_pset, gfx_hline,
-;                     gfx_vline, gfx_rect, gfx_frame, gfx_line
+;                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
+;                     gfx_circle, gfx_disc, gfx_char, gfx_text
 ;   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off, fx_line,
-;                     fx_triangle
+;                     fx_triangle, fx_copy, fx_transp_on/off
 ;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait,
 ;                     irq_line_install/remove, irq_sprcol_install/
 ;                     remove, sprite_collisions
-;   X16_USE_PSG       psg_init, psg_set_freq/vol/wave, psg_note_off
+;   X16_USE_PSG       psg_init, psg_set_freq/vol/wave, psg_note_off,
+;                     psg_env_start/release/stop/tick (ASR envelopes)
 ;   X16_USE_YM        ym_write, ym_busy, ym_init, ym_poke, ym_patch,
 ;                     ym_note, ym_note_bas, ym_release_note, ym_vol,
 ;                     ym_pan, ym_drum, ym_get_pan, ym_get_vol
@@ -52,6 +54,13 @@
 ;   X16_USE_MEM       mem_fill, mem_copy, mem_crc, mem_decompress
 ;                     (KERNAL block ops; they stream to/from VERA too)
 ;   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
+;   X16_USE_DOS       dos_cmd, dos_status, dos_delete, dos_rename,
+;                     dos_mkdir, dos_rmdir, dos_chdir
+;   X16_USE_MATH      rnd_seed/rnd8/rnd16, sin8/cos8 (+u), atan2, lerp8
+;   X16_USE_CLIP      clip_set, clip_line (Cohen-Sutherland, feeds
+;                     gfx_line/fx_line's parameter block)
+;   X16_USE_BUFFERS   rb_init/put/get/count, stk_init/push/pop/depth
+;   X16_USE_ADPCM     adpcm_init, adpcm_nibble, adpcm_block (IMA 4:1)
 ;   X16_USE_FIXED     umul16, mul88
 ;   X16_USE_COLLIDE   collide8, collide16
 ;   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
@@ -88,6 +97,11 @@
     !ifndef X16_USE_BANKALLOC { X16_USE_BANKALLOC = 1 }
     !ifndef X16_USE_MEM     { X16_USE_MEM     = 1 }
     !ifndef X16_USE_LOAD    { X16_USE_LOAD    = 1 }
+    !ifndef X16_USE_DOS     { X16_USE_DOS     = 1 }
+    !ifndef X16_USE_MATH    { X16_USE_MATH    = 1 }
+    !ifndef X16_USE_CLIP    { X16_USE_CLIP    = 1 }
+    !ifndef X16_USE_BUFFERS { X16_USE_BUFFERS = 1 }
+    !ifndef X16_USE_ADPCM   { X16_USE_ADPCM   = 1 }
     !ifndef X16_USE_FIXED   { X16_USE_FIXED   = 1 }
     !ifndef X16_USE_COLLIDE { X16_USE_COLLIDE = 1 }
     !ifndef X16_USE_BITS    { X16_USE_BITS    = 1 }
@@ -130,6 +144,11 @@
 !ifdef X16_USE_BANKALLOC { !source "storage/bankalloc.asm" }
 !ifdef X16_USE_MEM     { !source "storage/mem.asm" }
 !ifdef X16_USE_LOAD    { !source "storage/load.asm" }
+!ifdef X16_USE_DOS     { !source "storage/dos.asm" }
+!ifdef X16_USE_MATH    { !source "util/math.asm" }
+!ifdef X16_USE_CLIP    { !source "util/clip.asm" }
+!ifdef X16_USE_BUFFERS { !source "util/buffers.asm" }
+!ifdef X16_USE_ADPCM   { !source "audio/adpcm.asm" }
 !ifdef X16_USE_FIXED   { !source "util/fixed.asm" }
 !ifdef X16_USE_COLLIDE { !source "util/collide.asm" }
 !ifdef X16_USE_BITS    { !source "util/bits.asm" }

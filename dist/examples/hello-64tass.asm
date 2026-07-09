@@ -9,8 +9,8 @@
 ; -C (case-sensitive symbols) is REQUIRED: the jsrfar macro and the
 ; KERNAL's JSRFAR constant differ only in case.
 ;
-; The library blob sits at $8000; your program owns $0801-$7FFF.
-; The library claims zero page $22-$31 (X16_P0..X16_T7).
+; The library blob sits at X16LIB_ORG (exported by x16lib.inc); your
+; program owns $0801 up to it. The library claims zero page $22-$31.
 ; =====================================================================
 
         .cpu "65c02"
@@ -47,5 +47,5 @@ main
 
 msg     .text "HELLO FROM 64TASS! ", 0
 
-* = $8000
+* = X16LIB_ORG
         .binary "x16lib.bin"
