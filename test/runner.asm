@@ -88,6 +88,47 @@ main
     jsr test_cls_clears
     jsr test_color_reaches_vram
 
+    jsr test_vera_set_addr
+    jsr test_vera_addr_decr
+    jsr test_copy_zero
+    jsr test_fill_page
+    jsr test_pal_load
+    jsr test_pal_load_zero
+    jsr test_sprite_zdepth
+    jsr test_sprite_size_pal
+    jsr test_sprite_enable
+    jsr test_layer_enable
+    jsr test_layer_scroll
+    jsr test_gfx_clear_full
+    jsr test_gfx_hline_long
+    jsr test_gfx_rect
+    jsr test_gfx_frame
+    jsr test_gfx_line_steep
+    jsr test_umul16_edge
+    jsr test_mul88_frac
+    jsr test_collide8_9bit
+    jsr test_bit_put
+    jsr test_i16_convert
+    jsr test_i16_mul_neg
+    jsr test_i32_shift
+    jsr test_i32_convert
+    jsr test_number_hex_low
+    jsr test_number_parse_edge
+    jsr test_f_neg_cmp
+    jsr test_f_pow
+    jsr test_f_ln_exp
+    jsr test_f_int_floor
+    jsr test_psg_note_off
+    jsr test_pcm_fifo
+    jsr test_key_empty
+    jsr test_fs_missing
+    jsr test_fs_vload
+    jsr test_bank_poke
+    jsr test_bank_zero_count
+    jsr test_screen_mode_rt
+    jsr test_screen_cursor
+    jsr test_screen_puts_vram
+
     jsr t_summary
     rts
 
@@ -2763,6 +2804,1552 @@ test_color_reaches_vram
 @gotchar !byte 0
 @gotattr !byte 0
 @name !text "COLOR_TO_VRAM", $00
+
+; =====================================================================
+; ============ additional coverage: the tests below fill the ==========
+; ============ gaps found in the 2026-07 stability review    ==========
+; =====================================================================
+
+; Fold one VERA_DATA1 read into chk_err (see chk16 above). Branchless,
+; so long tests never push @fail out of branch range.
+!macro chkv .expect {
+    lda VERA_DATA1
+    eor #(.expect)
+    ora chk_err
+    sta chk_err
+}
+
+; =====================================================================
+; vera_set_addr0/1 are the run-time form of +vera_addr: A/X/Y carry an
+; address composed at run time. Write through port 0, read through
+; port 1, both pointed by the routines under test.
+; =====================================================================
+test_vera_set_addr
+    lda #<(TESTVRAM + $300)
+    ldx #>(TESTVRAM + $300)
+    ldy #(VERA_INC_1 << 4)      ; bank 0, increment 1
+    jsr vera_set_addr0
+    lda #$5E
+    sta VERA_DATA0
+    lda #$6F
+    sta VERA_DATA0              ; the increment must have applied
+
+    lda #<(TESTVRAM + $300)
+    ldx #>(TESTVRAM + $300)
+    ldy #(VERA_INC_1 << 4)
+    jsr vera_set_addr1
+    stz chk_err
+    +chkv $5E
+    +chkv $6F
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "VERA_SET_ADDR", $00
+
+; =====================================================================
+; +vera_addr_decr walks DOWN. Writing 4 bytes from TESTVRAM+$403 must
+; land them in descending addresses.
+; =====================================================================
+test_vera_addr_decr
+    +vera_addr_decr 0, TESTVRAM + $403, VERA_INC_1
+    lda #$04
+    sta VERA_DATA0              ; -> $403
+    lda #$03
+    sta VERA_DATA0              ; -> $402
+    lda #$02
+    sta VERA_DATA0              ; -> $401
+    lda #$01
+    sta VERA_DATA0              ; -> $400
+
+    +vera_addr 1, TESTVRAM + $400, VERA_INC_1
+    stz chk_err
+    +chkv $01
+    +chkv $02
+    +chkv $03
+    +chkv $04
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "VERA_ADDR_DECR", $00
+
+; =====================================================================
+; vera_copy with a count of 0 must copy nothing -- the same rounding
+; trap as vera_fill's.
+; =====================================================================
+test_copy_zero
+    +vera_addr 0, TESTVRAM + $480, VERA_INC_1
+    lda #$DD                    ; poison the destination
+    ldx #4
+    ldy #0
+    jsr vera_fill
+
+    +vera_addr 0, TESTVRAM, VERA_INC_1          ; source: anything
+    +vera_addr 1, TESTVRAM + $480, VERA_INC_1
+    ldx #0
+    ldy #0
+    jsr vera_copy
+
+    +vera_addr 1, TESTVRAM + $480, VERA_INC_1
+    lda #$DD
+    ldx #4
+    jsr t_vcmp_const            ; A = 0 when all four survived
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "VERA_COPY_ZERO", $00
+
+; =====================================================================
+; vera_fill's 16-bit count loop: an exact page multiple ($0200) must
+; not gain a page, and one-past-a-page ($0101) must not lose the tail.
+; =====================================================================
+test_fill_page
+    stz chk_err
+
+    ; poison 514 bytes at +$500, then fill exactly 512
+    +vera_addr 0, TESTVRAM + $500, VERA_INC_1
+    lda #$00
+    ldx #<514
+    ldy #>514
+    jsr vera_fill
+    +vera_addr 0, TESTVRAM + $500, VERA_INC_1
+    lda #$7A
+    ldx #<$0200
+    ldy #>$0200
+    jsr vera_fill
+
+    +vera_addr 1, TESTVRAM + $500, VERA_INC_1   ; first byte
+    +chkv $7A
+    +vera_addr 1, TESTVRAM + $500 + 511, VERA_INC_1
+    +chkv $7A                   ; last byte of the 512
+    +chkv $00                   ; the 513th must be untouched
+
+    ; and 257 = one full page plus one byte
+    +vera_addr 0, TESTVRAM + $800, VERA_INC_1
+    lda #$00
+    ldx #<260
+    ldy #>260
+    jsr vera_fill
+    +vera_addr 0, TESTVRAM + $800, VERA_INC_1
+    lda #$3B
+    ldx #<$0101
+    ldy #>$0101
+    jsr vera_fill
+
+    +vera_addr 1, TESTVRAM + $800 + 256, VERA_INC_1
+    +chkv $3B                   ; byte 257 written
+    +chkv $00                   ; byte 258 not
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "VERA_FILL_PAGE", $00
+
+; =====================================================================
+; pal_load streams entries. Index 200 forces the *2 to carry into
+; ADDR_M ($1FA00 -> $1FB90), the path pal_set's test never exercises.
+; =====================================================================
+test_pal_load
+    lda #<@colors
+    sta X16_PTR0
+    lda #>@colors
+    sta X16_PTR0+1
+    lda #200                    ; first index
+    ldx #3                      ; three entries
+    jsr pal_load
+
+    +vera_addr 1, VRAM_PALETTE + (200 * 2), VERA_INC_1
+    stz chk_err
+    +chkv $23
+    +chkv $01
+    +chkv $56
+    +chkv $04
+    +chkv $89
+    +chkv $07
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@colors !byte $23, $01, $56, $04, $89, $07   ; $0123, $0456, $0789
+@name   !text "PAL_LOAD", $00
+
+; =====================================================================
+; pal_load with a count of 0 must load nothing. Without the guard the
+; 8-bit loop counter wraps and 256 entries -- the entire palette --
+; get overwritten with garbage.
+; =====================================================================
+test_pal_load_zero
+    ldx #210                    ; plant a known entry
+    lda #$AB
+    ldy #$0C
+    jsr pal_set
+
+    lda #<@junk
+    sta X16_PTR0
+    lda #>@junk
+    sta X16_PTR0+1
+    lda #200
+    ldx #0                      ; zero entries
+    jsr pal_load
+
+    +vera_addr 1, VRAM_PALETTE + (210 * 2), VERA_INC_1
+    stz chk_err
+    +chkv $AB                   ; entry 210 must have survived
+    +chkv $0C
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@junk !byte $FF, $FF
+@name !text "PAL_LOAD_ZERO", $00
+
+; =====================================================================
+; sprite_flags writes byte 6 whole; sprite_z must then change ONLY the
+; Z bits, preserving the collision mask and the flips around them.
+; =====================================================================
+test_sprite_zdepth
+    jsr sprite_init_all
+
+    ldx #7
+    lda #($F0 | SPRITE_Z_BEHIND | SPRITE_HFLIP)
+    jsr sprite_flags
+
+    ldx #7
+    lda #SPRITE_Z_FRONT
+    jsr sprite_z
+
+    +vera_addr 1, VRAM_SPRITE_ATTR + (7 * 8) + 6, VERA_INC_1
+    stz chk_err
+    +chkv ($F0 | SPRITE_Z_FRONT | SPRITE_HFLIP)
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SPRITE_ZDEPTH", $00
+
+; =====================================================================
+; sprite_size packs height(7:6) | width(5:4) | palette offset(3:0),
+; and a palette offset above 15 must be masked, not allowed to corrupt
+; the size bits.
+; =====================================================================
+test_sprite_size_pal
+    jsr sprite_init_all
+
+    lda #5
+    sta X16_P0                  ; palette offset
+    ldx #2                      ; sprite
+    lda #SPRITE_SIZE_32         ; width  -> bits 5:4 = $20
+    ldy #SPRITE_SIZE_16         ; height -> bits 7:6 = $40
+    jsr sprite_size
+
+    +vera_addr 1, VRAM_SPRITE_ATTR + (2 * 8) + 7, VERA_INC_1
+    stz chk_err
+    +chkv ($40 | $20 | 5)
+
+    lda #$15                    ; out-of-range offset: low nibble only
+    sta X16_P0
+    ldx #2
+    lda #SPRITE_SIZE_32
+    ldy #SPRITE_SIZE_16
+    jsr sprite_size
+
+    +vera_addr 1, VRAM_SPRITE_ATTR + (2 * 8) + 7, VERA_INC_1
+    +chkv ($40 | $20 | 5)       ; still $65 -- $15 must not set bit 4
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SPRITE_SIZE_PAL", $00
+
+; =====================================================================
+; sprites_on / sprites_off toggle exactly the sprite-enable bit of
+; DC_VIDEO. Save and restore the register so the display is unchanged.
+; =====================================================================
+test_sprite_enable
+    +vera_dcsel 0
+    lda VERA_DC_VIDEO
+    sta @saved
+
+    jsr sprites_on
+    lda VERA_DC_VIDEO
+    and #VERA_VIDEO_SPRITES_EN
+    beq @fail
+
+    jsr sprites_off
+    lda VERA_DC_VIDEO
+    and #VERA_VIDEO_SPRITES_EN
+    bne @fail
+
+    lda @saved
+    sta VERA_DC_VIDEO
+    lda #0
+    bra @report
+@fail
+    lda @saved
+    sta VERA_DC_VIDEO
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@saved !byte 0
+@name  !text "SPRITE_ENABLE", $00
+
+; =====================================================================
+; layer_on / layer_off, exercised on layer 0 (idle in text mode) so
+; nothing visible changes. Layer 1's bit must be left alone.
+; =====================================================================
+test_layer_enable
+    +vera_dcsel 0
+    lda VERA_DC_VIDEO
+    sta @saved
+
+    lda #0
+    jsr layer_on
+    lda VERA_DC_VIDEO
+    and #VERA_VIDEO_LAYER0_EN
+    beq @fail
+    lda VERA_DC_VIDEO
+    and #VERA_VIDEO_LAYER1_EN   ; the text layer must still be on
+    beq @fail
+
+    lda #0
+    jsr layer_off
+    lda VERA_DC_VIDEO
+    and #VERA_VIDEO_LAYER0_EN
+    bne @fail
+
+    lda @saved
+    sta VERA_DC_VIDEO
+    lda #0
+    bra @report
+@fail
+    lda @saved
+    sta VERA_DC_VIDEO
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@saved !byte 0
+@name  !text "LAYER_ENABLE", $00
+
+; =====================================================================
+; layer_scroll_x/y: 12-bit value, high byte masked to 4 bits, and the
+; layer index must reach the right register pair. Layer 0 is idle, so
+; scrolling it is invisible.
+; =====================================================================
+test_layer_scroll
+    stz chk_err
+
+    lda #$23
+    sta X16_P0
+    lda #$FF                    ; only $0F of this may land
+    sta X16_P1
+    ldx #0
+    jsr layer_scroll_x
+
+    lda VERA_L0_HSCROLL_L
+    eor #$23
+    ora chk_err
+    sta chk_err
+    lda VERA_L0_HSCROLL_H
+    eor #$0F
+    ora chk_err
+    sta chk_err
+
+    lda #$56
+    sta X16_P0
+    lda #$04
+    sta X16_P1
+    ldx #0
+    jsr layer_scroll_y
+
+    lda VERA_L0_VSCROLL_L
+    eor #$56
+    ora chk_err
+    sta chk_err
+    lda VERA_L0_VSCROLL_H
+    eor #$04
+    ora chk_err
+    sta chk_err
+
+    ; layer 1 must not have been touched by any of that
+    lda VERA_L1_HSCROLL_L
+    ora VERA_L1_HSCROLL_H
+    ora chk_err
+    sta chk_err
+
+    ; put layer 0's scroll back to zero
+    stz X16_P0
+    stz X16_P1
+    ldx #0
+    jsr layer_scroll_x
+    stz X16_P0
+    stz X16_P1
+    ldx #0
+    jsr layer_scroll_y
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "LAYER_SCROLL", $00
+
+; =====================================================================
+; gfx_clear must reach the WHOLE 320x240 bitmap. 76800 bytes is $12C00,
+; which does not fit a 16-bit fill count -- pass it naively and the
+; low 16 bits ($2C00) clear only the top 35 rows. Check the far corner
+; and the seam, and that the byte after the bitmap survives.
+; =====================================================================
+test_gfx_clear_full
+    +vpoke VRAM_BITMAP + 40000, $00     ; past the truncated count
+    +vpoke VRAM_BITMAP + 76799, $00     ; the very last pixel
+    +vpoke VRAM_BITMAP + 76800, $77     ; first byte past the bitmap
+
+    lda #$A5
+    jsr gfx_clear
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP, VERA_INC_1
+    +chkv $A5                   ; first pixel
+    +vera_addr 1, VRAM_BITMAP + 40000, VERA_INC_1
+    +chkv $A5                   ; middle of the screen
+    +vera_addr 1, VRAM_BITMAP + 76799, VERA_INC_1
+    +chkv $A5                   ; last pixel
+    +chkv $77                   ; ...and not one byte more
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_CLEAR_FULL", $00
+
+; =====================================================================
+; gfx_hline with a 16-bit length. 300 pixels from (10,30) spans offsets
+; 9610..9909; both ends drawn, both neighbours clear.
+; =====================================================================
+test_gfx_hline_long
+    +vera_addr 0, VRAM_BITMAP + 9600, VERA_INC_1
+    lda #$00
+    ldx #<400
+    ldy #>400
+    jsr vera_fill
+
+    lda #<10
+    sta X16_P0
+    lda #>10
+    sta X16_P1
+    lda #30
+    sta X16_P2
+    lda #$66
+    sta X16_P3
+    lda #<300
+    sta X16_P4
+    lda #>300
+    sta X16_P5
+    jsr gfx_hline
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 9609, VERA_INC_1
+    +chkv $00                   ; before the span
+    +chkv $66                   ; first pixel
+    +vera_addr 1, VRAM_BITMAP + 9909, VERA_INC_1
+    +chkv $66                   ; last pixel (10 + 300 - 1 = 309)
+    +chkv $00                   ; after the span
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_HLINE_LONG", $00
+
+; =====================================================================
+; gfx_rect: a 3x2 block at (10,20). Interior filled, all four sides'
+; neighbours untouched.
+; =====================================================================
+test_gfx_rect
+    +vera_addr 0, VRAM_BITMAP + 6080, VERA_INC_1
+    lda #$00
+    ldx #<1280                  ; rows 19..22
+    ldy #>1280
+    jsr vera_fill
+
+    lda #<10
+    sta X16_P0
+    lda #>10
+    sta X16_P1
+    lda #20
+    sta X16_P2
+    lda #$3C
+    sta X16_P3
+    lda #<3
+    sta X16_P4
+    lda #>3
+    sta X16_P5
+    lda #2
+    sta X16_P6
+    jsr gfx_rect
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 6409, VERA_INC_1   ; (9,20)
+    +chkv $00
+    +chkv $3C                   ; (10,20)
+    +chkv $3C                   ; (11,20)
+    +chkv $3C                   ; (12,20)
+    +chkv $00                   ; (13,20)
+    +vera_addr 1, VRAM_BITMAP + 6730, VERA_INC_1   ; (10,21)
+    +chkv $3C
+    +vera_addr 1, VRAM_BITMAP + 6732, VERA_INC_1   ; (12,21)
+    +chkv $3C
+    +vera_addr 1, VRAM_BITMAP + 7050, VERA_INC_1   ; (10,22): below
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 6090, VERA_INC_1   ; (10,19): above
+    +chkv $00
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_RECT", $00
+
+; =====================================================================
+; gfx_frame: a 4x3 outline at (30,10). Edges drawn, interior hollow.
+; =====================================================================
+test_gfx_frame
+    +vera_addr 0, VRAM_BITMAP + 3200, VERA_INC_1
+    lda #$00
+    ldx #<960                   ; rows 10..12
+    ldy #>960
+    jsr vera_fill
+
+    lda #<30
+    sta X16_P0
+    lda #>30
+    sta X16_P1
+    lda #10
+    sta X16_P2
+    lda #$44
+    sta X16_P3
+    lda #<4
+    sta X16_P4
+    lda #>4
+    sta X16_P5
+    lda #3
+    sta X16_P6
+    jsr gfx_frame
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 3230, VERA_INC_1   ; top edge, (30..33,10)
+    +chkv $44
+    +chkv $44
+    +chkv $44
+    +chkv $44
+    +chkv $00                   ; (34,10) is outside
+    +vera_addr 1, VRAM_BITMAP + 3550, VERA_INC_1   ; middle row
+    +chkv $44                   ; (30,11) left edge
+    +chkv $00                   ; (31,11) hollow
+    +chkv $00                   ; (32,11) hollow
+    +chkv $44                   ; (33,11) right edge
+    +vera_addr 1, VRAM_BITMAP + 3870, VERA_INC_1   ; bottom edge
+    +chkv $44
+    +chkv $44
+    +chkv $44
+    +chkv $44
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_FRAME", $00
+
+; =====================================================================
+; gfx_line beyond the pure diagonal: a vertical drop (dx = 0) and a
+; right-to-left horizontal (sx = -1).
+; =====================================================================
+test_gfx_line_steep
+    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    lda #$00
+    ldx #<1300
+    ldy #>1300
+    jsr vera_fill
+
+    ; vertical: (2,0) -> (2,3)
+    lda #2
+    sta X16_P0
+    stz X16_P1
+    stz X16_P2
+    lda #2
+    sta X16_P3
+    stz X16_P4
+    lda #3
+    sta X16_P5
+    lda #$D1
+    sta X16_P6
+    jsr gfx_line
+
+    ; right-to-left: (5,3) -> (1,3)
+    lda #5
+    sta X16_P0
+    stz X16_P1
+    lda #3
+    sta X16_P2
+    lda #1
+    sta X16_P3
+    stz X16_P4
+    lda #3
+    sta X16_P5
+    lda #$D1
+    sta X16_P6
+    jsr gfx_line
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 2, VERA_INC_1      ; (2,0)
+    +chkv $D1
+    +chkv $00                   ; (3,0) stays clear
+    +vera_addr 1, VRAM_BITMAP + 322, VERA_INC_1    ; (2,1)
+    +chkv $D1
+    +vera_addr 1, VRAM_BITMAP + 642, VERA_INC_1    ; (2,2)
+    +chkv $D1
+    +vera_addr 1, VRAM_BITMAP + 960, VERA_INC_1    ; row 3, from (0,3)
+    +chkv $00                   ; (0,3) clear
+    +chkv $D1                   ; (1,3)
+    +chkv $D1                   ; (2,3)
+    +chkv $D1                   ; (3,3)
+    +chkv $D1                   ; (4,3)
+    +chkv $D1                   ; (5,3)
+    +chkv $00                   ; (6,3) clear
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_LINE_STEEP", $00
+
+; =====================================================================
+; umul16 at the corners: $FFFF^2 = $FFFE0001 exercises every carry, and
+; multiplying by zero must produce a clean zero in all four bytes.
+; =====================================================================
+test_umul16_edge
+    stz chk_err
+
+    lda #$FF
+    sta X16_P0
+    sta X16_P1
+    sta X16_P2
+    sta X16_P3
+    jsr umul16
+    lda X16_P4
+    eor #$01
+    ora chk_err
+    sta chk_err
+    lda X16_P5
+    eor #$00
+    ora chk_err
+    sta chk_err
+    lda X16_P6
+    eor #$FE
+    ora chk_err
+    sta chk_err
+    lda X16_P7
+    eor #$FF
+    ora chk_err
+    sta chk_err
+
+    stz X16_P0                  ; 0 * $1234 = 0
+    stz X16_P1
+    lda #$34
+    sta X16_P2
+    lda #$12
+    sta X16_P3
+    jsr umul16
+    lda X16_P4
+    ora X16_P5
+    ora X16_P6
+    ora X16_P7
+    ora chk_err
+    sta chk_err
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "UMUL16_EDGE", $00
+
+; =====================================================================
+; mul88 keeps the fraction: 0.5 * 0.5 = 0.25 lives entirely below the
+; binary point, and the sign pass must not lose it.
+; =====================================================================
+test_mul88_frac
+    stz chk_err
+
+    lda #$80                    ; 0.5
+    sta X16_P0
+    stz X16_P1
+    lda #$80                    ; 0.5
+    sta X16_P2
+    stz X16_P3
+    jsr mul88
+    lda X16_P0
+    eor #$40                    ; 0.25
+    ora chk_err
+    sta chk_err
+    lda X16_P1
+    ora chk_err
+    sta chk_err
+
+    lda #$80                    ; -0.5 * 0.5 = -0.25 = $FFC0
+    sta X16_P0
+    lda #$FF
+    sta X16_P1
+    lda #$80
+    sta X16_P2
+    stz X16_P3
+    jsr mul88
+    lda X16_P0
+    eor #$C0
+    ora chk_err
+    sta chk_err
+    lda X16_P1
+    eor #$FF
+    ora chk_err
+    sta chk_err
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "MUL88_FRAC", $00
+
+; =====================================================================
+; collide8's edge sums are 9-bit: boxes reaching past x = 255 must
+; still collide, and edges that merely touch on the Y axis must not.
+; =====================================================================
+test_collide8_9bit
+    lda #250 : sta X16_P0       ; A spans x 250..259 -- past 255
+    lda #0   : sta X16_P1
+    lda #10  : sta X16_P2
+    lda #10  : sta X16_P3
+    lda #252 : sta X16_P4       ; B spans x 252..261
+    lda #5   : sta X16_P5
+    lda #10  : sta X16_P6
+    lda #10  : sta X16_P7
+    jsr collide8
+    bcc @fail                   ; they overlap on both axes
+
+    lda #250 : sta X16_P0       ; same boxes, B moved to touch on Y:
+    lda #0   : sta X16_P1       ; A spans y 0..9, B starts at y 10
+    lda #10  : sta X16_P2
+    lda #10  : sta X16_P3
+    lda #252 : sta X16_P4
+    lda #10  : sta X16_P5
+    lda #10  : sta X16_P6
+    lda #10  : sta X16_P7
+    jsr collide8
+    bcs @fail                   ; touching is not overlapping
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "COLLIDE8_9BIT", $00
+
+; =====================================================================
+; bit_put routes on X: nonzero sets the masked bits, zero clears them.
+; =====================================================================
+test_bit_put
+    lda #<@cell
+    sta X16_PTR0
+    lda #>@cell
+    sta X16_PTR0+1
+    stz @cell
+
+    lda #%00001000
+    ldx #1
+    jsr bit_put
+    lda @cell
+    cmp #%00001000
+    bne @fail
+
+    lda #%00001000
+    ldx #0
+    jsr bit_put
+    lda @cell
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@cell !byte 0
+@name !text "BIT_PUT", $00
+
+; =====================================================================
+; i16 conversions and shift carries. $FF is 255 zero-extended but -1
+; sign-extended; the bit shifted out must land in the carry.
+; =====================================================================
+test_i16_convert
+    stz chk_err
+
+    lda #$FF
+    jsr i16_from_u8
+    +chk16 i16_a, 255
+
+    lda #$FF
+    jsr i16_from_s8
+    +chk16 i16_a, -1
+
+    lda #$7F
+    jsr i16_from_s8
+    +chk16 i16_a, 127
+
+    +i16_const i16_a, $8000     ; shl: top bit out into carry
+    jsr i16_shl
+    +chk_carry 1
+    +chk16 i16_a, 0
+
+    +i16_const i16_a, $4000     ; ...and only the top bit
+    jsr i16_shl
+    +chk_carry 0
+    +chk16 i16_a, $8000
+
+    +i16_const i16_a, 1         ; shr: bottom bit out into carry
+    jsr i16_shr
+    +chk_carry 1
+    +chk16 i16_a, 0
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_CONVERT", $00
+
+; =====================================================================
+; i16_mul is shared between signed and unsigned because two's
+; complement makes the low 16 bits identical -- prove it holds.
+; =====================================================================
+test_i16_mul_neg
+    stz chk_err
+
+    +i16_const i16_a, -300
+    +i16_const i16_b, 3
+    jsr i16_mul
+    +chk16 i16_a, -900
+
+    +i16_const i16_a, 5
+    +i16_const i16_b, -1
+    jsr i16_mul
+    +chk16 i16_a, -5
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_MUL_NEG", $00
+
+; =====================================================================
+; 32-bit shifts: carry out of shl, and asr versus shr on the sign bit.
+; =====================================================================
+test_i32_shift
+    stz chk_err
+
+    +i32_const i32_a, $80000001
+    jsr i32_shl
+    +chk_carry 1
+    +chk32 i32_a, 2
+
+    +i32_const i32_a, $80000000
+    jsr i32_asr
+    +chk32 i32_a, $C0000000     ; sign fill
+
+    +i32_const i32_a, $80000000
+    jsr i32_shr
+    +chk32 i32_a, $40000000     ; zero fill
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I32_SHIFT", $00
+
+; =====================================================================
+; i32 conversions: $8000 is 32768 zero-extended but -32768 sign-
+; extended, and i32_to_s16 hands back the low word in A/X.
+; =====================================================================
+test_i32_convert
+    stz chk_err
+
+    lda #<$8000
+    ldx #>$8000
+    jsr i32_from_u16
+    +chk32 i32_a, $00008000
+
+    lda #<$8000
+    ldx #>$8000
+    jsr i32_from_s16
+    +chk32 i32_a, $FFFF8000
+
+    +i32_const i32_a, $12345678
+    jsr i32_to_s16
+    eor #$78                    ; A = low byte
+    ora chk_err
+    sta chk_err
+    txa
+    eor #$56                    ; X = high byte
+    ora chk_err
+    sta chk_err
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I32_CONVERT", $00
+
+; =====================================================================
+; u16_to_hex must zero-pad: $000A is "000A", never "A".
+; =====================================================================
+test_number_hex_low
+    lda #<$000A
+    sta X16_P0
+    lda #>$000A
+    sta X16_P1
+    jsr u16_to_hex
+    cpy #4
+    bne @fail
+    lda #<@expect
+    ldx #>@expect
+    jsr cmp_num_buf
+    bcs @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@expect !text "000A", $00
+@name   !text "NUMBER_HEX_LOW", $00
+
+; =====================================================================
+; dec_to_u16 boundaries: the largest value, plain zero, and an empty
+; string (length 0), which parses successfully as 0.
+; =====================================================================
+test_number_parse_edge
+    lda #<@max
+    sta X16_P0
+    lda #>@max
+    sta X16_P1
+    lda #5
+    sta X16_P2
+    jsr dec_to_u16
+    bcs @fail
+    lda X16_P4
+    cmp #<65535
+    bne @fail
+    lda X16_P5
+    cmp #>65535
+    bne @fail
+
+    lda #<@zero
+    sta X16_P0
+    lda #>@zero
+    sta X16_P1
+    lda #1
+    sta X16_P2
+    jsr dec_to_u16
+    bcs @fail
+    lda X16_P4
+    ora X16_P5
+    bne @fail
+
+    lda #<@zero                 ; length 0: nothing to reject, value 0
+    sta X16_P0
+    lda #>@zero
+    sta X16_P1
+    stz X16_P2
+    jsr dec_to_u16
+    bcs @fail
+    lda X16_P4
+    ora X16_P5
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@max  !text "65535"
+@zero !text "0"
+@name !text "NUMBER_PARSE_EDGE", $00
+
+; =====================================================================
+; f_from_u8 reaches values above the s16 low byte, f_neg flips the
+; sign, and f_cmp orders FAC against memory all three ways.
+; =====================================================================
+test_f_neg_cmp
+    lda #200
+    jsr f_from_u8
+    jsr f_to_s16
+    cmp #200
+    bne @fail
+    cpx #0
+    bne @fail
+
+    lda #<5
+    ldx #>5
+    jsr f_from_s16
+    jsr f_neg
+    jsr f_to_s16
+    cmp #<-5
+    bne @fail
+    cpx #>-5
+    bne @fail
+
+    lda #<5                     ; park 5.0 in memory
+    ldx #>5
+    jsr f_from_s16
+    lda #<@five
+    ldy #>@five
+    jsr f_store
+
+    lda #<3
+    ldx #>3
+    jsr f_from_s16
+    lda #<@five
+    ldy #>@five
+    jsr f_cmp                   ; 3 < 5
+    cmp #$FF
+    bne @fail
+
+    lda #<5
+    ldx #>5
+    jsr f_from_s16
+    lda #<@five
+    ldy #>@five
+    jsr f_cmp                   ; 5 = 5
+    bne @fail
+
+    lda #<7
+    ldx #>7
+    jsr f_from_s16
+    lda #<@five
+    ldy #>@five
+    jsr f_cmp                   ; 7 > 5
+    cmp #1
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@five !fill FP_SIZE, 0
+@name !text "F_NEG_CMP", $00
+
+; =====================================================================
+; f_pow computes FAC ^ mem: 2 ^ 10 = 1024. Verified as a string --
+; the power goes through exp(ln x), so the bits may sit a hair under
+; 1024.0 where f_to_s16 would floor to 1023; fout's 9-digit rounding
+; is exactly what "1024" means here (numbers.asm prints it this way).
+; =====================================================================
+test_f_pow
+    lda #<10
+    ldx #>10
+    jsr f_from_s16
+    lda #<@ten
+    ldy #>@ten
+    jsr f_store
+
+    lda #<2
+    ldx #>2
+    jsr f_from_s16
+    lda #<@ten
+    ldy #>@ten
+    jsr f_pow                   ; FAC = 2 ^ 10
+    jsr f_to_str_trim
+    sta T_ZP
+    stx T_ZP+1
+    ldy #0
+@cmp
+    lda (T_ZP),y
+    cmp @expect,y
+    bne @fail
+    iny
+    cpy #5                      ; "1024" and its terminator
+    bne @cmp
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@ten    !fill FP_SIZE, 0
+@expect !text "1024", $00
+@name   !text "F_POW", $00
+
+; =====================================================================
+; ln(1) = 0 and e^0 = 1 exactly -- the two anchor points every
+; implementation must hit whatever its series does elsewhere.
+; =====================================================================
+test_f_ln_exp
+    lda #<1
+    ldx #>1
+    jsr f_from_s16
+    jsr f_ln
+    jsr f_sgn                   ; sign of 0 is 0
+    bne @fail
+
+    jsr f_zero
+    jsr f_exp                   ; e^0
+    jsr f_to_str_trim
+    sta T_ZP
+    stx T_ZP+1
+    ldy #0
+    lda (T_ZP),y
+    cmp #'1'
+    bne @fail
+    iny
+    lda (T_ZP),y                ; exactly "1", nothing after
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "F_LN_EXP", $00
+
+; =====================================================================
+; f_int truncates toward NEGATIVE infinity, BASIC's INT: -2.5 floors
+; to -3, not -2.
+; =====================================================================
+test_f_int_floor
+    lda #<@str
+    ldy #>@str
+    ldx #4
+    jsr f_from_str              ; FAC = -2.5
+    jsr f_int
+    jsr f_to_s16
+    cmp #<-3
+    bne @fail
+    cpx #>-3
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@str  !text "-2.5"
+@name !text "F_INT_FLOOR", $00
+
+; =====================================================================
+; psg_note_off zeroes the volume but must keep the panning bits and
+; leave the other three voice registers alone.
+; =====================================================================
+test_psg_note_off
+    ldx #4
+    lda #<$0567
+    sta X16_P0
+    lda #>$0567
+    sta X16_P1
+    jsr psg_set_freq
+
+    ldx #4
+    lda #PSG_WAVE_SAWTOOTH
+    ldy #10
+    jsr psg_set_wave
+
+    ldx #4
+    lda #63
+    ldy #PSG_PAN_BOTH
+    jsr psg_set_vol
+
+    ldx #4
+    jsr psg_note_off
+
+    +vera_addr 1, VRAM_PSG + (4 * 4), VERA_INC_1
+    stz chk_err
+    +chkv $67                   ; frequency survives
+    +chkv $05
+    +chkv PSG_PAN_BOTH          ; volume 0, pan intact
+    +chkv (PSG_WAVE_SAWTOOTH | 10)
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "PSG_NOTE_OFF", $00
+
+; =====================================================================
+; The PCM FIFO flags: empty after a reset, no longer empty (and not
+; full) after one byte, and empty again after another reset.
+; =====================================================================
+test_pcm_fifo
+    lda #0
+    jsr pcm_rate                ; rate 0: nothing drains the FIFO
+    lda #$08                    ; 8-bit mono, volume 8
+    jsr pcm_ctrl
+    jsr pcm_reset
+
+    jsr pcm_empty
+    bcc @fail                   ; must start empty
+
+    lda #$55
+    jsr pcm_put
+    jsr pcm_empty
+    bcs @fail                   ; one byte queued: not empty
+    jsr pcm_full
+    bcs @fail                   ; ...and nowhere near full
+
+    jsr pcm_reset
+    jsr pcm_empty
+    bcc @fail                   ; the reset must drain it
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "PCM_FIFO", $00
+
+; =====================================================================
+; key_get is non-blocking: with nothing queued it returns 0, and
+; key_peek agrees with X = 0 and Z set.
+; =====================================================================
+test_key_empty
+    ldx #16                     ; drain anything already buffered
+@drain
+    phx
+    jsr key_get
+    plx
+    cmp #0
+    beq @empty
+    dex
+    bne @drain
+    bra @fail                   ; the buffer never emptied
+@empty
+    jsr key_peek
+    bne @fail                   ; Z must be set when empty
+    cpx #0
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "KEY_EMPTY", $00
+
+; =====================================================================
+; Loading a file that does not exist must come back with carry set,
+; not hang or pretend.
+; =====================================================================
+test_fs_missing
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    lda #FS_SA_ADDR
+    sta X16_P4
+    lda #<@dst
+    sta X16_P5
+    lda #>@dst
+    sta X16_P6
+    jsr fs_load
+    bcc @fail                   ; it "loaded" a missing file
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@fname     !text "NOFILE.XYZ"
+@fname_len = 10
+@dst       !fill 2, 0
+@name      !text "FS_MISSING", $00
+
+; =====================================================================
+; fs_vload pulls a file straight into VRAM. TESTDATA.BIN was written by
+; FS_ROUNDTRIP earlier in this run; its 8 payload bytes must appear at
+; the VRAM address (the two-byte PRG header is consumed, not stored).
+; =====================================================================
+test_fs_vload
+    +vera_addr 0, TESTVRAM + $600, VERA_INC_1
+    lda #$00                    ; scrub the landing zone
+    ldx #12
+    ldy #0
+    jsr vera_fill
+
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4                  ; VRAM bank 0
+    lda #<(TESTVRAM + $600)
+    sta X16_P5
+    lda #>(TESTVRAM + $600)
+    sta X16_P6
+    jsr fs_vload
+    bcs @fail
+
+    +vera_addr 1, TESTVRAM + $600, VERA_INC_1
+    stz chk_err
+    +chkv $DE                   ; FS_ROUNDTRIP's payload
+    +chkv $AD
+    +chkv $BE
+    +chkv $EF
+    +chkv $CA
+    +chkv $FE
+    +chkv $BA
+    +chkv $BE
+
+    lda chk_err
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@fname     !text "TESTDATA.BIN"
+@fname_len = 12
+@name      !text "FS_VLOAD", $00
+
+; =====================================================================
+; bank_set/get and bank_poke: the byte lands in the right bank at the
+; right offset, and the caller's bank survives both poke and peek.
+; =====================================================================
+test_bank_poke
+    lda RAM_BANK
+    sta @saved
+
+    lda #7
+    jsr bank_set
+    jsr bank_get
+    cmp #7
+    bne @fail
+
+    lda #123                    ; poke $C9 into bank 9, offset 123
+    sta X16_P0
+    stz X16_P1
+    ldx #9
+    lda #$C9
+    jsr bank_poke
+
+    lda RAM_BANK                ; caller's bank untouched
+    cmp #7
+    bne @fail
+
+    lda #123
+    sta X16_P0
+    stz X16_P1
+    lda #9
+    jsr bank_peek
+    cmp #$C9
+    bne @fail
+
+    lda RAM_BANK
+    cmp #7
+    bne @fail
+
+    lda @saved
+    sta RAM_BANK
+    lda #0
+    bra @report
+@fail
+    lda @saved
+    sta RAM_BANK
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@saved !byte 0
+@name  !text "BANK_POKE", $00
+
+; =====================================================================
+; mem_to_bank with a byte count of 0 copies nothing.
+; =====================================================================
+test_bank_zero_count
+    lda RAM_BANK
+    sta @saved
+
+    lda #50                     ; sentinel at bank 4, offset 50
+    sta X16_P0
+    stz X16_P1
+    ldx #4
+    lda #$77
+    jsr bank_poke
+
+    lda #<@junk
+    sta X16_P0
+    lda #>@junk
+    sta X16_P1
+    lda #4
+    sta X16_P2                  ; destination bank
+    lda #50
+    sta X16_P3
+    stz X16_P4                  ; destination offset
+    stz X16_P5                  ; count = 0
+    stz X16_P6
+    jsr mem_to_bank
+
+    lda #50
+    sta X16_P0
+    stz X16_P1
+    lda #4
+    jsr bank_peek
+    cmp #$77                    ; the sentinel must have survived
+    bne @fail
+
+    lda @saved
+    sta RAM_BANK
+    lda #0
+    bra @report
+@fail
+    lda @saved
+    sta RAM_BANK
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@junk  !byte $FF
+@saved !byte 0
+@name  !text "BANK_ZERO_COUNT", $00
+
+; =====================================================================
+; screen_set_mode / screen_get_mode round trip, and an unsupported
+; mode must be refused with carry set, leaving the mode unchanged.
+; =====================================================================
+test_screen_mode_rt
+    jsr screen_get_mode
+    sta @saved
+
+    lda #$03                    ; 40x30 text
+    jsr screen_set_mode
+    bcs @fail
+    jsr screen_get_mode
+    cmp #$03
+    bne @fail
+
+    lda #$42                    ; not a mode
+    jsr screen_set_mode
+    bcc @fail
+    jsr screen_get_mode         ; and nothing changed
+    cmp #$03
+    bne @fail
+
+    lda @saved
+    jsr screen_set_mode
+    bcs @fail
+    lda #0
+    bra @report
+@fail
+    lda @saved                  ; put the screen back even on the way out
+    jsr screen_set_mode
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@saved !byte 0
+@name  !text "SCREEN_MODE_RT", $00
+
+; =====================================================================
+; screen_locate / screen_get_cursor round trip.
+; =====================================================================
+test_screen_cursor
+    ldx #7                      ; row
+    ldy #13                     ; column
+    jsr screen_locate
+    jsr screen_get_cursor
+    cpx #7
+    bne @fail
+    cpy #13
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SCREEN_CURSOR", $00
+
+; =====================================================================
+; screen_puts must land its characters in the tilemap. 'H' and 'I'
+; are screen codes $08/$09 in the default charset; verified at the
+; cell addresses for row 20 of the 128-wide map.
+; =====================================================================
+test_screen_puts_vram
+    ldx #20                     ; row
+    ldy #4                      ; column
+    jsr screen_locate
+
+    lda #<@text
+    ldx #>@text
+    jsr screen_puts
+
+    +vera_addr 1, VRAM_TEXT + (20 * 128 + 4) * 2, VERA_INC_2
+    stz chk_err
+    +chkv $08                   ; 'H' (stepping by 2 skips the attributes)
+    +chkv $09                   ; 'I'
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@text !text "HI", $00
+@name !text "SCREEN_PUTS", $00
 
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"

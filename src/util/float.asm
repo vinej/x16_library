@@ -51,8 +51,12 @@ f_zero
     +jsrfar fp_zerofc, BANK_BASIC
     rts
 
+; fp_negop is the true unary minus. fp_negfac, despite its name, is an
+; internal helper of the ROM's add/subtract path that two's-complements
+; the mantissa in place -- calling it on a normalised FAC denormalises
+; it (5.0 comes back as garbage that reads about -2.5).
 f_neg
-    +jsrfar fp_negfac, BANK_BASIC
+    +jsrfar fp_negop, BANK_BASIC
     rts
 
 f_abs
@@ -78,9 +82,15 @@ f_sgn
 ; fp_givayf wants the high byte in A and the low byte in Y, the reverse
 ; of this library's usual A = low convention, so swap on the way in.
 ; fp_ayint leaves the result big-endian in FACMO (high) and FACLO (low).
+;
+; f_from_u8 goes through givayf with a zero high byte: the ROM's
+; fp_float converts a SIGNED byte, so 200 through it would come out
+; as -56.
 ; ---------------------------------------------------------------------
 f_from_u8
-    +jsrfar fp_float, BANK_BASIC
+    tay                         ; Y = low byte
+    lda #0                      ; A = high byte: zero-extend
+    +jsrfar fp_givayf, BANK_BASIC
     rts
 
 f_from_s16

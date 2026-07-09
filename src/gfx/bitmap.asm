@@ -30,12 +30,20 @@ gfx_init
     lda #$80
     jmp screen_set_mode
 
+; 320*240 = 76800 bytes does not fit vera_fill's 16-bit count (passing
+; it naively truncates to $2C00 and clears only the top 35 rows), so
+; clear in two halves; port 0 keeps auto-incrementing between calls.
 gfx_clear
     pha
     +vera_addr 0, VRAM_BITMAP, VERA_INC_1
     pla
-    ldx #<(GFX_WIDTH * GFX_HEIGHT)
-    ldy #>(GFX_WIDTH * GFX_HEIGHT)
+    pha
+    ldx #<(GFX_WIDTH * GFX_HEIGHT / 2)
+    ldy #>(GFX_WIDTH * GFX_HEIGHT / 2)
+    jsr vera_fill
+    pla
+    ldx #<(GFX_WIDTH * GFX_HEIGHT / 2)
+    ldy #>(GFX_WIDTH * GFX_HEIGHT / 2)
     jmp vera_fill
 
 ; ---------------------------------------------------------------------

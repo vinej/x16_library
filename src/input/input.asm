@@ -53,8 +53,9 @@ joy_get
 ; ---------------------------------------------------------------------
 ; mouse_show -- in: A = $00 hide, $FF show without changing the cursor,
 ;                      n  show and select cursor sprite n
-;                   X = width in 8px units, Y = height in 8px units
-;                      (X = Y = 0 leaves the size alone)
+;               The screen size is left unchanged (MOUSE_CONFIG is
+;               called with X = Y = 0). Call MOUSE_CONFIG yourself to
+;               resize the mouse field.
 ; mouse_hide
 ; ---------------------------------------------------------------------
 mouse_show

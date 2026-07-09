@@ -207,7 +207,10 @@ sprite_size
     asl
     asl                         ; height into bits 7:6
     ora X16_T3
-    ora X16_P0
+    sta X16_T3
+    lda X16_P0
+    and #$0F                    ; an offset >15 must not corrupt the size bits
+    ora X16_T3
     sta X16_T3
 
     lda #SPRITE_ATTR_SIZE_PAL

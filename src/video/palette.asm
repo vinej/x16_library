@@ -55,10 +55,12 @@ pal_set
 ; pal_load -- bulk-load palette entries from RAM.
 ;   in:  X16_PTR0 = source address (2 bytes per entry, low byte first)
 ;        A = first palette index
-;        X = entry count (1-128)
+;        X = entry count (1-128; 0 loads nothing)
 ; ---------------------------------------------------------------------
 pal_load
-    stx X16_T2                  ; entry count
+    cpx #0                      ; count 0 loads nothing -- without this
+    beq @done                   ; guard the loop would run 256 times and
+    stx X16_T2                  ; shred the whole palette
 
     tax                         ; X = first index
     lda #VERA_CTRL_ADDRSEL
@@ -83,6 +85,7 @@ pal_load
     iny
     dec X16_T2
     bne @loop
+@done
     rts
 
 }   ; !zone x16_palette

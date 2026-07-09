@@ -44,7 +44,8 @@ irq_install
     lda irq_armed
     bne @done
 
-    sei
+    php                         ; restore the caller's I flag afterwards,
+    sei                         ; rather than a blind cli
     lda CINV
     sta irq_old_vector
     lda CINV+1
@@ -58,7 +59,7 @@ irq_install
     tsb VERA_IEN                ; the KERNAL already enables it; harmless
     lda #1
     sta irq_armed
-    cli
+    plp
 @done
     rts
 
@@ -68,13 +69,14 @@ irq_install
 irq_remove
     lda irq_armed
     beq @done
+    php
     sei
     lda irq_old_vector
     sta CINV
     lda irq_old_vector+1
     sta CINV+1
     stz irq_armed
-    cli
+    plp
 @done
     rts
 

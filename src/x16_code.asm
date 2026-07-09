@@ -34,7 +34,8 @@
 ;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait
 ;   X16_USE_PSG       psg_init, psg_set_freq/vol/wave, psg_note_off
 ;   X16_USE_YM        ym_write, ym_busy, ym_init, ym_poke, ym_patch,
-;                     ym_note, ym_vol, ym_pan, ym_drum
+;                     ym_note, ym_note_bas, ym_release_note, ym_vol,
+;                     ym_pan, ym_drum, ym_get_pan, ym_get_vol
 ;   X16_USE_PCM       pcm_ctrl, pcm_rate, pcm_reset, pcm_full/empty,
 ;                     pcm_put, pcm_write
 ;   X16_USE_INPUT     joy_scan, joy_get, mouse_show/hide/get,
@@ -43,7 +44,7 @@
 ;                     bank_to_mem
 ;   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
 ;   X16_USE_FIXED     umul16, mul88
-;   X16_USE_COLLIDE   collide8
+;   X16_USE_COLLIDE   collide8, collide16
 ;   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
 ;   X16_USE_NUMBER    u16_to_dec, u16_to_hex, dec_to_u16
 ;   X16_USE_INT16     i16_add/sub/neg/abs/mul/divmod/divmod_s,

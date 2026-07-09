@@ -137,7 +137,7 @@ fp_fdivt  = $FE27       ; FAC = ARG / FAC
 fp_log    = $FE2A       ; FAC = ln(FAC)
 fp_int    = $FE2D       ; FAC = int(FAC)
 fp_sqr    = $FE30       ; FAC = sqrt(FAC)
-fp_negop  = $FE33       ; FAC = -FAC - 1
+fp_negop  = $FE33       ; FAC = -FAC  (the real unary minus)
 fp_fpwr   = $FE36       ; FAC = mem(A,Y) ^ FAC
 fp_fpwrt  = $FE39       ; FAC = ARG ^ FAC
 fp_exp    = $FE3C       ; FAC = e ^ FAC
@@ -158,12 +158,17 @@ fp_movaf  = $FE6C       ; ARG = round(FAC)
 fp_faddh  = $FE6F       ; FAC += 0.5
 fp_zerofc = $FE72       ; FAC = 0
 fp_normal = $FE75
-fp_negfac = $FE78       ; FAC = -FAC
+fp_negfac = $FE78       ; CAUTION: not a negate. Internal helper of the
+                        ; add/subtract path: two's-complements the FAC
+                        ; mantissa in place, denormalising a normal FAC.
+                        ; Use fp_negop for -FAC.
 fp_mul10  = $FE7B       ; FAC *= 10
 fp_div10  = $FE7E       ; FAC /= 10
 fp_movef  = $FE81       ; ARG = FAC
 fp_sgn    = $FE84       ; FAC = sgn(FAC)
-fp_float  = $FE87       ; FAC = (u8)A
+fp_float  = $FE87       ; FAC = (s8)A -- SIGNED: 200 comes out -56.
+                        ; For an unsigned byte go through fp_givayf
+                        ; with a zero high byte (util/float.asm does).
 fp_floats = $FE8A       ; FAC = (s16) facho:facho+1
 fp_qint   = $FE8D       ; facho..faclo = (u32)FAC, most significant first
 fp_finlog = $FE90       ; FAC += (s8)A
