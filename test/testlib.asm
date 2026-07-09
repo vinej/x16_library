@@ -37,6 +37,10 @@ t_init
 t_puts
     sta t_ptr
     stx t_ptr+1
+    ; A test may hand us the machine with port 1 selected. KERNAL screen
+    ; routines assume ADDRSEL = 0 and will corrupt the display (and this
+    ; harness's own output) otherwise -- see video/screen.asm.
+    +vera_addrsel 0
     ldy #0
 @loop
     lda (t_ptr),y

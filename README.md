@@ -88,12 +88,17 @@ treated as caller-save scratch.
 | Gate | Provides |
 |---|---|
 | `X16_USE_VERA` | `vera_set_addr0/1`, `vera_fill`, `vera_copy`, `vera_has_fx` |
-| `X16_USE_SCREEN` | `screen_set_mode`/`get_mode`/`reset`/`cls`/`color`/`border`, `screen_locate`, `screen_get_cursor`, `screen_charset`, `screen_puts` |
+| `X16_USE_SCREEN` | `screen_set_mode`/`get_mode`/`reset`/`cls`/`chrout`/`color`/`border`, `screen_locate`, `screen_get_cursor`, `screen_charset`, `screen_puts` |
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
+| `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
+| `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
+| `X16_USE_COLLIDE` | `collide8` (AABB overlap) |
 
-Planned: sprites, bitmap graphics + VERA FX, PSG/YM2151/PCM audio, joystick /
-mouse / keyboard, load-save, banked RAM, VSYNC + IRQ, fixed-point and collision
-utilities.
+Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
+asking for a module twice is not an error.
+
+Planned: tilemap and layer config, bitmap graphics + VERA FX, PSG/YM2151/PCM
+audio, joystick / mouse / keyboard, load-save, banked RAM, VSYNC + IRQ.
 
 ## Things the hardware will get you wrong
 
@@ -112,6 +117,19 @@ bank silently clears `ADDRSEL` out from under whoever was using port 1. Use
 **The address-increment field is an index, not a byte count.** `0..15` maps to
 `0,1,2,4,8,…,512` *and* `40,80,160,320,640`. Use the `VERA_INC_*` constants.
 Those odd values make tilemap-row and bitmap-row striding free.
+
+**The KERNAL requires `ADDRSEL = 0`.** Several of its screen routines write
+`VERA_ADDR_L/M/H` before selecting a port, or never touch `VERA_CTRL` at all.
+`screen_set_char` is the sharpest example: it sets all three address registers
+and then does `sta VERA_DATA0`. With `ADDRSEL = 1` the address goes into port 1
+while the character goes out of port 0, at whatever stale address it held — so
+the character lands somewhere random and the screen corrupts.
+
+This bites because `+vera_addr 1` and `vera_copy` both legitimately leave port 1
+selected. The `screen_*` routines force `ADDRSEL = 0` before entering the
+KERNAL; if you call `CHROUT` or `CINT` yourself, go through `screen_chrout` or
+emit `+vera_addrsel 0` first. Note also that the KERNAL leaves `DCSEL = 0`, so a
+`DCSEL` selection does not survive a call into it.
 
 **The YM2151 is at `$9F40`/`$9F41`**, not `$9FE0`.
 
@@ -137,8 +155,13 @@ build on any `FAIL`, on a pass count that disagrees with the reported total, or
 on a run that never prints `DONE`.
 
 The suite has been mutation-tested: breaking `+vera_dcsel` into a naive store,
-removing `vera_fill`'s zero-count guard, and corrupting an expected value each
-make exactly the corresponding test fail and the build exit non-zero.
+removing `vera_fill`'s zero-count guard, deleting the `ADDRSEL` guard from
+`screen_cls` or `screen_chrout`, and corrupting an expected value each make
+exactly the corresponding test fail and the build exit non-zero.
+
+That exercise also earns its keep the other way. Removing the guard from
+`screen_locate` changes nothing, because `PLOT` never touches VERA — so there is
+no guard there, and a comment says why.
 
 ## Layout
 
@@ -151,6 +174,8 @@ src/
   x16_code.asm   routine modules, gated by X16_USE_*
   core/          const_zp, const_vera, const_kernal, const_rom, macros
   video/         vera, screen, palette
+  sprite/        sprite
+  util/          fixed, collide
 examples/    hello.asm
 test/        runner.asm, testlib.asm
 build.ps1

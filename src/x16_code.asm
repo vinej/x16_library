@@ -23,16 +23,31 @@
 ;                     screen_locate, screen_get_cursor, screen_charset,
 ;                     screen_puts
 ;   X16_USE_PALETTE   pal_set, pal_load
+;   X16_USE_SPRITE    sprites_on/off, sprite_pos, sprite_get_pos,
+;                     sprite_image, sprite_flags, sprite_z, sprite_size,
+;                     sprite_init_all          (requires X16_USE_VERA)
+;   X16_USE_FIXED     umul16, mul88
+;   X16_USE_COLLIDE   collide8
 ; =====================================================================
 
+; Gates are set with !ifndef so that asking for a module twice -- say via
+; X16_USE_ALL and again through a dependency -- is not a redefinition
+; error, and so an explicit X16_USE_* in your program still works.
 !ifdef X16_USE_ALL {
-    X16_USE_VERA    = 1
-    X16_USE_SCREEN  = 1
-    X16_USE_PALETTE = 1
+    !ifndef X16_USE_VERA    { X16_USE_VERA    = 1 }
+    !ifndef X16_USE_SCREEN  { X16_USE_SCREEN  = 1 }
+    !ifndef X16_USE_PALETTE { X16_USE_PALETTE = 1 }
+    !ifndef X16_USE_SPRITE  { X16_USE_SPRITE  = 1 }
+    !ifndef X16_USE_FIXED   { X16_USE_FIXED   = 1 }
+    !ifndef X16_USE_COLLIDE { X16_USE_COLLIDE = 1 }
 }
 
-; screen and palette both reach for VERA constants and macros (always
-; available), but only palette needs no code from video/vera.asm.
+; Dependencies. sprite_init_all calls vera_fill, so pulling in sprites
+; pulls in the VERA module too.
+!ifdef X16_USE_SPRITE {
+    !ifndef X16_USE_VERA { X16_USE_VERA = 1 }
+}
+
 !ifdef X16_USE_VERA {
     !source "video/vera.asm"
 }
@@ -41,4 +56,13 @@
 }
 !ifdef X16_USE_PALETTE {
     !source "video/palette.asm"
+}
+!ifdef X16_USE_SPRITE {
+    !source "sprite/sprite.asm"
+}
+!ifdef X16_USE_FIXED {
+    !source "util/fixed.asm"
+}
+!ifdef X16_USE_COLLIDE {
+    !source "util/collide.asm"
 }

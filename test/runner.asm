@@ -33,6 +33,14 @@ main
     jsr test_has_fx
     jsr test_border
     jsr test_palette
+    jsr test_sprite_pos
+    jsr test_sprite_image
+    jsr test_mul88
+    jsr test_mul88_negative
+    jsr test_collide_overlap
+    jsr test_collide_apart
+    jsr test_collide_touching
+    jsr test_cls_clears
     jsr test_color_reaches_vram
 
     jsr t_summary
@@ -315,20 +323,301 @@ test_palette
 @name !text "PAL_SET", $00
 
 ; =====================================================================
+; A sprite's 10-bit X and Y split across two bytes each.  Write via
+; sprite_pos, read back via sprite_get_pos, and also check the raw
+; record so a symmetrical bug in both cannot hide.
+; =====================================================================
+test_sprite_pos
+    jsr sprite_init_all
+
+    lda #<$0123
+    sta X16_P0
+    lda #>$0123
+    sta X16_P1
+    lda #<$00A5
+    sta X16_P2
+    lda #>$00A5
+    sta X16_P3
+    ldx #3
+    jsr sprite_pos
+
+    ; Independent read of sprite 3's record, bytes 2..5.
+    +vera_addr 1, VRAM_SPRITE_ATTR + (3 * 8) + 2, VERA_INC_1
+    lda VERA_DATA1
+    cmp #$23                    ; X low
+    bne @fail
+    lda VERA_DATA1
+    cmp #$01                    ; X high, masked to 2 bits
+    bne @fail
+    lda VERA_DATA1
+    cmp #$A5                    ; Y low
+    bne @fail
+    lda VERA_DATA1
+    cmp #$00                    ; Y high
+    bne @fail
+
+    ; And the round trip.
+    stz X16_P0
+    stz X16_P1
+    stz X16_P2
+    stz X16_P3
+    ldx #3
+    jsr sprite_get_pos
+    lda X16_P0
+    cmp #$23
+    bne @fail
+    lda X16_P1
+    cmp #$01
+    bne @fail
+    lda X16_P2
+    cmp #$A5
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SPRITE_POS", $00
+
+; =====================================================================
+; The image address is stored as bits 16:5 across two bytes.
+; $13000 (the KERNAL's sprite data area) must encode as $80/$09:
+;   byte0 = addr 12:5  = ($13000 >> 5)  & $FF = $80
+;   byte1 = addr 16:13 = ($13000 >> 13) & $0F = $09, plus mode bit 7
+; =====================================================================
+test_sprite_image
+    jsr sprite_init_all
+
+    lda #<VRAM_SPRITE_DATA
+    sta X16_P0
+    lda #>VRAM_SPRITE_DATA
+    sta X16_P1
+    lda #^VRAM_SPRITE_DATA
+    sta X16_P2
+    ldx #5
+    lda #SPRITE_MODE_8BPP
+    jsr sprite_image
+
+    +vera_addr 1, VRAM_SPRITE_ATTR + (5 * 8), VERA_INC_1
+    lda VERA_DATA1
+    cmp #$80
+    bne @fail
+    lda VERA_DATA1
+    cmp #(SPRITE_MODE_8BPP | $09)
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SPRITE_IMAGE", $00
+
+; =====================================================================
+; 8.8 fixed point: 1.5 * 2.0 = 3.0, i.e. 384 * 512 >> 8 = 768.
+; =====================================================================
+test_mul88
+    lda #<384
+    sta X16_P0
+    lda #>384
+    sta X16_P1
+    lda #<512
+    sta X16_P2
+    lda #>512
+    sta X16_P3
+    jsr mul88
+
+    lda X16_P0
+    cmp #<768
+    bne @fail
+    lda X16_P1
+    cmp #>768
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "MUL88", $00
+
+; =====================================================================
+; -1.5 * 2.0 = -3.0.  One negative operand must flip the sign exactly
+; once; two negatives must not flip it at all.
+; =====================================================================
+test_mul88_negative
+    lda #<-384
+    sta X16_P0
+    lda #>-384
+    sta X16_P1
+    lda #<512
+    sta X16_P2
+    lda #>512
+    sta X16_P3
+    jsr mul88
+    lda X16_P0
+    cmp #<-768
+    bne @fail
+    lda X16_P1
+    cmp #>-768
+    bne @fail
+
+    ; Both negative: -1.5 * -2.0 = +3.0
+    lda #<-384
+    sta X16_P0
+    lda #>-384
+    sta X16_P1
+    lda #<-512
+    sta X16_P2
+    lda #>-512
+    sta X16_P3
+    jsr mul88
+    lda X16_P0
+    cmp #<768
+    bne @fail
+    lda X16_P1
+    cmp #>768
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "MUL88_SIGNED", $00
+
+; =====================================================================
+; collide8: boxes that genuinely overlap.
+; =====================================================================
+test_collide_overlap
+    lda #0   : sta X16_P0       ; ax
+    lda #0   : sta X16_P1       ; ay
+    lda #10  : sta X16_P2       ; aw
+    lda #10  : sta X16_P3       ; ah
+    lda #5   : sta X16_P4       ; bx
+    lda #5   : sta X16_P5       ; by
+    lda #10  : sta X16_P6       ; bw
+    lda #10  : sta X16_P7       ; bh
+    jsr collide8
+    lda #0
+    bcs @report                 ; carry set = overlap = pass
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "COLLIDE_OVERLAP", $00
+
+; =====================================================================
+; collide8: boxes nowhere near each other.
+; =====================================================================
+test_collide_apart
+    lda #0   : sta X16_P0
+    lda #0   : sta X16_P1
+    lda #10  : sta X16_P2
+    lda #10  : sta X16_P3
+    lda #20  : sta X16_P4
+    lda #20  : sta X16_P5
+    lda #5   : sta X16_P6
+    lda #5   : sta X16_P7
+    jsr collide8
+    lda #0
+    bcc @report                 ; carry clear = no overlap = pass
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "COLLIDE_APART", $00
+
+; =====================================================================
+; collide8: edges that merely touch must NOT count as a collision.
+; Box A spans x 0..9, box B starts at x 10.  This is the case a naive
+; `<=` comparison gets wrong, and it is what GAME.TXT specifies.
+; =====================================================================
+test_collide_touching
+    lda #0   : sta X16_P0
+    lda #0   : sta X16_P1
+    lda #10  : sta X16_P2
+    lda #10  : sta X16_P3
+    lda #10  : sta X16_P4       ; exactly at A's right edge
+    lda #0   : sta X16_P5
+    lda #10  : sta X16_P6
+    lda #10  : sta X16_P7
+    jsr collide8
+    lda #0
+    bcc @report
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "COLLIDE_TOUCHING", $00
+
+; =====================================================================
+; screen_cls must clear the screen even when entered with port 1
+; selected.  Plant a sentinel in the tilemap, clear, and check it went.
+; =====================================================================
+test_cls_clears
+    +vera_addr 0, VRAM_TEXT + (10 * 2), VERA_INC_1
+    lda #$AA                    ; sentinel screen code at column 10
+    sta VERA_DATA0
+
+    +vera_addrsel 1             ; hostile: leave port 1 selected
+    jsr screen_cls
+
+    +vera_addr 1, VRAM_TEXT + (10 * 2), VERA_INC_1
+    lda VERA_DATA1
+    cmp #$20                    ; a cleared cell holds a space
+    bne @fail
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "CLS_CLEARS", $00
+
+; =====================================================================
 ; screen_color must actually change what CHROUT puts in VRAM, not just
 ; poke a KERNAL variable.  Verify through the tilemap attribute byte.
+;
+; Entered deliberately with ADDRSEL = 1, the state any code that used
+; +vera_addr 1 or vera_copy leaves behind. The KERNAL's screen scroller
+; writes VERA_ADDR_* before selecting the port, so it corrupts the
+; display unless screen_cls forces ADDRSEL = 0 first. Remove that guard
+; from video/screen.asm and this test fails.
 ; =====================================================================
 test_color_reaches_vram
+    +vera_addrsel 1
     jsr screen_cls
     lda #1                      ; foreground white
     ldx #6                      ; background blue
     jsr screen_color
 
+    +vera_addrsel 1
     ldx #0                      ; row 0
     ldy #0                      ; column 0
     jsr screen_locate
+
+    +vera_addrsel 1
     lda #'X'
-    jsr CHROUT
+    jsr screen_chrout
 
     ; Cell (0,0) is two bytes: screen code, then attribute.
     +vera_addr 1, VRAM_TEXT, VERA_INC_1
@@ -337,11 +626,15 @@ test_color_reaches_vram
     lda VERA_DATA1
     sta @gotattr
 
+    ; Exactly the screen code for 'X'. Checking merely "not zero" would
+    ; accept the blank ($20) left behind when a mis-selected port sends
+    ; the character somewhere else entirely.
+    lda @gotchar
+    cmp #$18
+    bne @fail
     lda @gotattr
     cmp #$61                    ; fg 1 | bg 6 << 4
     bne @fail
-    lda @gotchar
-    beq @fail                   ; nothing was drawn
 
     lda #0
     bra @report
