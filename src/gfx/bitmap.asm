@@ -911,6 +911,381 @@ gt_col   !byte 0
 gt_bits  !byte 0
 
 ; ---------------------------------------------------------------------
+; gfx_flood -- scanline flood fill
+;   in:  X16_P0/P1 = seed x, X16_P2 = seed y, X16_P3 = fill colour
+;   out: carry clear = filled completely; carry set = the span stack
+;        overflowed and the fill is INCOMPLETE (pathological shapes:
+;        the stack holds 170 pending spans)
+;
+; Fills the 4-connected region of the seed's colour. Filling with the
+; colour already under the seed is a no-op. Spans are painted with
+; gfx_hline; both VERA ports get repointed freely.
+; ---------------------------------------------------------------------
+FF_DEPTH = 170
+
+gfx_flood
+    lda X16_P2                  ; a seed off screen fills nothing
+    cmp #GFX_HEIGHT
+    bcs @bail
+    lda X16_P1
+    beq @seed_ok
+    cmp #1
+    bne @bail
+    lda X16_P0
+    cmp #<GFX_WIDTH
+    bcc @seed_ok
+@bail
+    clc
+    rts
+@seed_ok
+    lda X16_P3
+    sta ff_col
+    lda X16_P0
+    sta ff_x
+    lda X16_P1
+    sta ff_x+1
+    lda X16_P2
+    sta ff_y
+
+    jsr .f_rd                   ; the colour being replaced
+    sta ff_tgt
+    cmp ff_col
+    beq @bail                   ; already the fill colour: no-op
+
+    stz ff_sp
+    stz ff_ovf
+    lda ff_x
+    sta ff_px
+    lda ff_x+1
+    sta ff_px+1
+    lda ff_y
+    sta ff_ny
+    jsr .f_push
+
+@main
+    lda ff_sp
+    bne @have_work
+    jmp @finish
+@have_work
+    jsr .f_pop                  ; -> ff_x / ff_y
+    jsr .f_rd
+    cmp ff_tgt
+    bne @main                   ; painted over since it was queued
+
+    ; grow the span left: xl = leftmost target pixel
+    lda ff_x
+    sta ff_xl
+    lda ff_x+1
+    sta ff_xl+1
+    lda ff_xl
+    ora ff_xl+1
+    beq @left_done
+    sec                         ; walk from xl-1 downwards
+    lda ff_xl
+    sbc #1
+    sta ff_ax
+    lda ff_xl+1
+    sbc #0
+    sta ff_ax+1
+    lda ff_y
+    sta ff_ay
+    lda #VERA_ADDR_H_DECR
+    jsr .f_addr1
+@left_scan
+    lda VERA_DATA1
+    cmp ff_tgt
+    bne @left_done
+    lda ff_xl
+    bne @left_dec
+    dec ff_xl+1
+@left_dec
+    dec ff_xl
+    lda ff_xl
+    ora ff_xl+1
+    bne @left_scan
+@left_done
+
+    ; grow the span right: xr = rightmost target pixel
+    lda ff_x
+    sta ff_xr
+    lda ff_x+1
+    sta ff_xr+1
+    jsr .f_at_right
+    bcs @right_done
+    clc                         ; walk from xr+1 upwards
+    lda ff_xr
+    adc #1
+    sta ff_ax
+    lda ff_xr+1
+    adc #0
+    sta ff_ax+1
+    lda ff_y
+    sta ff_ay
+    lda #0
+    jsr .f_addr1
+@right_scan
+    lda VERA_DATA1
+    cmp ff_tgt
+    bne @right_done
+    inc ff_xr
+    bne @right_chk
+    inc ff_xr+1
+@right_chk
+    jsr .f_at_right
+    bcc @right_scan
+@right_done
+
+    ; paint it
+    lda ff_xl
+    sta X16_P0
+    lda ff_xl+1
+    sta X16_P1
+    lda ff_y
+    sta X16_P2
+    lda ff_col
+    sta X16_P3
+    sec                         ; length = xr - xl + 1
+    lda ff_xr
+    sbc ff_xl
+    sta X16_P4
+    lda ff_xr+1
+    sbc ff_xl+1
+    sta X16_P5
+    inc X16_P4
+    bne @len_ok
+    inc X16_P5
+@len_ok
+    jsr gfx_hline
+
+    ; queue fresh spans in the rows above and below
+    lda ff_y
+    beq @no_up
+    dec
+    sta ff_ny
+    jsr .f_scanrow
+@no_up
+    lda ff_y
+    cmp #(GFX_HEIGHT - 1)
+    bcs @no_down
+    inc
+    sta ff_ny
+    jsr .f_scanrow
+@no_down
+    jmp @main
+
+@finish
+    +vera_addrsel 0
+    lda ff_ovf                  ; carry = "the fill may be incomplete"
+    lsr
+    rts
+
+ff_x   !word 0
+ff_y   !byte 0
+ff_xl  !word 0
+ff_xr  !word 0
+ff_px  !word 0
+ff_ny  !byte 0
+ff_ax  !word 0
+ff_ay  !byte 0
+ff_h   !byte 0
+ff_tgt !byte 0
+ff_col !byte 0
+ff_seg !byte 0
+ff_cnt !word 0
+ff_sp  !byte 0
+ff_ovf !byte 0
+
+; carry set when ff_xr is the last column (319)
+.f_at_right
+    lda ff_xr+1
+    cmp #>(GFX_WIDTH - 1)
+    bne @below
+    lda ff_xr
+    cmp #<(GFX_WIDTH - 1)
+    bcs @at
+@below
+    clc
+    rts
+@at
+    sec
+    rts
+
+; scan row ff_ny across columns ff_xl..ff_xr, pushing the start of
+; every run of target-coloured pixels
+.f_scanrow
+    lda ff_xl
+    sta ff_ax
+    sta ff_px
+    lda ff_xl+1
+    sta ff_ax+1
+    sta ff_px+1
+    lda ff_ny
+    sta ff_ay
+    lda #0
+    jsr .f_addr1
+    sec                         ; count = xr - xl + 1
+    lda ff_xr
+    sbc ff_xl
+    sta ff_cnt
+    lda ff_xr+1
+    sbc ff_xl+1
+    sta ff_cnt+1
+    inc ff_cnt
+    bne @counted
+    inc ff_cnt+1
+@counted
+    stz ff_seg
+@cell
+    lda VERA_DATA1
+    cmp ff_tgt
+    bne @break
+    lda ff_seg
+    bne @step                   ; already inside a run
+    jsr .f_push                 ; a run begins here: remember its start
+    lda #1
+    sta ff_seg
+    bra @step
+@break
+    stz ff_seg
+@step
+    inc ff_px
+    bne @count
+    inc ff_px+1
+@count
+    lda ff_cnt
+    bne @declo
+    dec ff_cnt+1
+@declo
+    dec ff_cnt
+    lda ff_cnt
+    ora ff_cnt+1
+    bne @cell
+    rts
+
+ff_stk !fill FF_DEPTH * 3, 0
+
+; push (ff_px, ff_ny); a full stack sets ff_ovf instead
+.f_push
+    lda ff_sp
+    cmp #FF_DEPTH
+    bcc @room
+    lda #1
+    sta ff_ovf
+    rts
+@room
+    jsr .f_slot
+    ldy #0
+    lda ff_px
+    sta (X16_T6),y
+    iny
+    lda ff_px+1
+    sta (X16_T6),y
+    iny
+    lda ff_ny
+    sta (X16_T6),y
+    inc ff_sp
+    rts
+
+; pop -> ff_x, ff_y
+.f_pop
+    dec ff_sp
+    jsr .f_slot
+    ldy #0
+    lda (X16_T6),y
+    sta ff_x
+    iny
+    lda (X16_T6),y
+    sta ff_x+1
+    iny
+    lda (X16_T6),y
+    sta ff_y
+    rts
+
+; X16_T6/T7 = &ff_stk[ff_sp * 3]
+.f_slot
+    lda ff_sp
+    sta X16_T6
+    stz X16_T7
+    asl X16_T6
+    rol X16_T7
+    clc
+    lda X16_T6
+    adc ff_sp
+    sta X16_T6
+    lda X16_T7
+    adc #0
+    sta X16_T7
+    clc
+    lda X16_T6
+    adc #<ff_stk
+    sta X16_T6
+    lda X16_T7
+    adc #>ff_stk
+    sta X16_T7
+    rts
+
+; A = the pixel at (ff_x, ff_y)
+.f_rd
+    lda ff_x
+    sta ff_ax
+    lda ff_x+1
+    sta ff_ax+1
+    lda ff_y
+    sta ff_ay
+    lda #0
+    jsr .f_addr1
+    lda VERA_DATA1
+    rts
+
+; point port 1 at (ff_ax, ff_ay), INC_1, with A's DECR flag
+.f_addr1
+    ora #(VERA_INC_1 << 4)
+    sta ff_h
+    lda ff_ay                   ; ay*320 = ay*64 + ay*256
+    stz X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    asl
+    rol X16_T1
+    sta X16_T0
+    clc
+    lda ff_ay
+    adc X16_T1
+    sta X16_T1
+    lda #0
+    adc #0
+    sta X16_T2
+    clc                         ; + ax
+    lda X16_T0
+    adc ff_ax
+    sta X16_T0
+    lda X16_T1
+    adc ff_ax+1
+    sta X16_T1
+    lda X16_T2
+    adc #0
+    sta X16_T2
+    lda #VERA_CTRL_ADDRSEL
+    tsb VERA_CTRL
+    lda X16_T0
+    sta VERA_ADDR_L
+    lda X16_T1
+    sta VERA_ADDR_M
+    lda X16_T2
+    and #VERA_ADDR_H_BANK
+    ora ff_h
+    sta VERA_ADDR_H
+    rts
+
+; ---------------------------------------------------------------------
 ; Module variables. Kept out of zero page: these are only touched by
 ; the routine that owns them, never across a call boundary.
 ; ---------------------------------------------------------------------

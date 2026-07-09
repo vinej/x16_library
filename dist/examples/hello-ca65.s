@@ -7,8 +7,8 @@
 ;        -o hello-ca65.o dist\examples\hello-ca65.s
 ;   ld65 -C dist\ca65\x16lib.cfg -o HELLO.PRG hello-ca65.o
 ;
-; The library blob sits at $6800 (see X16LIB_ORG in x16lib.inc, and
-; keep x16lib.cfg's LIB area in step); your program owns $0801-$67FF.
+; The library blob sits at $6000 (see X16LIB_ORG in x16lib.inc, and
+; keep x16lib.cfg's LIB area in step); your program owns $0801-$5FFF.
 ; The library claims zero page $22-$31 (X16_P0..X16_T7).
 ; =====================================================================
 

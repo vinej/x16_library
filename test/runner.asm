@@ -157,6 +157,9 @@ main
     jsr test_buffers
     jsr test_adpcm
     jsr test_dos
+    jsr test_bmx
+    jsr test_zx0
+    jsr test_gfx_flood
 
     jsr t_summary
     rts
@@ -6231,6 +6234,443 @@ test_dos
 @fname   !text "TESTDOS.BIN"
 @fname2  !text "TESTREN.BIN"
 @name    !text "DOS", $00
+
+; =====================================================================
+; BMX round trip: draw a 16x4 stamp and four palette entries, save,
+; wreck both, load, and expect pixels, palette, header fields and the
+; surrounding VRAM all back exactly. Then a junk file must be refused
+; with the format error, and a compressed header with the packed one.
+; =====================================================================
+test_bmx
+    ; four distinctive palette entries at 40..43
+    ldx #40
+    lda #$21
+    ldy #$03
+    jsr pal_set
+    ldx #41
+    lda #$54
+    ldy #$06
+    jsr pal_set
+    ldx #42
+    lda #$87
+    ldy #$09
+    jsr pal_set
+    ldx #43
+    lda #$BA
+    ldy #$0C
+    jsr pal_set
+
+    ; a 16x4 stamp at TESTVRAM+$C00, rows 320 apart, plus guard bytes
+    +vera_addr 0, TESTVRAM + $BFF, VERA_INC_1
+    lda #$77                    ; guard byte just before the stamp
+    sta VERA_DATA0
+    stz @row
+@paint
+    lda @row
+    stz X16_T4
+    asl
+    rol X16_T4
+    ; row base = $C00 + row*320: with row <= 3, 320*row = row*256+row*64
+    ; keep it simple: compute inline
+    lda @row
+    jsr @row_port0
+    ldx #0
+@paint_px
+    txa
+    asl
+    asl
+    ora @row
+    eor #$40
+    sta VERA_DATA0
+    inx
+    cpx #16
+    bne @paint_px
+    lda #$66                    ; guard byte right after each row
+    sta VERA_DATA0
+    inc @row
+    lda @row
+    cmp #4
+    bne @paint
+
+    ; describe and save it
+    +cset16 bmx_width, 16
+    +cset16 bmx_height, 4
+    lda #8
+    sta bmx_bpp
+    lda #40
+    sta bmx_palstart
+    +cset16 bmx_palcount, 4
+    lda #6
+    sta bmx_border
+    +cset16 bmx_stride, 320
+    jsr @name_params
+    jsr bmx_save
+    bcs @fail_far
+
+    ; wreck the pixels, the guards stay
+    stz @row
+@wreck
+    lda @row
+    jsr @row_port0
+    lda #$EE
+    ldx #16
+    ldy #0
+    jsr vera_fill
+    inc @row
+    lda @row
+    cmp #4
+    bne @wreck
+    ldx #40                     ; and the palette
+    lda #$00
+    ldy #$00
+    jsr pal_set
+    ldx #43
+    lda #$00
+    ldy #$00
+    jsr pal_set
+    +cset16 bmx_width, 0        ; and the header fields
+    stz bmx_palstart
+
+    jsr @name_params            ; load it back
+    jsr bmx_load
+    bcs @fail_far
+
+    lda bmx_width               ; header round-tripped
+    cmp #16
+    bne @fail_far
+    lda bmx_height
+    cmp #4
+    bne @fail_far
+    lda bmx_palstart
+    cmp #40
+    bne @fail_far
+    lda bmx_border
+    cmp #6
+    bne @fail_far
+    bra @verify
+
+@fail_far
+    jmp @fail
+
+@verify
+    stz chk_err
+    stz @row
+@vrows
+    lda @row
+    jsr @row_port1
+    ldx #0
+@vpx
+    txa
+    asl
+    asl
+    ora @row
+    eor #$40
+    cmp VERA_DATA1
+    bne @fail_mid
+    inx
+    cpx #16
+    bne @vpx
+    lda VERA_DATA1              ; the guard byte after the row survived
+    cmp #$66
+    bne @fail_mid
+    inc @row
+    lda @row
+    cmp #4
+    bne @vrows
+    +vera_addr 1, TESTVRAM + $BFF, VERA_INC_1
+    lda VERA_DATA1              ; ...and the one before the stamp
+    cmp #$77
+    beq @guards_ok
+@fail_mid
+    jmp @fail
+@guards_ok
+
+    +vera_addr 1, VRAM_PALETTE + (40*2), VERA_INC_1
+    +chkv $21                   ; the palette came back
+    +chkv $03
+    +chkv $54
+    +chkv $06
+    +vera_addr 1, VRAM_PALETTE + (43*2), VERA_INC_1
+    +chkv $BA
+    +chkv $0C
+    lda chk_err
+    bne @fail
+
+    ; a junk file is refused as not-BMX
+    lda #<@fname2
+    sta X16_P0
+    lda #>@fname2
+    sta X16_P1
+    lda #9
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    lda #<@junk
+    sta X16_P5
+    lda #>@junk
+    sta X16_P6
+    lda #<(@junk + 16)
+    sta X16_T6
+    lda #>(@junk + 16)
+    sta X16_T7
+    jsr fs_save
+    bcs @fail
+    lda #<@fname2
+    sta X16_P0
+    lda #>@fname2
+    sta X16_P1
+    lda #9
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4
+    +cset16 X16_P5, TESTVRAM
+    jsr bmx_load
+    bcc @fail                   ; it "loaded" garbage
+    cmp #BMX_ERR_FORMAT
+    bne @fail
+
+    ; tidy the fsroot
+    lda #<@fname
+    ldx #>@fname
+    ldy #8
+    jsr dos_delete
+    lda #<@fname2
+    ldx #>@fname2
+    ldy #9
+    jsr dos_delete
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+
+; the shared load/save parameter block for TEST.BMX at the stamp
+@name_params
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #8
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4                  ; VRAM bank 0
+    +cset16 X16_P5, TESTVRAM + $C00
+    rts
+
+; point port 0 / port 1 at row A of the stamp (base + A*320)
+@row_port0
+    jsr @row_calc
+    +vera_addrsel 0
+    bra @row_set
+@row_port1
+    jsr @row_calc
+    +vera_addrsel 1
+@row_set
+    lda X16_T0
+    sta VERA_ADDR_L
+    lda X16_T1
+    sta VERA_ADDR_M
+    lda #(VERA_INC_1 << 4)
+    sta VERA_ADDR_H
+    rts
+@row_calc
+    ; T1:T0 = TESTVRAM + $C00 + A*320  (A <= 3, so *320 = *256 + *64)
+    sta X16_T2
+    stz X16_T3
+    asl                         ; A*64 (A <= 3: fits low byte after <<6)
+    asl
+    asl
+    asl
+    asl
+    asl
+    sta X16_T0
+    clc
+    lda X16_T2                  ; + A*256
+    adc #>(TESTVRAM + $C00)
+    sta X16_T1
+    lda X16_T0
+    clc
+    adc #<(TESTVRAM + $C00)
+    sta X16_T0
+    lda X16_T1
+    adc #0
+    sta X16_T1
+    rts
+
+@row    !byte 0
+@fname  !text "TEST.BMX"
+@fname2 !text "JUNK.BMX9"
+@junk   !byte $DE, $AD, $DE, $AD, $DE, $AD, $DE, $AD
+        !byte $DE, $AD, $DE, $AD, $DE, $AD, $DE, $AD
+@name   !text "BMX", $00
+
+; =====================================================================
+; ZX0: these 30 bytes are the same 96-byte phrase the LZSA2 test uses,
+; packed by salvador 1.4.2 (the modern v2 stream). The decompressor
+; must reproduce every byte, return the exact end address, and leave
+; the guard byte beyond the output untouched.
+; =====================================================================
+test_zx0
+    lda #$77
+    sta @out+96                 ; guard
+
+    lda #<@packed
+    sta X16_P0
+    lda #>@packed
+    sta X16_P1
+    lda #<@out
+    sta X16_P2
+    lda #>@out
+    sta X16_P3
+    jsr zx0_decompress
+    cmp #<(@out+96)
+    bne @fail
+    cpx #>(@out+96)
+    bne @fail
+    lda @out+96
+    cmp #$77
+    bne @fail
+
+    lda #<@out                  ; the payload: the 24-byte phrase x4
+    sta T_ZP
+    lda #>@out
+    sta T_ZP+1
+    ldx #4
+@rep
+    ldy #0
+@cmp
+    lda (T_ZP),y
+    cmp @expect,y
+    bne @fail
+    iny
+    cpy #24
+    bne @cmp
+    clc
+    lda T_ZP
+    adc #24
+    sta T_ZP
+    bcc @next
+    inc T_ZP+1
+@next
+    dex
+    bne @rep
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@expect !text "X16LIB-DECOMPRESS-TEST!!"
+@packed                         ; salvador payload.bin payload.zx0
+    !byte $15, $b8, $58, $31, $36, $4c, $49, $42, $2d, $44, $45, $43
+    !byte $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53, $54
+    !byte $21, $d0, $15, $d5, $55, $60
+@out    !fill 97, 0
+@name   !text "ZX0", $00
+
+; =====================================================================
+; Flood fill: a hollow rectangle's inside fills to its walls and not
+; one pixel past them; the outside is untouched; re-filling with the
+; same colour is a no-op; and a fill seeded on the wall spreads over
+; the wall colour instead.
+; =====================================================================
+test_gfx_flood
+    +vera_addr 0, VRAM_BITMAP + 60*320, VERA_INC_1
+    lda #$00
+    ldx #<6400                  ; clear rows 60..79
+    ldy #>6400
+    jsr vera_fill
+
+    +i16_const X16_P0, 100      ; a 20x12 frame at (100,64)
+    lda #64
+    sta X16_P2
+    lda #$F1
+    sta X16_P3
+    +i16_const X16_P4, 20
+    lda #12
+    sta X16_P6
+    jsr gfx_frame
+
+    +i16_const X16_P0, 110      ; seed inside it
+    lda #70
+    sta X16_P2
+    lda #$F2
+    sta X16_P3
+    jsr gfx_flood
+    bcc @filled                 ; must not overflow on a simple box
+    jmp @fail
+@filled
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
+    +chkv $F2                   ; the seed itself
+    +vera_addr 1, VRAM_BITMAP + 65*320 + 100, VERA_INC_1
+    +chkv $F1                   ; left wall intact...
+    +chkv $F2                   ; ...interior right against it
+    +vera_addr 1, VRAM_BITMAP + 65*320 + 118, VERA_INC_1
+    +chkv $F2                   ; interior against the right wall
+    +chkv $F1                   ; the wall
+    +chkv $00                   ; and NOTHING leaked past it
+    +vera_addr 1, VRAM_BITMAP + 65*320 + 99, VERA_INC_1
+    +chkv $00                   ; nothing leaked out to the left
+    +vera_addr 1, VRAM_BITMAP + 74*320 + 110, VERA_INC_1
+    +chkv $F2                   ; bottom interior row (y = 74)
+    +vera_addr 1, VRAM_BITMAP + 75*320 + 110, VERA_INC_1
+    +chkv $F1                   ; the bottom wall (y = 75)
+    +vera_addr 1, VRAM_BITMAP + 76*320 + 110, VERA_INC_1
+    +chkv $00                   ; below the box
+    lda chk_err
+    bne @fail_far
+
+    +i16_const X16_P0, 110      ; same colour again: a no-op, no hang
+    lda #70
+    sta X16_P2
+    lda #$F2
+    sta X16_P3
+    jsr gfx_flood
+    bcs @fail_far
+    bra @wall
+
+@fail_far
+    jmp @fail
+
+@wall
+    ; seed ON the wall: the wall's colour is the target now
+    +i16_const X16_P0, 100
+    lda #64
+    sta X16_P2
+    lda #$F3
+    sta X16_P3
+    jsr gfx_flood
+    bcs @fail
+
+    +vera_addr 1, VRAM_BITMAP + 64*320 + 119, VERA_INC_1
+    +chkv $F3                   ; the far corner of the frame recoloured
+    +vera_addr 1, VRAM_BITMAP + 75*320 + 100, VERA_INC_1
+    +chkv $F3
+    +vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
+    +chkv $F2                   ; the interior kept its fill
+    lda chk_err
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "GFX_FLOOD", $00
 
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"

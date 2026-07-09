@@ -97,7 +97,7 @@ never drift from the binary:
 produces
 
 ```
-dist\x16lib.bin          the whole library at $6800 (raw, currently ~12 KB)
+dist\x16lib.bin          the whole library at $6000 (raw, currently ~14.7 KB)
 dist\X16LIB.PRG          the same with a load header, for a runtime LOAD
 dist\ca65\x16lib.inc     constants + addresses + the macro layer, per dialect
 dist\64tass\x16lib.inc
@@ -107,7 +107,7 @@ dist\examples\           a working hello for each assembler
 ```
 
 Your program owns `$0801` up to the library's org (the generated includes
-export it as `X16LIB_ORG`, currently `$6800`); the library claims zero page
+export it as `X16LIB_ORG`, currently `$6000`); the library claims zero page
 `$22`–`$31`, exactly as under ACME. Include the binding file, embed
 `x16lib.bin` at `$8000` (each example shows the dialect's way), and call the
 same routines with the same registers — `screen_puts`, `u16_to_dec`,
@@ -146,7 +146,7 @@ generated bindings), and the three examples assemble with ca65 V2.19,
 to `dist.ps1` to re-run that check yourself.
 
 What the bindings do **not** give you: `X16_USE_*` module gating (the blob
-always contains everything — currently ~12 KB) and a movable `X16_ZP`. If
+always contains everything — currently ~14.7 KB) and a movable `X16_ZP`. If
 you need either, or you want the routines inlined into your own PRG, use
 the ACME sources directly.
 
@@ -175,7 +175,7 @@ treated as caller-save scratch.
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
-| `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_circle`, `gfx_disc`, `gfx_char`, `gfx_text` |
+| `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_circle`, `gfx_disc`, `gfx_char`, `gfx_text`, `gfx_flood` |
 | `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off`, `fx_line` (hardware Bresenham), `fx_triangle` (polygon-filler triangles), `fx_copy` (cached VRAM→VRAM), `fx_transp_on`/`off` |
 | `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions`, `irq_save_regs`/`irq_restore_regs` |
 | `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off`, `psg_env_start`/`release`/`stop`/`tick` (per-voice ASR envelopes) |
@@ -188,10 +188,12 @@ treated as caller-save scratch.
 | `X16_USE_MEM` | `mem_fill`, `mem_copy`, `mem_crc`, `mem_decompress` (KERNAL block ops, LZSA2) |
 | `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
 | `X16_USE_DOS` | `dos_cmd`, `dos_status`, `dos_delete`, `dos_rename`, `dos_mkdir`, `dos_rmdir`, `dos_chdir` — the command channel, so a failed save can say *why* |
+| `X16_USE_BMX` | `bmx_load`, `bmx_save` — the X16's native bitmap format (header + palette + pixels) |
 | `X16_USE_MATH` | `rnd_seed`/`rnd8`/`rnd16` (xorshift), `sin8`/`cos8`/`sin8u`/`cos8u` (built-at-assembly tables), `atan2`, `lerp8` |
 | `X16_USE_CLIP` | `clip_set`, `clip_line` (Cohen–Sutherland; feeds `gfx_line`/`fx_line`'s parameter block) |
 | `X16_USE_BUFFERS` | `rb_init`/`put`/`get`/`count` (ring buffer), `stk_init`/`push`/`pop`/`depth` |
 | `X16_USE_ADPCM` | `adpcm_init`, `adpcm_nibble`, `adpcm_block` — IMA ADPCM, 4:1 compressed PCM |
+| `X16_USE_ZX0` | `zx0_decompress` — ZX0 v2 (salvador/zx0 output); packs tighter than the ROM's LZSA2 |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
@@ -287,6 +289,26 @@ low nibble first as in WAV blocks. Four-to-one compression is what makes
 `pcm_stream_start` practical from an SD card: decode a bank's worth, stream
 it, decode the next. `adpcm_pred`/`adpcm_index` are exposed because WAV
 block headers carry the initial decoder state.
+
+`gfx_flood` is a scanline flood fill over a bounded span stack (170
+pending spans): carry set on return means the stack overflowed and the
+fill is incomplete — pathological shapes only; a game's closed regions
+never get near it. Re-filling a region with its own colour is a no-op.
+
+`zx0_decompress` unpacks the modern ZX0 v2 stream (`salvador in out`, or
+`zx0` — not their `-classic` mode). Where the ROM's LZSA2 is free and
+fast, ZX0 trades a slower unpack for a tighter pack; RAM to RAM only,
+since the match copier reads the output back. TSCrunch remains out: its
+selling point is unpack speed, which LZSA2 already covers here.
+
+`bmx_load`/`bmx_save` speak BMX version 1 — the platform's image format,
+the one the community tools and Prog8 write. Loading restores the palette
+(at the file's own start index) and streams the pixels into VRAM; rows land
+`bmx_stride` bytes apart (default 320), so a full-screen image is a plain
+contiguous load and a smaller one is a stamp that leaves its surroundings
+alone. Saving mirrors it exactly; note the saved palette comes from VRAM's
+host-write shadow, so it is only meaningful for entries this program set
+itself. Compressed BMX files are refused with `BMX_ERR_PACKED`.
 
 The `dos_*` routines finally answer *why* a file operation failed: every
 command sent to channel 15 is answered with a status line (`dos_msg`), and
