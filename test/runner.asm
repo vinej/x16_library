@@ -129,6 +129,19 @@ main
     jsr test_screen_cursor
     jsr test_screen_puts_vram
 
+    jsr test_mem_fill
+    jsr test_mem_copy
+    jsr test_mem_crc
+    jsr test_mem_decompress
+    jsr test_bank_copy_far
+    jsr test_bank_alloc
+    jsr test_irq_line_regs
+    jsr test_irq_line_fires
+    jsr test_sprcol_regs
+    jsr test_fx_line
+    jsr test_fx_triangle
+    jsr test_pcm_stream
+
     jsr t_summary
     rts
 
@@ -4350,6 +4363,867 @@ test_screen_puts_vram
     jmp t_result
 @text !text "HI", $00
 @name !text "SCREEN_PUTS", $00
+
+; =====================================================================
+; ============ KERNAL block ops, IRQ sources, FX line/poly, ==========
+; ============ PCM streaming, bank allocator (2026-07)      ==========
+; =====================================================================
+
+; =====================================================================
+; mem_fill fills RAM, and -- because $9F00-$9FFF targets are not
+; incremented -- streams into VRAM through a data port.
+; =====================================================================
+test_mem_fill
+    ldx #41                     ; poison a 42-byte window
+@poison
+    stz @buf,x
+    dex
+    bpl @poison
+
+    lda #<(@buf+1)
+    sta X16_P0
+    lda #>(@buf+1)
+    sta X16_P1
+    lda #40
+    sta X16_P2
+    stz X16_P3
+    lda #$E1
+    jsr mem_fill
+
+    lda @buf                    ; the byte before must survive
+    bne @fail
+    lda @buf+41                 ; ...and the byte after
+    bne @fail
+    ldx #40
+@check
+    lda @buf,x
+    cmp #$E1
+    bne @fail
+    dex
+    bne @check
+
+    ; VERA: aim port 0, then fill "address" VERA_DATA0
+    +vera_addr 0, TESTVRAM + $900, VERA_INC_1
+    lda #<VERA_DATA0
+    sta X16_P0
+    lda #>VERA_DATA0
+    sta X16_P1
+    lda #8
+    sta X16_P2
+    stz X16_P3
+    lda #$37
+    jsr mem_fill
+
+    +vera_addr 1, TESTVRAM + $900, VERA_INC_1
+    lda #$37
+    ldx #8
+    jsr t_vcmp_const
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@buf  !fill 42, 0
+@name !text "MEM_FILL", $00
+
+; =====================================================================
+; mem_copy: RAM to RAM, RAM into VRAM through DATA0, and VRAM back out.
+; =====================================================================
+test_mem_copy
+    lda #<@src                  ; plain RAM copy
+    sta X16_P0
+    lda #>@src
+    sta X16_P1
+    lda #<@dst
+    sta X16_P2
+    lda #>@dst
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    stz X16_P5
+    jsr mem_copy
+    ldx #7
+@ram
+    lda @dst,x
+    cmp @src,x
+    bne @fail
+    dex
+    bpl @ram
+
+    ; upload: RAM -> VRAM via the non-incrementing DATA0 target
+    +vera_addr 0, TESTVRAM + $920, VERA_INC_1
+    lda #<@src
+    sta X16_P0
+    lda #>@src
+    sta X16_P1
+    lda #<VERA_DATA0
+    sta X16_P2
+    lda #>VERA_DATA0
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    stz X16_P5
+    jsr mem_copy
+
+    ; download: VRAM -> RAM via the non-incrementing DATA0 source
+    +vera_addr 0, TESTVRAM + $920, VERA_INC_1
+    lda #<VERA_DATA0
+    sta X16_P0
+    lda #>VERA_DATA0
+    sta X16_P1
+    lda #<@dst2
+    sta X16_P2
+    lda #>@dst2
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    stz X16_P5
+    jsr mem_copy
+    ldx #7
+@vram
+    lda @dst2,x
+    cmp @src,x
+    bne @fail
+    dex
+    bpl @vram
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@src  !byte $91, $82, $73, $64, $55, $46, $37, $28
+@dst  !fill 8, 0
+@dst2 !fill 8, 0
+@name !text "MEM_COPY", $00
+
+; =====================================================================
+; mem_crc computes CRC-16/IBM-3740; the check value of "123456789" is
+; $29B1, and an empty block is the $FFFF initialiser.
+; =====================================================================
+test_mem_crc
+    lda #<@check
+    sta X16_P0
+    lda #>@check
+    sta X16_P1
+    lda #9
+    sta X16_P2
+    stz X16_P3
+    jsr mem_crc
+    cmp #$B1
+    bne @fail
+    cpx #$29
+    bne @fail
+
+    stz X16_P2                  ; empty block
+    stz X16_P3
+    jsr mem_crc
+    cmp #$FF
+    bne @fail
+    cpx #$FF
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@check !text "123456789"
+@name  !text "MEM_CRC", $00
+
+; =====================================================================
+; mem_decompress unpacks a real LZSA2 block (`lzsa -r -f2`): 31
+; compressed bytes back into 96, into RAM and straight into VRAM.
+; =====================================================================
+test_mem_decompress
+    lda #$77                    ; guard byte one past the output
+    sta @out+96
+
+    lda #<@packed
+    sta X16_P0
+    lda #>@packed
+    sta X16_P1
+    lda #<@out
+    sta X16_P2
+    lda #>@out
+    sta X16_P3
+    jsr mem_decompress
+    cmp #<(@out+96)             ; A/X = one past the last byte
+    bne @fail_far
+    cpx #>(@out+96)
+    bne @fail_far
+    lda @out+96
+    cmp #$77
+    bne @fail_far
+
+    lda #<@out                  ; the payload is the 24-byte phrase x4
+    sta T_ZP
+    lda #>@out
+    sta T_ZP+1
+    ldx #4
+@rep
+    ldy #0
+@cmp
+    lda (T_ZP),y
+    cmp @expect,y
+    bne @fail_far
+    iny
+    cpy #24
+    bne @cmp
+    clc
+    lda T_ZP
+    adc #24
+    sta T_ZP
+    bcc @norm
+    inc T_ZP+1
+@norm
+    dex
+    bne @rep
+    bra @vram
+
+@fail_far
+    jmp @fail
+
+@vram
+    ; and the flagship trick: decompress directly into VRAM
+    +vera_addr 0, TESTVRAM + $A00, VERA_INC_1
+    lda #<@packed
+    sta X16_P0
+    lda #>@packed
+    sta X16_P1
+    lda #<VERA_DATA0
+    sta X16_P2
+    lda #>VERA_DATA0
+    sta X16_P3
+    jsr mem_decompress
+
+    +vera_addr 1, TESTVRAM + $A00, VERA_INC_1
+    ldx #4
+@vrep
+    ldy #0
+@vcmp
+    lda VERA_DATA1
+    cmp @expect,y
+    bne @fail
+    iny
+    cpy #24
+    bne @vcmp
+    dex
+    bne @vrep
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@expect !text "X16LIB-DECOMPRESS-TEST!!"
+@packed                         ; lzsa -r -f2 of that phrase repeated 4x
+    !byte $3f, $f4, $06, $58, $31, $36, $4c, $49, $42, $2d, $44, $45
+    !byte $43, $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53
+    !byte $54, $21, $21, $ff, $30, $e7, $e8
+@out    !fill 97, 0
+@name   !text "MEM_DECOMPRESS", $00
+
+; =====================================================================
+; bank_copy_far moves banked RAM to banked RAM, rolling both sides
+; across their bank boundaries, and restores the caller's bank.
+; =====================================================================
+test_bank_copy_far
+    lda RAM_BANK
+    sta @saved
+    lda #7
+    sta RAM_BANK
+
+    lda #<8190                  ; source pattern straddling bank 20/21
+    sta X16_P0
+    lda #>8190
+    sta X16_P1
+    ldx #20
+    lda #$A1
+    jsr bank_poke
+    lda #<8191
+    sta X16_P0
+    lda #>8191
+    sta X16_P1
+    ldx #20
+    lda #$B2
+    jsr bank_poke
+    stz X16_P0
+    stz X16_P1
+    ldx #21
+    lda #$C3
+    jsr bank_poke
+    lda #1
+    sta X16_P0
+    stz X16_P1
+    ldx #21
+    lda #$D4
+    jsr bank_poke
+
+    lda #20                     ; copy 4 bytes bank20:8190 -> bank22:8190
+    sta X16_P0                  ; (crosses a bank edge on BOTH sides)
+    lda #<8190
+    sta X16_P1
+    lda #>8190
+    sta X16_P2
+    lda #22
+    sta X16_P3
+    lda #<8190
+    sta X16_P4
+    lda #>8190
+    sta X16_P5
+    lda #4
+    sta X16_P6
+    stz X16_P7
+    jsr bank_copy_far
+
+    lda RAM_BANK                ; caller's bank survived
+    cmp #7
+    bne @fail
+
+    lda #<8190
+    sta X16_P0
+    lda #>8190
+    sta X16_P1
+    lda #22
+    jsr bank_peek
+    cmp #$A1
+    bne @fail
+    lda #<8191
+    sta X16_P0
+    lda #>8191
+    sta X16_P1
+    lda #22
+    jsr bank_peek
+    cmp #$B2
+    bne @fail
+    stz X16_P0
+    stz X16_P1
+    lda #23
+    jsr bank_peek
+    cmp #$C3
+    bne @fail
+    lda #1
+    sta X16_P0
+    stz X16_P1
+    lda #23
+    jsr bank_peek
+    cmp #$D4
+    bne @fail
+
+    lda @saved
+    sta RAM_BANK
+    lda #0
+    bra @report
+@fail
+    lda @saved
+    sta RAM_BANK
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@saved !byte 0
+@name  !text "BANK_COPY_FAR", $00
+
+; =====================================================================
+; The bank allocator: lowest-first allocation, exhaustion, free and
+; reserve semantics.
+; =====================================================================
+test_bank_alloc
+    lda #10
+    ldx #12
+    jsr bank_alloc_init
+
+    jsr bank_alloc
+    bcs @fail
+    cmp #10
+    bne @fail
+    jsr bank_alloc
+    bcs @fail
+    cmp #11
+    bne @fail
+    jsr bank_alloc
+    bcs @fail
+    cmp #12
+    bne @fail
+    jsr bank_alloc
+    bcc @fail                   ; the pool is empty now
+
+    lda #11
+    jsr bank_free
+    jsr bank_alloc
+    bcs @fail
+    cmp #11                     ; the freed bank comes back
+    bne @fail
+
+    lda #11
+    jsr bank_free
+    lda #11
+    jsr bank_reserve            ; claiming a free bank succeeds
+    bcs @fail
+    lda #11
+    jsr bank_reserve            ; claiming it again does not
+    bcc @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "BANK_ALLOC", $00
+
+; =====================================================================
+; irq_line_install must raise IEN's LINE bit and route scanline bit 8
+; into IEN bit 7; remove must take both away. Pure register checks, so
+; fully testable headless.
+; =====================================================================
+test_irq_line_regs
+    lda #<300                   ; line 300: bit 8 set
+    sta X16_P0
+    lda #>300
+    sta X16_P1
+    lda #<@handler
+    ldx #>@handler
+    jsr irq_line_install
+
+    lda VERA_IEN
+    and #VERA_IRQ_LINE
+    beq @fail
+    lda VERA_IEN
+    and #$80                    ; scanline bit 8
+    beq @fail
+
+    lda #100                    ; reprogram to line 100: bit 8 clear
+    sta X16_P0
+    stz X16_P1
+    lda #<@handler
+    ldx #>@handler
+    jsr irq_line_install
+    lda VERA_IEN
+    and #$80
+    bne @fail
+
+    jsr irq_line_remove
+    lda VERA_IEN
+    and #VERA_IRQ_LINE
+    bne @fail
+
+    jsr irq_remove
+    lda #0
+    bra @report
+@fail
+    jsr irq_line_remove
+    jsr irq_remove
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@handler
+    rts
+@name !text "IRQ_LINE_REGS", $00
+
+; =====================================================================
+; The line interrupt must actually fire at its scanline -- where
+; scanlines exist at all. Headless testbench renders no video, so use
+; the same jiffy-clock oracle as VSYNC_COUNTER: no jiffies = no
+; interrupts here = SKIP; jiffies but no line IRQ = FAIL.
+; =====================================================================
+test_irq_line_fires
+    stz @fired
+    jsr RDTIM
+    sta @jiffy0
+
+    lda #<240                   ; mid-screen
+    sta X16_P0
+    lda #>240
+    sta X16_P1
+    lda #<@handler
+    ldx #>@handler
+    jsr irq_line_install
+
+    ldy #0
+@outer
+    ldx #0
+@inner
+    lda @fired
+    bne @ok
+    dex
+    bne @inner
+    dey
+    bne @outer
+
+    jsr RDTIM
+    sec
+    sbc @jiffy0
+    beq @skip                   ; no interrupts at all on this machine
+    jsr irq_line_remove
+    jsr irq_remove
+    lda #1
+    bra @report
+@skip
+    jsr irq_line_remove
+    jsr irq_remove
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@ok
+    jsr irq_line_remove
+    jsr irq_remove
+    lda #0
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@handler
+    inc @fired
+    rts
+@fired  !byte 0
+@jiffy0 !byte 0
+@name   !text "IRQ_LINE_FIRES", $00
+
+; =====================================================================
+; Sprite collision plumbing: install/remove toggle IEN's SPRCOL bit,
+; and sprite_collisions reads-and-clears the accumulated group mask.
+; (The mask is injected directly -- making VERA report a real
+; collision needs rendered frames, which the headless run lacks.)
+; =====================================================================
+test_sprcol_regs
+    lda #0                      ; poll-only: no callback
+    tax
+    jsr irq_sprcol_install
+    lda VERA_IEN
+    and #VERA_IRQ_SPRCOL
+    beq @fail
+
+    lda #$30                    ; groups 4 and 5 collided, twice over
+    sta irq_sprcol_mask
+    jsr sprite_collisions
+    cmp #$30
+    bne @fail
+    jsr sprite_collisions       ; the read cleared it
+    bne @fail
+
+    jsr irq_sprcol_remove
+    lda VERA_IEN
+    and #VERA_IRQ_SPRCOL
+    bne @fail
+
+    jsr irq_remove
+    lda #0
+    bra @report
+@fail
+    jsr irq_sprcol_remove
+    jsr irq_remove
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SPRCOL_REGS", $00
+
+; =====================================================================
+; fx_line, against pixels the emulator verifiably produces: an
+; axis-aligned run, an exact diagonal, an anti-diagonal (both
+; decrement flags), and the canonical Bresenham of a 3-in-7 slant.
+; =====================================================================
+test_fx_line
+    jsr vera_has_fx
+    bcs @go
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@go
+    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    lda #$00
+    ldx #<2560                  ; clear rows 0..7
+    ldy #>2560
+    jsr vera_fill
+
+    stz X16_P0                  ; horizontal (0,0)-(7,0)
+    stz X16_P1
+    stz X16_P2
+    lda #7
+    sta X16_P3
+    stz X16_P4
+    stz X16_P5
+    lda #$C1
+    sta X16_P6
+    jsr fx_line
+
+    lda #20                     ; diagonal (20,0)-(27,7)
+    sta X16_P0
+    stz X16_P1
+    stz X16_P2
+    lda #27
+    sta X16_P3
+    stz X16_P4
+    lda #7
+    sta X16_P5
+    lda #$C2
+    sta X16_P6
+    jsr fx_line
+
+    lda #60                     ; anti-diagonal (60,0)-(53,7)
+    sta X16_P0
+    stz X16_P1
+    stz X16_P2
+    lda #53
+    sta X16_P3
+    stz X16_P4
+    lda #7
+    sta X16_P5
+    lda #$C3
+    sta X16_P6
+    jsr fx_line
+
+    lda #40                     ; slant (40,0)-(47,3)
+    sta X16_P0
+    stz X16_P1
+    stz X16_P2
+    lda #47
+    sta X16_P3
+    stz X16_P4
+    lda #3
+    sta X16_P5
+    lda #$C4
+    sta X16_P6
+    jsr fx_line
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 0, VERA_INC_1      ; horizontal row
+    +chkv $C1
+    +chkv $C1
+    +chkv $C1
+    +chkv $C1
+    +chkv $C1
+    +chkv $C1
+    +chkv $C1
+    +chkv $C1
+    +chkv $00                   ; exactly 8 pixels
+    +vera_addr 1, VRAM_BITMAP + 320, VERA_INC_1    ; nothing on row 1
+    +chkv $00
+
+    +vera_addr 1, VRAM_BITMAP + 20, VERA_INC_1     ; diagonal endpoints
+    +chkv $C2
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 3*320 + 23, VERA_INC_1
+    +chkv $C2
+    +vera_addr 1, VRAM_BITMAP + 7*320 + 27, VERA_INC_1
+    +chkv $C2
+
+    +vera_addr 1, VRAM_BITMAP + 60, VERA_INC_1     ; anti-diagonal
+    +chkv $C3
+    +vera_addr 1, VRAM_BITMAP + 1*320 + 59, VERA_INC_1
+    +chkv $C3
+    +vera_addr 1, VRAM_BITMAP + 7*320 + 53, VERA_INC_1
+    +chkv $C3
+
+    ; the slant's full Bresenham: two pixels per row, descending
+    +vera_addr 1, VRAM_BITMAP + 40, VERA_INC_1
+    +chkv $C4
+    +chkv $C4
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 1*320 + 42, VERA_INC_1
+    +chkv $C4
+    +chkv $C4
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 2*320 + 44, VERA_INC_1
+    +chkv $C4
+    +chkv $C4
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 3*320 + 46, VERA_INC_1
+    +chkv $C4
+    +chkv $C4
+    +chkv $00
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "FX_LINE", $00
+
+; =====================================================================
+; fx_triangle: a flat-top staircase whose every row width is exactly
+; predictable, and a general (sorted-on-entry-not-required) triangle
+; pinned at its apex, its widest row, and its half-open bottom.
+; =====================================================================
+test_fx_triangle
+    jsr vera_has_fx
+    bcs @go
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@go
+    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    lda #$00
+    ldx #<9600                  ; clear rows 0..29
+    ldy #>9600
+    jsr vera_fill
+
+    +i16_const tri_x0, 10       ; right triangle: (10,5) (30,5) (10,25)
+    lda #5
+    sta tri_y0
+    +i16_const tri_x1, 30
+    lda #5
+    sta tri_y1
+    +i16_const tri_x2, 10
+    lda #25
+    sta tri_y2
+    lda #$AA
+    sta tri_color
+    jsr fx_triangle
+
+    stz chk_err
+    +vera_addr 1, VRAM_BITMAP + 5*320 + 9, VERA_INC_1
+    +chkv $00                   ; left of the triangle
+    +chkv $AA                   ; (10,5): top row runs 10..29
+    +vera_addr 1, VRAM_BITMAP + 5*320 + 29, VERA_INC_1
+    +chkv $AA
+    +chkv $00                   ; (30,5) is outside
+    +vera_addr 1, VRAM_BITMAP + 15*320 + 19, VERA_INC_1
+    +chkv $AA                   ; row 15 runs 10..19
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 24*320 + 10, VERA_INC_1
+    +chkv $AA                   ; the last drawn row is one pixel
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 25*320 + 10, VERA_INC_1
+    +chkv $00                   ; half-open: row y2 stays empty
+
+    ; general triangle, vertices deliberately out of order
+    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    lda #$00
+    ldx #<9600
+    ldy #>9600
+    jsr vera_fill
+
+    +i16_const tri_x0, 45       ; the BOTTOM vertex first
+    lda #20
+    sta tri_y0
+    +i16_const tri_x1, 40       ; the top
+    lda #0
+    sta tri_y1
+    +i16_const tri_x2, 60       ; the middle
+    lda #10
+    sta tri_y2
+    lda #$AB
+    sta tri_color
+    jsr fx_triangle
+
+    +vera_addr 1, VRAM_BITMAP + 0*320 + 40, VERA_INC_1
+    +chkv $AB                   ; apex
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 9*320 + 41, VERA_INC_1
+    +chkv $00                   ; row 9 runs 42..58
+    +chkv $AB
+    +vera_addr 1, VRAM_BITMAP + 9*320 + 58, VERA_INC_1
+    +chkv $AB
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 13*320 + 43, VERA_INC_1
+    +chkv $AB                   ; row 13 runs 43..54
+    +vera_addr 1, VRAM_BITMAP + 13*320 + 54, VERA_INC_1
+    +chkv $AB
+    +chkv $00
+    +vera_addr 1, VRAM_BITMAP + 19*320 + 45, VERA_INC_1
+    +chkv $AB                   ; the last row narrows to one pixel
+    +vera_addr 1, VRAM_BITMAP + 20*320 + 45, VERA_INC_1
+    +chkv $00                   ; half-open bottom
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "FX_TRIANGLE", $00
+
+; =====================================================================
+; The PCM streamer's bookkeeping, headless-safe with the DAC stopped
+; (rate 0): priming fills the FIFO to the brim, AFLOW is armed only
+; while data remains, and a buffer that fits entirely leaves AFLOW off.
+; =====================================================================
+test_pcm_stream
+    lda #0
+    jsr pcm_rate
+    lda #$0F                    ; 8-bit mono, full volume
+    jsr pcm_ctrl
+    jsr pcm_reset
+
+    lda #<$2000                 ; any readable RAM does as sample data
+    sta X16_P0
+    lda #>$2000
+    sta X16_P1
+    lda #<5120                  ; more than the 4 KB FIFO
+    sta X16_P2
+    lda #>5120
+    sta X16_P3
+    lda #0                      ; rate 0: prime but do not play
+    jsr pcm_stream_start
+
+    jsr pcm_full
+    bcc @fail                   ; the FIFO was primed to the brim
+    jsr pcm_stream_active
+    beq @fail                   ; 1 KB still waiting
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    beq @fail                   ; ...so the refill IRQ is armed
+
+    jsr pcm_stream_stop
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    bne @fail
+    jsr pcm_stream_active
+    bne @fail
+
+    jsr pcm_reset               ; now a buffer that fits outright
+    lda #<$2000
+    sta X16_P0
+    lda #>$2000
+    sta X16_P1
+    lda #64
+    sta X16_P2
+    stz X16_P3
+    lda #0
+    jsr pcm_stream_start
+
+    jsr pcm_stream_active
+    bne @fail                   ; everything was handed over at start
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    bne @fail                   ; ...so no refill IRQ is needed
+    jsr pcm_empty
+    bcs @fail                   ; but the 64 bytes are queued
+
+    jsr pcm_reset
+    jsr irq_remove
+    lda #0
+    bra @report
+@fail
+    jsr pcm_stream_stop
+    jsr pcm_reset
+    jsr irq_remove
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "PCM_STREAM", $00
 
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"

@@ -97,7 +97,7 @@ never drift from the binary:
 produces
 
 ```
-dist\x16lib.bin          the library, 5 KB at $8000-$9347 (raw)
+dist\x16lib.bin          the whole library at $8000 (raw, currently ~7.7 KB)
 dist\X16LIB.PRG          the same with a load header, for a runtime LOAD
 dist\ca65\x16lib.inc     constants + addresses + the macro layer, per dialect
 dist\64tass\x16lib.inc
@@ -144,7 +144,7 @@ generated bindings), and the three examples assemble with ca65 V2.19,
 to `dist.ps1` to re-run that check yourself.
 
 What the bindings do **not** give you: `X16_USE_*` module gating (the blob
-always contains everything — it is 5 KB) and a movable `X16_ZP`. If you need
+always contains everything — under 8 KB) and a movable `X16_ZP`. If you need
 either, or you want the routines inlined into your own PRG, use the ACME
 sources directly.
 
@@ -174,13 +174,16 @@ treated as caller-save scratch.
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
 | `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line` |
-| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off` |
-| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait` |
+| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off`, `fx_line` (hardware Bresenham), `fx_triangle` (polygon-filler triangles) |
+| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions` |
 | `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off` |
 | `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_note_bas`, `ym_release_note`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_get_pan`, `ym_get_vol` |
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
+| `X16_USE_PCM_STREAM` | `pcm_stream_start`/`stop`/`active` — AFLOW-interrupt streaming beyond the 4 KB FIFO (pulls in PCM and IRQ) |
 | `X16_USE_INPUT` | `joy_scan`, `joy_get`, `mouse_show`/`hide`/`get`, `key_get`, `key_wait`, `key_peek` |
-| `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem` |
+| `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem`, `bank_copy_far` |
+| `X16_USE_BANKALLOC` | `bank_alloc_init`, `bank_alloc`, `bank_free`, `bank_reserve` |
+| `X16_USE_MEM` | `mem_fill`, `mem_copy`, `mem_crc`, `mem_decompress` (KERNAL block ops, LZSA2) |
 | `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
@@ -208,7 +211,53 @@ lingering Addr1 Mode silently changes how ordinary VRAM addressing behaves for
 everyone downstream.
 
 The `bank_*` bulk copies auto-advance across the 8 KB bank boundary, and all of
-them save and restore `RAM_BANK`.
+them save and restore `RAM_BANK`. They run on the KERNAL's `MEMORY_COPY` one
+bank-segment at a time, so they move whole segments per call rather than a
+byte per loop. `bank_copy_far` copies banked RAM to banked RAM — only one
+bank fits the window at a time, so it bounces through a small low-RAM
+buffer. `bank_alloc`/`bank_free` hand out whole banks from a bitmap pool,
+which is the natural allocation unit on this machine.
+
+**The KERNAL block routines treat `$9F00-$9FFF` addresses as
+non-incrementing.** That one property makes `mem_fill`, `mem_copy` and
+`mem_decompress` stream to and from VERA: point a data port somewhere, pass
+`VERA_DATA0` as the target, and the port's own increment walks VRAM.
+`mem_decompress` unpacks an LZSA2 block (`lzsa -r -f2 in out` — raw blocks,
+no frame header) either into RAM or *straight into video memory*, which is
+how compressed tiles, maps and sprites should ship. It cannot decompress in
+place; the input may live in banked RAM (8 KB limit).
+
+`irq_line_install` runs a handler at a chosen scanline every frame — the
+raster-split primitive (status bar over a scrolling playfield: repoint the
+scroll registers in the line handler, restore them in a VSYNC or second line
+handler). The library acknowledges LINE and SPRCOL itself; the KERNAL only
+ever acknowledges VSYNC, and an unacknowledged source refires forever.
+`irq_sprcol_install` + `sprite_collisions` expose VERA's hardware sprite
+collision groups (the mask nibble set via `sprite_flags`): collisions
+accumulate in a variable the IRQ latches, and `sprite_collisions` is a
+read-and-clear. Pass a null handler to poll instead of being called back.
+
+`pcm_stream_start` plays samples larger than the 4 KB FIFO the way the
+hardware intends: it primes the FIFO, then the AFLOW interrupt (FIFO fell
+under 1/4) refills it from your buffer. AFLOW has no ISR acknowledge — it
+clears only by refilling, so when the data runs out the streamer disables it
+in `IEN`; forget that in hand-rolled code and the interrupt storms. Set the
+format with `pcm_ctrl` first; the rate is passed to `pcm_stream_start` and
+playback starts only after the FIFO is primed, so it cannot underrun at t=0.
+
+`fx_line` draws the same endpoints as `gfx_line`, but VERA tracks the
+Bresenham internally and the CPU just strobes `DATA1` once per pixel.
+`fx_triangle` uses the FX polygon filler: VERA walks two edges at once and
+reports each row's span width, and the CPU fills exactly that many pixels.
+Vertices in any order; the bottom row is half-open so adjacent triangles
+never double-paint a shared edge. Both assume `gfx_init`'s 320×240@8bpp
+framebuffer and do not clip. Two hardware facts cost real debugging to
+learn: program the FX **addresses before the slope registers** (ADDRx writes
+prefetch, and a prefetch in line mode steps the helper with whatever slope is
+lingering), and **zero the FX position registers after setting the slope** —
+the documented "the increment write clears the position's overflow bit" is
+not what the hardware does, and a leftover carry bit eats the line's first
+minor-step.
 
 `ym_write` talks to the chip directly — fast, and the only way to reach the LFO
 and per-operator envelopes. But the ROM audio driver keeps RAM shadows of volume

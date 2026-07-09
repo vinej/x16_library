@@ -103,4 +103,134 @@ pcm_write
 @done
     rts
 
+; =====================================================================
+; AFLOW-driven streaming (X16_USE_PCM_STREAM, which implies X16_USE_IRQ)
+;
+; pcm_write primes a FIFO; it cannot PLAY anything longer than the
+; FIFO's 4 KB. Streaming works the way the hardware intends: VERA
+; raises AFLOW whenever the FIFO drops below 1/4 full, and the
+; interrupt refills it from the sample buffer. AFLOW has no ISR
+; acknowledge -- it clears only when the FIFO rises back over 1/4, and
+; when the data runs out the refiller must disable it in IEN or the
+; interrupt storms forever.
+;
+; The source pointer is kept inside an absolute lda (self-modified),
+; not in zero page: the refill runs in interrupt context, where every
+; zero-page scratch byte may belong to whatever code was interrupted.
+; =====================================================================
+!ifdef X16_USE_PCM_STREAM {
+
+pcm_str_rem    !word 0          ; bytes still to feed
+pcm_str_active !byte 0
+
+; ---------------------------------------------------------------------
+; pcm_stream_start -- play a sample buffer through the FIFO
+;   in:  X16_P0/P1 = sample data (low RAM)
+;        X16_P2/P3 = byte count
+;        A         = sample rate (1-128; 128 = 48828 Hz)
+;
+; Set the format and volume first with pcm_ctrl. The FIFO is primed
+; here in one go, THEN the rate starts playback, so it cannot underrun
+; at t=0. Requires interrupts enabled; installs the CINV hook itself.
+; ---------------------------------------------------------------------
+pcm_stream_start
+    pha
+    jsr pcm_stream_stop         ; quiesce a previous stream
+
+    lda X16_P0                  ; patch the source into the refiller
+    sta .src+1
+    lda X16_P1
+    sta .src+2
+    lda X16_P2
+    sta pcm_str_rem
+    lda X16_P3
+    sta pcm_str_rem+1
+    ora X16_P2
+    beq @nothing                ; zero bytes: nothing to play
+
+    jsr irq_install
+    lda #1
+    sta pcm_str_active
+    jsr pcm_stream_fill         ; prime the FIFO before playback starts
+
+    lda pcm_str_active          ; anything left to stream?
+    beq @go                     ; no: it all fit in the FIFO
+    php
+    sei
+    lda #VERA_IRQ_AFLOW
+    tsb VERA_IEN
+    plp
+@go
+    pla
+    jmp pcm_rate                ; ...and start the DAC
+@nothing
+    pla
+    rts
+
+; ---------------------------------------------------------------------
+; pcm_stream_stop -- stop refilling. What is already queued in the
+; FIFO keeps playing; call pcm_reset/pcm_rate(0) for immediate silence.
+; ---------------------------------------------------------------------
+pcm_stream_stop
+    php
+    sei
+    lda #VERA_IRQ_AFLOW
+    trb VERA_IEN
+    stz pcm_str_active
+    plp
+    rts
+
+; ---------------------------------------------------------------------
+; pcm_stream_active -- out: A = 1 while data remains, 0 when the whole
+;                      buffer has been handed to the FIFO (Z mirrors A)
+; ---------------------------------------------------------------------
+pcm_stream_active
+    lda pcm_str_active
+    rts
+
+; ---------------------------------------------------------------------
+; pcm_stream_isr -- the AFLOW service, called from irq_handler.
+; pcm_stream_fill -- push bytes until the FIFO is full or the data is
+;                    gone; also used to prime. Clobbers A/X/Y (fine in
+;                    the IRQ; the KERNAL stub restores them).
+; ---------------------------------------------------------------------
+pcm_stream_isr
+    lda pcm_str_active
+    bne pcm_stream_fill
+    lda #VERA_IRQ_AFLOW         ; stray AFLOW with no stream: mute it
+    trb VERA_IEN
+    rts
+
+pcm_stream_fill
+@loop
+    lda pcm_str_rem
+    ora pcm_str_rem+1
+    beq @exhausted
+    bit VERA_AUDIO_CTRL         ; bit 7: FIFO full
+    bmi @full
+
+.src
+    lda $FFFF                   ; operand = current source (self-modified)
+    sta VERA_AUDIO_DATA
+
+    inc .src+1                  ; advance the source
+    bne @dec
+    inc .src+2
+@dec
+    lda pcm_str_rem             ; 16-bit decrement
+    bne @dec_low
+    dec pcm_str_rem+1
+@dec_low
+    dec pcm_str_rem
+    bra @loop
+
+@exhausted
+    lda #VERA_IRQ_AFLOW         ; out of data: stop the refill interrupt
+    trb VERA_IEN                ; (leaving it enabled would storm: AFLOW
+    stz pcm_str_active          ; only clears by refilling the FIFO)
+@full
+    rts
+
+}   ; !ifdef X16_USE_PCM_STREAM
+
 }   ; !zone x16_pcm
