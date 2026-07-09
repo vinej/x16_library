@@ -132,6 +132,37 @@ X16_MACROS = 1
 }
 
 ; ---------------------------------------------------------------------
+; +i16_const dest, value    load a 16-bit literal into a 2-byte
+;                           little-endian buffer (see util/int16.asm).
+; ---------------------------------------------------------------------
+!macro i16_const .dest, .value {
+    lda #<(.value)
+    sta .dest
+    lda #>(.value)
+    sta .dest + 1
+}
+
+; ---------------------------------------------------------------------
+; +i32_const dest, value    load a 32-bit literal into a 4-byte
+;                           little-endian buffer (see util/int32.asm).
+;
+; The upper bytes are narrowed with `<` rather than masked with `& $FF`.
+; ACME remembers how wide a literal was written -- $FFFFFFFE is a 4-byte
+; value -- and a bitwise AND does not narrow that, so `lda #(x & $FF)`
+; is rejected as out of range even when the result provably fits.
+; ---------------------------------------------------------------------
+!macro i32_const .dest, .value {
+    lda #<(.value)
+    sta .dest
+    lda #>(.value)
+    sta .dest + 1
+    lda #<((.value) >>> 16)
+    sta .dest + 2
+    lda #<((.value) >>> 24)
+    sta .dest + 3
+}
+
+; ---------------------------------------------------------------------
 ; +basic_stub               emit `10 SYS 2061` so the PRG autoruns.
 ;                           Must be the first thing at $0801; machine
 ;                           code then begins at $080D (= 2061).

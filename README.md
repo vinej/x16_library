@@ -32,6 +32,7 @@ Double-click a `.bat`, or from a shell:
 ```
 run-hello.bat               assemble and run examples\hello.asm
 run-bounce.bat              assemble and run examples\bounce.asm
+run-numbers.bat             assemble and run examples\numbers.asm
 run.bat <example> [scale]   any file in examples\, at an optional window scale
 test.bat                    the headless regression suite
 ```
@@ -119,6 +120,9 @@ treated as caller-save scratch.
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
 | `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
+| `X16_USE_INT16` | 16-bit integers: `i16_add`/`sub`/`neg`/`abs`/`mul`/`divmod`/`divmod_s`, `i16_cmps`/`cmpu`, `i16_shl`/`shr`/`asr`, `i16_sqrt`, `i16_from_u8`/`s8`, `i16_to_dec`/`dec_s`, `+i16_const` |
+| `X16_USE_INT32` | 32-bit integers: `i32_add`/`sub`/`neg`/`abs`/`mul`/`divmod`, `i32_cmps`/`cmpu`, `i32_shl`/`shr`/`asr`, `i32_from_u16`/`s16`, `i32_to_s16`, `i32_to_dec`, `+i32_const` |
+| `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` |
 
 Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
 asking for a module twice is not an error.
@@ -159,12 +163,66 @@ patch set, so without it there is nothing to select.
 Joystick bits are **active low**: a pressed button reads 0. Test with
 `and #JOY_LEFT : beq moving_left`.
 
+## Integers
+
+`util/int16.asm` and `util/int32.asm` are the `ARITHMETIC.TXT` and `DOUBLE.TXT`
+surfaces. Both have the same shape: values live in named registers the caller
+writes directly (`i16_a`/`i16_b`/`i16_r`, `i32_a`/`i32_b`/`i32_r`) rather than in
+the parameter block, because a binary 32-bit operation needs eight bytes of input
+and the block only holds eight in total.
+
+```asm
++i16_const i16_a, 1000
++i16_const i16_b, 7
+jsr i16_divmod              ; i16_a = 142, i16_r = 6, carry clear
+jsr i16_to_dec              ; A/X -> "142", Y = length
+
++i32_const i32_a, 1000000
++i32_const i32_b, 7
+jsr i32_divmod              ; i32_a = 142857, i32_r = 1
+```
+
+Add, subtract, negate, multiply and the left shift are shared between signed and
+unsigned — two's complement makes them identical. Only comparison (`i16_cmps` vs
+`i16_cmpu`), division, the right shift (`asr` vs `shr`) and decimal output need
+to know which you meant, and those come in pairs. Both `divmod`s return carry set
+on divide-by-zero and leave the operands untouched.
+
+`i16_divmod_s` truncates toward zero and gives the remainder the sign of the
+**dividend**, matching C and Forth's `SM/REM`: `-7 / 2` is `-3` remainder `-1`,
+not `-4` remainder `1`. Get that wrong and the quotient still looks plausible.
+
+`i16_sqrt` is `FLOAT.TXT`'s `ISQRT` — an exact integer floor square root, no FP
+involved. `i16_mul` and `i32_mul` keep only the low word; for the full 32-bit
+product of two 16-bit values use `umul16` in `util/fixed.asm`.
+
+## Floating point
+
+`util/float.asm` is a *binding*, not a reimplementation. The
+ROM already carries a complete C128/C65-compatible FP library in `BANK_BASIC`,
+reached through a stable jump table at `$FE00`. Everything works on `FAC`, the
+floating accumulator in zero page; a float in memory is 5 bytes (`FP_SIZE`).
+
+```asm
+lda #<10 : ldx #>10 : jsr f_from_s16
+lda #<fvar : ldy #>fvar : jsr f_div     ; FAC = 10.0 / fvar
+jsr f_to_str_trim                        ; A/X -> "2.5"
+```
+
+Every call crosses a ROM bank through `jsrfar`, which is not free — for
+per-frame maths prefer `util/fixed.asm` (8.8) or `util/int32.asm`.
+
+`f_to_s16` **floors** (it goes through the ROM's `qint`). So `0.04 * 100` comes
+out a hair under 4.0 in binary floating point and `f_to_s16` gives 3. That is the
+float being a float; use `f_to_str` when you want the printed value.
+
 ## Examples
 
 | | |
 |---|---|
 | `examples/hello.asm` | Smallest thing that proves the toolchain: assemble, autorun, print, touch VRAM. |
 | `examples/bounce.asm` | A sprite bouncing over the full 640×480 display on fixed-point velocity, frame-locked to VSYNC. A PSG blip with a per-frame decay envelope on every wall bounce; a YM2151 FM note while it overlaps the outlined target box, released when it leaves. Exercises VSYNC, sprites, palette, fixed point, 16-bit collision, tilemap drawing, PSG, FM, and number formatting together. |
+| `examples/numbers.asm` | A tour of the number libraries: 16-bit and 32-bit integers, 8.8 fixed point, and floating point. Each line prints an expression and its result, so it doubles as a check. Needs no VSYNC, so it also runs headless. |
 
 `bounce.asm` shows two audio patterns worth copying. **Play on the edge, not the
 level:** `hit` is true for every frame of an overlap, so retriggering the FM note
@@ -181,8 +239,24 @@ reversing alone leaves the sprite a fraction of a pixel outside the wall, and on
 the left that is a negative coordinate which wraps to `$FFFF` and gets masked to
 10 bits, flicking the sprite across the screen for a frame.
 
-`bounce` needs real VSYNC, so run it windowed:
-`.\build.ps1 -Source examples\bounce.asm -Run`
+`bounce` needs real VSYNC, so run it windowed: `run-bounce.bat`. `numbers` does
+not, so it also runs under `-testbench` if you want its output on stdout.
+
+`numbers.asm` prints, among others:
+
+```
+1000 / 7            = 142 REM 6          SQRT(65535)         = 255
+-7 / 2 (SIGNED)     = -3 REM -1          $FFFF UNSIGNED      = 65535   SIGNED = -1
+300 * 300           = 24464  (WRAPS)     CMP $FFFF,1 UNSIGNED: >   SIGNED: <
+1000000 / 7         = 142857 REM 1       LARGEST UNSIGNED    = 4294967295
+384 * 512 >> 8      = 768                10 / 4              = 2.5
+SQRT(2)             = 1.41421356         2 ^ 10              = 1024
+SIN(1)              = .841470985         LN(10)              = 2.30258509
+VAL("3.14159") * 2  = 6.28318001         INT(-2.5)  (FLOOR)  = -3
+```
+
+The trailing digits of `6.28318001` are the float's own rounding at nine
+significant figures, not an error.
 
 ## Things the hardware will get you wrong
 
@@ -243,6 +317,23 @@ state after a reset that way.
 the FX registers yourself rather than through `fx_mult`, clear the accumulator
 first (read `FX_ACCUM_RESET`) or a leftover value silently corrupts your product.
 
+**Three of the ROM's FP routines are documented backwards.** `math/jumptab.s`
+claims `fsub` computes `FAC -= mem` and `fdiv` computes `FAC /= mem`. Both
+actually do `jsr conupk` (load ARG from memory) and then fall into the ARG-first
+form, so what you get is `mem - FAC` and `mem / FAC`. And `val_1` (string to
+float) is written `.X:.Y`, which everywhere else in that file means high:low —
+but the code is `stx index / sty index+1`, so X holds the **low** byte.
+
+Nothing crashes when you get these wrong: `10 - 3` quietly returns `-7`, and a
+misordered pointer parses some other string. `util/float.asm` wraps them back to
+the intuitive direction, and `F_SUB_ORDER` / `F_DIV_ORDER` / `F_STR` pin it.
+`f_rsub` and `f_rdiv` expose the raw order, which is what you want for `1/x`.
+
+**ACME remembers how wide a literal was written.** `$FFFFFFFE` is a four-byte
+value, and `& $FF` does not narrow it, so `lda #(x & $FF)` is rejected as out of
+range even when the result provably fits in a byte. Narrow with `<` instead:
+`lda #<(x >>> 24)`. This bites any macro that decomposes a 32-bit constant.
+
 **A routine that answers in the carry is fragile.** `collide8` returns its result
 in the carry, and so do `fs_load`/`fs_save`/`ym_write`. Almost anything you call
 next clobbers it — `screen_locate` does a `clc` on its way into `PLOT`. Capture
@@ -265,8 +356,11 @@ removing `vera_fill`'s zero-count guard; deleting the `ADDRSEL` guard from
 removing `mem_to_bank`'s bank roll; skipping `fx_fill`'s 1-3 byte tail; dropping
 `fx_mult`'s accumulator reset; removing `gfx_pset`'s clipping; changing
 `gfx_vline`'s stride off `VERA_INC_320`; losing `u16_to_dec`'s always-print-the-
-units-digit rule; swapping the FM channel and payload registers; and corrupting
-an expected value.
+units-digit rule; swapping the FM channel and payload registers; letting `f_sub`
+use the ROM's reversed operand order; dropping `i32_divmod`'s divide-by-zero
+guard; making `i32_cmps` ignore sign; giving `i16_divmod_s`'s remainder the
+divisor's sign; turning `i16_asr` into a logical shift; nudging `i16_sqrt` off by
+one; and corrupting an expected value.
 
 `FS_ROUNDTRIP` really saves and loads: `build.ps1 -Test` points `-fsroot` at
 `test/fsroot`, so device 8 is a scratch directory rather than a real SD-card
@@ -303,7 +397,7 @@ src/
   input/         input
   system/        irq
   storage/       bank, load
-  util/          fixed, collide, bits, number
+  util/          fixed, collide, bits, number, int16, int32, float
 examples/    hello.asm, bounce.asm
 test/        runner.asm, testlib.asm
 build.ps1

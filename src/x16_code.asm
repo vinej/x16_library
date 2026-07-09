@@ -46,6 +46,15 @@
 ;   X16_USE_COLLIDE   collide8
 ;   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
 ;   X16_USE_NUMBER    u16_to_dec, u16_to_hex, dec_to_u16
+;   X16_USE_INT16     i16_add/sub/neg/abs/mul/divmod/divmod_s,
+;                     i16_cmps/cmpu, i16_shl/shr/asr, i16_sqrt,
+;                     i16_to_dec/dec_s, +i16_const   (needs NUMBER)
+;   X16_USE_INT32     i32_add/sub/neg/abs/mul/divmod, i32_cmps/cmpu,
+;                     i32_shl/shr/asr, i32_from_u16/s16, i32_to_s16,
+;                     i32_to_dec, +i32_const
+;   X16_USE_FLOAT     f_load/store, f_add/sub/mul/div, f_rsub/rdiv,
+;                     f_pow, f_cmp, f_sqrt, f_ln, f_exp, f_sin, f_cos,
+;                     f_tan, f_atan, f_from_s16/u8/str, f_to_s16/str
 ; =====================================================================
 
 ; Gates are set with !ifndef so that asking for a module twice -- say via
@@ -70,6 +79,9 @@
     !ifndef X16_USE_COLLIDE { X16_USE_COLLIDE = 1 }
     !ifndef X16_USE_BITS    { X16_USE_BITS    = 1 }
     !ifndef X16_USE_NUMBER  { X16_USE_NUMBER  = 1 }
+    !ifndef X16_USE_INT16   { X16_USE_INT16   = 1 }
+    !ifndef X16_USE_INT32   { X16_USE_INT32   = 1 }
+    !ifndef X16_USE_FLOAT   { X16_USE_FLOAT   = 1 }
 }
 
 ; --- dependencies ----------------------------------------------------
@@ -77,6 +89,7 @@
 ; gfx_init calls screen_set_mode.
 !ifdef X16_USE_SPRITE { !ifndef X16_USE_VERA { X16_USE_VERA = 1 } }
 !ifdef X16_USE_PSG    { !ifndef X16_USE_VERA { X16_USE_VERA = 1 } }
+!ifdef X16_USE_INT16  { !ifndef X16_USE_NUMBER { X16_USE_NUMBER = 1 } }
 !ifdef X16_USE_BITMAP {
     !ifndef X16_USE_VERA   { X16_USE_VERA   = 1 }
     !ifndef X16_USE_SCREEN { X16_USE_SCREEN = 1 }
@@ -101,3 +114,6 @@
 !ifdef X16_USE_COLLIDE { !source "util/collide.asm" }
 !ifdef X16_USE_BITS    { !source "util/bits.asm" }
 !ifdef X16_USE_NUMBER  { !source "util/number.asm" }
+!ifdef X16_USE_INT16   { !source "util/int16.asm" }
+!ifdef X16_USE_INT32   { !source "util/int32.asm" }
+!ifdef X16_USE_FLOAT   { !source "util/float.asm" }

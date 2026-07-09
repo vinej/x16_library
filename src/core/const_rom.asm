@@ -97,6 +97,106 @@ rom_ym_get_chip_type    = $C0A5
 }
 
 ; ---------------------------------------------------------------------
+; BANK_BASIC floating-point jump table.
+;
+; The ROM ships a C128/C65-compatible FP library. Its jump table sits at
+; $FE00 inside BANK_BASIC (cfg/basic-x16.cfgtpl: FPJMP start = $FE00)
+; and is a stable ABI -- unlike the implementation addresses in
+; basic.sym, which move between ROM revisions.
+;
+; 52 entries. The six after fp_poly are compiled out (`.if 0` in
+; math/jumptab.s) and read back as $AA fill. Do not call them.
+;
+; Everything operates on FAC, the floating accumulator in zero page.
+; Pointer arguments are A = low byte, Y = high byte.
+;
+; CAUTION: fp_fsub and fp_fdiv are the reverse of what the comments in
+; jumptab.s claim. Each does `jsr conupk` (ARG = mem) and then falls into
+; the ARG-first form, so what you actually get is
+;       fp_fsub:  FAC = mem - FAC          (NOT FAC - mem)
+;       fp_fdiv:  FAC = mem / FAC
+;       fp_fsubt: FAC = ARG - FAC
+;       fp_fdivt: FAC = ARG / FAC
+; util/float.asm wraps these back into the intuitive direction.
+; ---------------------------------------------------------------------
+!addr {
+fp_ayint  = $FE00       ; facmo:faclo = (s16)FAC, high byte first
+fp_givayf = $FE03       ; FAC = (s16) A:Y        (A = high, Y = low)
+fp_fout   = $FE06       ; FAC -> ASCIIZ at FP_FBUFFR; returns A/Y = ptr
+fp_val    = $FE09       ; FAC = value of the string at X:Y, length A
+fp_getadr = $FE0C       ; A:Y = (u16)FAC         (A = high, Y = low)
+fp_floatc = $FE0F
+fp_fsub   = $FE12       ; FAC = mem(A,Y) - FAC
+fp_fsubt  = $FE15       ; FAC = ARG - FAC
+fp_fadd   = $FE18       ; FAC = FAC + mem(A,Y)
+fp_faddt  = $FE1B       ; FAC = FAC + ARG
+fp_fmult  = $FE1E       ; FAC = FAC * mem(A,Y)
+fp_fmultt = $FE21       ; FAC = FAC * ARG
+fp_fdiv   = $FE24       ; FAC = mem(A,Y) / FAC
+fp_fdivt  = $FE27       ; FAC = ARG / FAC
+fp_log    = $FE2A       ; FAC = ln(FAC)
+fp_int    = $FE2D       ; FAC = int(FAC)
+fp_sqr    = $FE30       ; FAC = sqrt(FAC)
+fp_negop  = $FE33       ; FAC = -FAC - 1
+fp_fpwr   = $FE36       ; FAC = mem(A,Y) ^ FAC
+fp_fpwrt  = $FE39       ; FAC = ARG ^ FAC
+fp_exp    = $FE3C       ; FAC = e ^ FAC
+fp_cos    = $FE3F       ; destroys ARG
+fp_sin    = $FE42       ; destroys ARG
+fp_tan    = $FE45       ; destroys ARG
+fp_atn    = $FE48       ; destroys ARG
+fp_round  = $FE4B
+fp_abs    = $FE4E       ; FAC = |FAC|
+fp_sign   = $FE51       ; A = sgn(FAC): $FF, 0 or 1
+fp_fcomp  = $FE54       ; A = compare FAC with mem(A,Y): $FF, 0 or 1
+fp_rnd    = $FE57
+fp_conupk = $FE5A       ; ARG = mem(A,Y)
+fp_movfm  = $FE60       ; FAC = mem(A,Y)
+fp_movmf  = $FE66       ; mem(X,Y) = round(FAC)  (X = low, Y = high)
+fp_movfa  = $FE69       ; FAC = ARG
+fp_movaf  = $FE6C       ; ARG = round(FAC)
+fp_faddh  = $FE6F       ; FAC += 0.5
+fp_zerofc = $FE72       ; FAC = 0
+fp_normal = $FE75
+fp_negfac = $FE78       ; FAC = -FAC
+fp_mul10  = $FE7B       ; FAC *= 10
+fp_div10  = $FE7E       ; FAC /= 10
+fp_movef  = $FE81       ; ARG = FAC
+fp_sgn    = $FE84       ; FAC = sgn(FAC)
+fp_float  = $FE87       ; FAC = (u8)A
+fp_floats = $FE8A       ; FAC = (s16) facho:facho+1
+fp_qint   = $FE8D       ; facho..faclo = (u32)FAC, most significant first
+fp_finlog = $FE90       ; FAC += (s8)A
+fp_foutc  = $FE93
+fp_polyx  = $FE96
+fp_poly   = $FE99
+}
+
+; ---------------------------------------------------------------------
+; The floating accumulator and argument, in BASIC's zero page.
+;
+; A float packed in memory is 5 bytes; unpacked in FAC it is 6, with the
+; sign broken out into its own byte. Safe to disturb from a SYSed
+; program, because BASIC is dormant while it runs.
+; ---------------------------------------------------------------------
+!addr {
+FP_FAC    = $C3
+FP_FACEXP = $C3
+FP_FACHO  = $C4         ; mantissa, most significant byte
+FP_FACMOH = $C5
+FP_FACMO  = $C6
+FP_FACLO  = $C7         ; mantissa, least significant byte
+FP_FACSGN = $C8
+FP_ARG    = $CA
+FP_ARGEXP = $CA
+FP_ARGSGN = $CF
+FP_FACOV  = $D1
+FP_FBUFFR = $0100       ; fp_fout writes its ASCIIZ result here
+}
+
+FP_SIZE = 5             ; bytes of a packed float in memory
+
+; ---------------------------------------------------------------------
 ; BANK_GRAPH entry points (x16-rom-r49/inc/graphics.inc).
 ; Most of these are also reachable through the $FFxx stubs in
 ; core/const_kernal.asm, which is the preferred route.

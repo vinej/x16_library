@@ -68,6 +68,22 @@ main
     jsr test_number_dec
     jsr test_number_hex
     jsr test_number_parse
+    jsr test_i16_arith
+    jsr test_i16_divmod
+    jsr test_i16_divmod_s
+    jsr test_i16_cmp
+    jsr test_i16_sqrt
+    jsr test_i16_to_dec
+    jsr test_i32_addsub
+    jsr test_i32_mul
+    jsr test_i32_divmod
+    jsr test_i32_cmp
+    jsr test_i32_to_dec
+    jsr test_f_roundtrip
+    jsr test_f_sub_order
+    jsr test_f_div_order
+    jsr test_f_sqrt
+    jsr test_f_str
     jsr test_fs_roundtrip
     jsr test_cls_clears
     jsr test_color_reaches_vram
@@ -1768,6 +1784,811 @@ test_number_parse
 @good !text "1234"
 @bad  !text "12A4"
 @name !text "NUMBER_PARSE", $00
+
+; =====================================================================
+; Branchless equality checks for the multi-byte integer tests.
+;
+; Each byte's difference is ORed into chk_err, which ends up zero only if
+; every comparison matched. A branching version puts @fail out of range
+; after a few expansions -- and chk_err is already exactly the convention
+; t_result wants (0 = pass).
+; =====================================================================
+chk_err !byte 0
+
+!macro chk16 .addr, .value {
+    lda .addr
+    eor #<(.value)
+    ora chk_err
+    sta chk_err
+    lda .addr + 1
+    eor #>(.value)
+    ora chk_err
+    sta chk_err
+}
+
+!macro chk32 .addr, .value {
+    lda .addr
+    eor #<(.value)
+    ora chk_err
+    sta chk_err
+    lda .addr + 1
+    eor #>(.value)
+    ora chk_err
+    sta chk_err
+    lda .addr + 2
+    eor #<((.value) >>> 16)
+    ora chk_err
+    sta chk_err
+    lda .addr + 3
+    eor #<((.value) >>> 24)
+    ora chk_err
+    sta chk_err
+}
+
+; Fold a carry flag into chk_err. .want is 1 to require carry set.
+!macro chk_carry .want {
+    lda #0
+    rol
+    eor #(.want)
+    ora chk_err
+    sta chk_err
+}
+
+test_i16_arith
+    stz chk_err
+    +i16_const i16_a, 30000
+    +i16_const i16_b, 12345
+    jsr i16_add
+    +chk16 i16_a, 42345
+
+    +i16_const i16_a, $0100     ; a borrow out of the low byte
+    +i16_const i16_b, 1
+    jsr i16_sub
+    +chk16 i16_a, $00FF
+
+    +i16_const i16_a, 5         ; 5 - 7 = -2
+    +i16_const i16_b, 7
+    jsr i16_sub
+    +chk16 i16_a, $FFFE
+
+    jsr i16_neg
+    +chk16 i16_a, 2
+
+    +i16_const i16_a, $FFFB     ; |-5| = 5
+    jsr i16_abs
+    +chk16 i16_a, 5
+
+    +i16_const i16_a, 1000      ; 1000 * 60 = 60000, still unsigned-clean
+    +i16_const i16_b, 60
+    jsr i16_mul
+    +chk16 i16_a, 60000
+
+    +i16_const i16_a, 300       ; 300 * 300 = 90000, wraps to 24464
+    +i16_const i16_b, 300
+    jsr i16_mul
+    +chk16 i16_a, 24464
+
+    +i16_const i16_a, $8001     ; arithmetic vs logical right shift
+    jsr i16_asr
+    +chk16 i16_a, $C000
+    +i16_const i16_a, $8001
+    jsr i16_shr
+    +chk16 i16_a, $4000
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_ARITH", $00
+
+; =====================================================================
+; 16-bit unsigned divide, and the divide-by-zero guard.
+; =====================================================================
+test_i16_divmod
+    stz chk_err
+    +i16_const i16_a, 1000
+    +i16_const i16_b, 7
+    jsr i16_divmod
+    +chk_carry 0
+    +chk16 i16_a, 142           ; 7 * 142 = 994
+    +chk16 i16_r, 6
+
+    +i16_const i16_a, 65535     ; the full range
+    +i16_const i16_b, 256
+    jsr i16_divmod
+    +chk_carry 0
+    +chk16 i16_a, 255
+    +chk16 i16_r, 255
+
+    +i16_const i16_a, 42        ; divide by zero must report, not crash
+    +i16_const i16_b, 0
+    jsr i16_divmod
+    +chk_carry 1
+    +chk16 i16_a, 42            ; ...and leave the operand alone
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_DIVMOD", $00
+
+; =====================================================================
+; Signed divide truncates toward zero, and the remainder takes the sign
+; of the DIVIDEND. -7 / 2 is -3 remainder -1, not -4 remainder 1. Get
+; that wrong and the quotient is still plausible, just off by one.
+; =====================================================================
+test_i16_divmod_s
+    stz chk_err
+
+    +i16_const i16_a, -7
+    +i16_const i16_b, 2
+    jsr i16_divmod_s
+    +chk_carry 0
+    +chk16 i16_a, -3
+    +chk16 i16_r, -1
+
+    +i16_const i16_a, 7         ; positive over negative
+    +i16_const i16_b, -2
+    jsr i16_divmod_s
+    +chk16 i16_a, -3
+    +chk16 i16_r, 1             ; dividend was positive
+
+    +i16_const i16_a, -7        ; both negative
+    +i16_const i16_b, -2
+    jsr i16_divmod_s
+    +chk16 i16_a, 3
+    +chk16 i16_r, -1
+
+    +i16_const i16_a, 1000      ; and it agrees with the unsigned form
+    +i16_const i16_b, 7         ; when both operands are positive
+    jsr i16_divmod_s
+    +chk16 i16_a, 142
+    +chk16 i16_r, 6
+
+    +i16_const i16_a, -1
+    +i16_const i16_b, 0
+    jsr i16_divmod_s
+    +chk_carry 1
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_DIVMOD_S", $00
+
+; =====================================================================
+; Signed and unsigned comparison must disagree about $FFFF: -1 signed,
+; the largest value unsigned.
+; =====================================================================
+test_i16_cmp
+    +i16_const i16_a, $FFFF
+    +i16_const i16_b, 1
+
+    jsr i16_cmpu
+    cmp #1
+    bne @fail                   ; unsigned: a > b
+
+    jsr i16_cmps
+    cmp #$FF
+    bne @fail                   ; signed: a is -1, so a < b
+
+    +i16_const i16_a, 12345
+    +i16_const i16_b, 12345
+    jsr i16_cmps
+    bne @fail                   ; Z set on equality
+    cmp #0
+    bne @fail
+
+    +i16_const i16_a, $8000     ; most negative vs most positive
+    +i16_const i16_b, $7FFF
+    jsr i16_cmps
+    cmp #$FF
+    bne @fail
+    jsr i16_cmpu
+    cmp #1
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_CMP", $00
+
+; =====================================================================
+; Integer square root: floor, exactly. The interesting cases are the
+; boundaries either side of a perfect square, and the full range.
+; =====================================================================
+test_i16_sqrt
+    stz chk_err
+
+    +i16_const i16_a, 0
+    jsr i16_sqrt
+    eor #0
+    ora chk_err
+    sta chk_err
+
+    +i16_const i16_a, 15        ; just under 16
+    jsr i16_sqrt
+    eor #3
+    ora chk_err
+    sta chk_err
+
+    +i16_const i16_a, 16
+    jsr i16_sqrt
+    eor #4
+    ora chk_err
+    sta chk_err
+
+    +i16_const i16_a, 144
+    jsr i16_sqrt
+    eor #12
+    ora chk_err
+    sta chk_err
+
+    +i16_const i16_a, 65024     ; 255*255 = 65025, so this floors to 254
+    jsr i16_sqrt
+    eor #254
+    ora chk_err
+    sta chk_err
+
+    +i16_const i16_a, 65535     ; the largest input
+    jsr i16_sqrt
+    eor #255
+    ora chk_err
+    sta chk_err
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I16_SQRT", $00
+
+; =====================================================================
+; Decimal output, signed and unsigned. $FFFF prints as 65535 or -1
+; depending which you ask for.
+; =====================================================================
+test_i16_to_dec
+    +i16_const i16_a, $FFFF
+    jsr i16_to_dec              ; unsigned: 65535
+    cpy #5
+    bne @fail_far
+    lda #<@max
+    ldx #>@max
+    jsr cmp_num_buf             ; i16_to_dec returns number.asm's buffer
+    bcs @fail_far
+
+    +i16_const i16_a, $FFFF
+    jsr i16_to_dec_s            ; signed: the same bits are -1
+    cpy #2
+    bne @fail_far
+    lda #<@minus1
+    ldx #>@minus1
+    jsr cmp_i16_buf
+    bcs @fail_far
+    bra @rest
+
+@fail_far                       ; @fail is out of branch range from here
+    jmp @fail
+
+@rest
+    ; -32768 is its own negation. i16_to_dec_s negates it anyway and then
+    ; prints the result UNSIGNED, where $8000 reads as 32768. The minus
+    ; sign is added separately, so the answer comes out right.
+    +i16_const i16_a, -32768
+    jsr i16_to_dec_s
+    cpy #6
+    bne @fail
+    lda #<@min
+    ldx #>@min
+    jsr cmp_i16_buf
+    bcs @fail
+
+    +i16_const i16_a, 1234      ; positive: no sign printed
+    jsr i16_to_dec_s
+    cpy #4
+    bne @fail
+    lda #<@pos
+    ldx #>@pos
+    jsr cmp_i16_buf
+    bcs @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@max    !text "65535", $00
+@minus1 !text "-1", $00
+@min    !text "-32768", $00
+@pos    !text "1234", $00
+@name   !text "I16_TO_DEC", $00
+
+; ---------------------------------------------------------------------
+cmp_i16_buf
+    sta T_ZP
+    stx T_ZP+1
+    ldy #0
+@loop
+    lda (T_ZP),y
+    cmp i16_buf,y
+    bne @bad
+    cmp #0
+    beq @ok
+    iny
+    bne @loop
+@bad
+    sec
+    rts
+@ok
+    clc
+    rts
+
+; =====================================================================
+; 32-bit add and subtract, including a borrow all the way to the top.
+; =====================================================================
+test_i32_addsub
+    stz chk_err
+    +i32_const i32_a, 1000000
+    +i32_const i32_b, 2345678
+    jsr i32_add
+    +chk32 i32_a, 3345678
+
+    +i32_const i32_a, $00010000 ; a borrow across every byte
+    +i32_const i32_b, 1
+    jsr i32_sub
+    +chk32 i32_a, $0000FFFF
+
+    +i32_const i32_a, 5         ; 5 - 7 = -2, two's complement
+    +i32_const i32_b, 7
+    jsr i32_sub
+    +chk32 i32_a, $FFFFFFFE
+
+    jsr i32_neg                 ; -(-2) = 2
+    +chk32 i32_a, 2
+
+    +i32_const i32_a, $FFFFFFFB ; |-5| = 5
+    jsr i32_abs
+    +chk32 i32_a, 5
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I32_ADDSUB", $00
+
+; =====================================================================
+; 32-bit multiply. 100000 * 37 = 3700000 needs more than 16 bits on both
+; sides of the product.
+; =====================================================================
+test_i32_mul
+    stz chk_err
+    +i32_const i32_a, 100000
+    +i32_const i32_b, 37
+    jsr i32_mul
+    +chk32 i32_a, 3700000
+
+    +i32_const i32_a, 65536     ; 65536 * 65536 wraps to zero, exactly
+    +i32_const i32_b, 65536
+    jsr i32_mul
+    +chk32 i32_a, 0
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I32_MUL", $00
+
+; =====================================================================
+; 32-bit unsigned divide, and the divide-by-zero guard.
+; =====================================================================
+test_i32_divmod
+    stz chk_err
+    +i32_const i32_a, 1000000
+    +i32_const i32_b, 7
+    jsr i32_divmod
+    +chk_carry 0                ; success: carry clear
+    +chk32 i32_a, 142857        ; 7 * 142857 = 999999
+    +chk32 i32_r, 1
+
+    +i32_const i32_a, 4294967295
+    +i32_const i32_b, 65536
+    jsr i32_divmod
+    +chk_carry 0
+    +chk32 i32_a, 65535
+    +chk32 i32_r, 65535
+
+    +i32_const i32_a, 42        ; dividing by zero must report, not crash
+    +i32_const i32_b, 0
+    jsr i32_divmod
+    +chk_carry 1                ; carry must be SET
+    +chk32 i32_a, 42            ; ...and the operand left alone
+
+    lda chk_err
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I32_DIVMOD", $00
+
+; =====================================================================
+; Signed and unsigned comparison disagree, and must each be right.
+; $FFFFFFFF is -1 signed, but the largest value unsigned.
+; =====================================================================
+test_i32_cmp
+    +i32_const i32_a, $FFFFFFFF
+    +i32_const i32_b, 1
+
+    jsr i32_cmpu                ; unsigned: a > b
+    cmp #1
+    bne @fail
+
+    jsr i32_cmps                ; signed: a is -1, so a < b
+    cmp #$FF
+    bne @fail
+
+    +i32_const i32_a, 12345     ; equality
+    +i32_const i32_b, 12345
+    jsr i32_cmps
+    bne @fail                   ; Z must be set
+    cmp #0
+    bne @fail
+
+    +i32_const i32_a, $80000000 ; most negative vs most positive
+    +i32_const i32_b, $7FFFFFFF
+    jsr i32_cmps
+    cmp #$FF
+    bne @fail
+    jsr i32_cmpu
+    cmp #1
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "I32_CMP", $00
+
+; =====================================================================
+; 32-bit decimal output, including the full-range value and zero.
+; =====================================================================
+test_i32_to_dec
+    +i32_const i32_a, 4294967295
+    jsr i32_to_dec
+    cpy #10
+    bne @fail
+    lda #<@max
+    ldx #>@max
+    jsr cmp_i32_buf
+    bcs @fail
+
+    +i32_const i32_a, 0
+    jsr i32_to_dec
+    cpy #1
+    bne @fail
+    lda #<@zero
+    ldx #>@zero
+    jsr cmp_i32_buf
+    bcs @fail
+
+    +i32_const i32_a, 1000000
+    jsr i32_to_dec
+    cpy #7
+    bne @fail
+    lda #<@mil
+    ldx #>@mil
+    jsr cmp_i32_buf
+    bcs @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@max  !text "4294967295", $00
+@zero !text "0", $00
+@mil  !text "1000000", $00
+@name !text "I32_TO_DEC", $00
+
+; ---------------------------------------------------------------------
+cmp_i32_buf
+    sta T_ZP
+    stx T_ZP+1
+    ldy #0
+@loop
+    lda (T_ZP),y
+    cmp i32_buf,y
+    bne @bad
+    cmp #0
+    beq @ok
+    iny
+    bne @loop
+@bad
+    sec
+    rts
+@ok
+    clc
+    rts
+
+; =====================================================================
+; Floating point, through the ROM's library in BANK_BASIC.
+; 12345 -> float -> back is exact: the mantissa is 32 bits.
+; =====================================================================
+test_f_roundtrip
+    lda #<12345
+    ldx #>12345
+    jsr f_from_s16
+    jsr f_to_s16
+    cmp #<12345
+    bne @fail
+    cpx #>12345
+    bne @fail
+
+    lda #<-4321                 ; negatives too
+    ldx #>-4321
+    jsr f_from_s16
+    jsr f_to_s16
+    cmp #<-4321
+    bne @fail
+    cpx #>-4321
+    bne @fail
+
+    lda #<9999                  ; and a store / load round trip
+    ldx #>9999
+    jsr f_from_s16
+    lda #<@tmp
+    ldy #>@tmp
+    jsr f_store
+    jsr f_zero
+    lda #<@tmp
+    ldy #>@tmp
+    jsr f_load
+    jsr f_to_s16
+    cmp #<9999
+    bne @fail
+    cpx #>9999
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@tmp  !fill FP_SIZE, 0
+@name !text "F_ROUNDTRIP", $00
+
+; =====================================================================
+; f_sub must compute FAC - mem, not mem - FAC.
+;
+; The ROM's fp_fsub does `jsr conupk` (ARG = mem) and then the ARG-first
+; subtraction, so it yields mem - FAC -- the opposite of what jumptab.s
+; documents. 10 - 3 is 7, and -7 if you get it backwards; both are valid
+; floats, so nothing crashes.
+; =====================================================================
+test_f_sub_order
+    lda #<3
+    ldx #>3
+    jsr f_from_s16
+    lda #<@three
+    ldy #>@three
+    jsr f_store
+
+    lda #<10
+    ldx #>10
+    jsr f_from_s16
+    lda #<@three
+    ldy #>@three
+    jsr f_sub                   ; FAC = 10 - 3
+    jsr f_to_s16
+    cmp #7
+    bne @fail
+    cpx #0
+    bne @fail
+
+    lda #<10                    ; and the raw order, mem - FAC = -7
+    ldx #>10
+    jsr f_from_s16
+    lda #<@three
+    ldy #>@three
+    jsr f_rsub
+    jsr f_to_s16
+    cmp #<-7
+    bne @fail
+    cpx #>-7
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@three !fill FP_SIZE, 0
+@name  !text "F_SUB_ORDER", $00
+
+; =====================================================================
+; f_div must compute FAC / mem. 100 / 4 = 25; backwards it would be 0.
+; f_rdiv gives the ROM's mem / FAC, which is how you build 1/x.
+; =====================================================================
+test_f_div_order
+    lda #<4
+    ldx #>4
+    jsr f_from_s16
+    lda #<@four
+    ldy #>@four
+    jsr f_store
+
+    lda #<100
+    ldx #>100
+    jsr f_from_s16
+    lda #<@hundred
+    ldy #>@hundred
+    jsr f_store
+
+    lda #<100
+    ldx #>100
+    jsr f_from_s16
+    lda #<@four
+    ldy #>@four
+    jsr f_div                   ; FAC = 100 / 4
+    jsr f_to_s16
+    cmp #25
+    bne @fail
+    cpx #0
+    bne @fail
+
+    ; f_rdiv is the ROM's order: mem / FAC = 4 / 100 = .04
+    ;
+    ; Checked as a string, not by multiplying back by 100 and comparing
+    ; to 4. f_to_s16 goes through qint, which FLOORS -- and .04 * 100 in
+    ; binary floating point lands a hair below 4.0, so it would floor to
+    ; 3. That is the float behaving correctly, not the division.
+    lda #<100
+    ldx #>100
+    jsr f_from_s16
+    lda #<@four
+    ldy #>@four
+    jsr f_rdiv
+    jsr f_to_str_trim
+    sta T_ZP
+    stx T_ZP+1
+    ldy #0
+@cmp
+    lda (T_ZP),y
+    cmp @expect,y
+    bne @fail
+    iny
+    cpy #4                      ; ".04" plus its terminator
+    bne @cmp
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@four    !fill FP_SIZE, 0
+@hundred !fill FP_SIZE, 0
+@expect  !text ".04", $00
+@name    !text "F_DIV_ORDER", $00
+
+; =====================================================================
+; sqrt(144) = 12 exactly, and sgn / abs behave.
+; =====================================================================
+test_f_sqrt
+    lda #<144
+    ldx #>144
+    jsr f_from_s16
+    jsr f_sqrt
+    jsr f_to_s16
+    cmp #12
+    bne @fail
+    cpx #0
+    bne @fail
+
+    lda #<-5
+    ldx #>-5
+    jsr f_from_s16
+    jsr f_sgn
+    cmp #$FF                    ; negative
+    bne @fail
+
+    lda #<-5
+    ldx #>-5
+    jsr f_from_s16
+    jsr f_abs
+    jsr f_to_s16
+    cmp #5
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "F_SQRT", $00
+
+; =====================================================================
+; String conversion, both ways. f_from_str parses "2.5"; doubling it
+; gives 5, which proves the fraction survived. f_to_str_trim then prints
+; it back, past the leading space the ROM puts on positive numbers.
+; =====================================================================
+test_f_str
+    lda #<@str
+    ldy #>@str
+    ldx #3
+    jsr f_from_str              ; FAC = 2.5
+
+    lda #<2                     ; * 2 = 5
+    ldx #>2
+    jsr f_from_s16
+    lda #<@two
+    ldy #>@two
+    jsr f_store
+
+    lda #<@str
+    ldy #>@str
+    ldx #3
+    jsr f_from_str
+    lda #<@two
+    ldy #>@two
+    jsr f_mul
+    jsr f_to_s16
+    cmp #5
+    bne @fail
+    cpx #0
+    bne @fail
+
+    ; And formatting: 2.5 back to text.
+    lda #<@str
+    ldy #>@str
+    ldx #3
+    jsr f_from_str
+    jsr f_to_str_trim
+    sta T_ZP
+    stx T_ZP+1
+    ldy #0
+@cmp
+    lda (T_ZP),y
+    cmp @str,y
+    bne @fail
+    iny
+    cpy #3
+    bne @cmp
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@str  !text "2.5"
+@two  !fill FP_SIZE, 0
+@name !text "F_STR", $00
 
 ; =====================================================================
 ; Save a block to device 8, load it back to a different address, and
