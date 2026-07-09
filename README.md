@@ -82,6 +82,72 @@ machine code to sit, and must be sourced exactly once. ACME has no linker, so
 unused routines cannot be stripped automatically — that is what the `X16_USE_*`
 gates are for.
 
+## Other assemblers: ca65, 64tass, KickAssembler
+
+The ACME sources are the single, tested implementation, but you do not need
+ACME to *use* the library. `dist.ps1` assembles the whole library into a
+binary at a fixed address and generates bindings for the three other major
+6502 assemblers straight from that build's symbol list, so the addresses can
+never drift from the binary:
+
+```
+.\dist.ps1
+```
+
+produces
+
+```
+dist\x16lib.bin          the library, 5 KB at $8000-$9347 (raw)
+dist\X16LIB.PRG          the same with a load header, for a runtime LOAD
+dist\ca65\x16lib.inc     constants + addresses + the macro layer, per dialect
+dist\64tass\x16lib.inc
+dist\kickass\x16lib.inc
+dist\ca65\x16lib.cfg     ld65 linker config that embeds the blob
+dist\examples\           a working hello for each assembler
+```
+
+Your program owns `$0801`–`$7FFF`; the library sits at `$8000` and claims
+zero page `$22`–`$31`, exactly as under ACME. Include the binding file, embed
+`x16lib.bin` at `$8000` (each example shows the dialect's way), and call the
+same routines with the same registers — `screen_puts`, `u16_to_dec`,
+`i16_divmod`, the data-port contract, everything in this README applies
+unchanged. The macro layer (`vera_addr`, `jsrfar`, `basic_stub`, …) is ported
+to each dialect inside the generated include.
+
+```
+ca65 --cpu 65C02 -I dist\ca65 --bin-include-dir dist -o hello.o dist\examples\hello-ca65.s
+ld65 -C dist\ca65\x16lib.cfg -o HELLO.PRG hello.o
+
+64tass -C -a --cbm-prg -I dist -o HELLO.PRG dist\examples\hello-64tass.asm
+
+java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
+```
+
+Dialect notes, each learned the hard way:
+
+- **64tass needs `-C`** (case-sensitive symbols): the `jsrfar` macro and the
+  KERNAL's `JSRFAR` entry differ only in case. And its default `"none"`
+  encoding converts ASCII to PETSCII — `'H'` becomes `$C8` — so the example
+  defines an identity encoding for byte-exact `.text`.
+- **ca65** wants `--cpu 65C02` (the VERA macros use `trb`/`tsb`), and finds
+  the binary via `--bin-include-dir`. The supplied linker config pads the
+  gap to `$8000`, making one self-contained ~35 KB PRG; drop the `X16LIB`
+  area and `LOAD "X16LIB.PRG"` at run time if you want a small one.
+- **KickAssembler** needs `.cpu _65c02` and `.encoding "ascii"` for CHROUT
+  strings; the blob is embedded with `LoadBinary`/`.fill`.
+
+A blob and its includes are one unit: regenerate both together with
+`dist.ps1`, never mix files from different builds. The dist build is verified
+on the emulator (`test\blobsmoke.asm` drives the blob purely through the
+generated bindings), and the three examples assemble with ca65 V2.19,
+64tass V1.60 and KickAssembler 5 (Java 8+) — pass `-Ca65`/`-Tass`/`-KickJar`
+to `dist.ps1` to re-run that check yourself.
+
+What the bindings do **not** give you: `X16_USE_*` module gating (the blob
+always contains everything — it is 5 KB) and a movable `X16_ZP`. If you need
+either, or you want the routines inlined into your own PRG, use the ACME
+sources directly.
+
 ## Conventions
 
 | | |
