@@ -68,7 +68,14 @@ if ($Test) {
     [IO.File]::WriteAllText($stdin, "")
     if (Test-Path $stdout) { Remove-Item $stdout -Force }
 
-    $emuArgs = @('-rom', $rom, '-prg', $out, '-run', '-warp', '-echo', '-testbench')
+    # Point device 8 at a scratch directory so the load/save tests are
+    # hermetic and never touch a real SD-card image.
+    $fsroot = Join-Path $root "test\fsroot"
+    if (-not (Test-Path $fsroot)) { New-Item -ItemType Directory -Path $fsroot | Out-Null }
+    Get-ChildItem $fsroot -File | Remove-Item -Force
+
+    $emuArgs = @('-rom', $rom, '-fsroot', $fsroot, '-prg', $out,
+                 '-run', '-warp', '-echo', '-testbench')
     $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
                           -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
 
@@ -89,11 +96,16 @@ if ($Test) {
     if (-not $proc.HasExited) { $proc.Kill() }
     $proc.WaitForExit()
 
-    $passes = ([regex]::Matches($text, '(?m)^PASS (\S+)')).Count
-    $fails  = [regex]::Matches($text, '(?m)^FAIL (\S+)')
+    # Names are [A-Z0-9_]. Don't use \S+: a result line ends without a CR,
+    # so whatever the next test prints first (a CLS control byte, say)
+    # lands on the same line and would be captured as part of the name.
+    $passes = ([regex]::Matches($text, '(?m)^PASS ([A-Z0-9_]+)')).Count
+    $fails  = [regex]::Matches($text, '(?m)^FAIL ([A-Z0-9_]+)')
+    $skips  = [regex]::Matches($text, '(?m)^SKIP ([A-Z0-9_]+)')
     $done   = [regex]::Match($text, '(?m)^DONE ([0-9A-F]{2})/([0-9A-F]{2})')
 
     foreach ($f in $fails) { Write-Host ("  FAIL {0}" -f $f.Groups[1].Value) -ForegroundColor Red }
+    foreach ($s in $skips) { Write-Host ("  SKIP {0}" -f $s.Groups[1].Value) -ForegroundColor Yellow }
 
     if (-not $done.Success) {
         Fail "test run produced no DONE line -- the program never finished"
@@ -110,7 +122,13 @@ if ($Test) {
         Fail "$($reportedTotal - $reportedPass) of $reportedTotal tests failed"
     }
 
-    Write-Host "      $reportedPass/$reportedTotal tests passed" -ForegroundColor Green
+    $summary = "      $reportedPass/$reportedTotal tests passed"
+    if ($skips.Count -gt 0) {
+        # Skips are excluded from the pass/total, so they can never be
+        # mistaken for passes. Surface them so they are not forgotten.
+        $summary += ", $($skips.Count) skipped (not runnable headless)"
+    }
+    Write-Host $summary -ForegroundColor Green
     exit 0
 }
 

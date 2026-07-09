@@ -21,6 +21,7 @@
 
 t_passes    !byte 0
 t_total     !byte 0
+t_skips     !byte 0
 t_expected  !byte 0
 
 ; ---------------------------------------------------------------------
@@ -29,6 +30,7 @@ t_expected  !byte 0
 t_init
     stz t_passes
     stz t_total
+    stz t_skips
     rts
 
 ; ---------------------------------------------------------------------
@@ -114,6 +116,30 @@ t_fail
 @word !text "FAIL ", $00
 
 ; ---------------------------------------------------------------------
+; t_skip -- in: A = name lo, X = name hi
+;
+; For a check the target machine genuinely cannot perform, as opposed to
+; one that failed. Counted separately and excluded from the pass/total
+; in DONE, so a skip can never be mistaken for a pass. Use it only where
+; an independent oracle proved the capability is absent -- never to
+; paper over a failure.
+; ---------------------------------------------------------------------
+t_skip
+    inc t_skips
+    pha
+    phx
+    lda #$0D
+    jsr CHROUT
+    lda #<@word
+    ldx #>@word
+    jsr t_puts
+    plx
+    pla
+    jsr t_puts
+    rts
+@word !text "SKIP ", $00
+
+; ---------------------------------------------------------------------
 ; t_result -- report a test by its outcome.
 ;   in: A = 0 for pass, non-zero for fail
 ;       X = name lo, Y = name hi
@@ -146,9 +172,20 @@ t_summary
     jsr CHROUT
     lda t_total
     jsr t_puthex
+
+    lda t_skips
+    beq @end
+    pha
+    lda #<@skipped
+    ldx #>@skipped
+    jsr t_puts
+    pla
+    jsr t_puthex
+@end
     lda #$0D
     jmp CHROUT
-@done !text "DONE ", $00
+@done    !text "DONE ", $00
+@skipped !text " SKIP ", $00
 
 ; ---------------------------------------------------------------------
 ; t_vcmp_const -- compare a run of VRAM bytes against a constant.

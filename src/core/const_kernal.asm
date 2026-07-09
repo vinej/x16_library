@@ -147,6 +147,15 @@ KERNAL_COLOR = $0376    ; active text colour: fg | bg<<4
 }
 
 ; ---------------------------------------------------------------------
+; KERNAL indirect vectors.
+; ---------------------------------------------------------------------
+!addr {
+CINV  = $0314           ; IRQ handler vector
+CBINV = $0316           ; BRK handler vector
+NMINV = $0318           ; NMI handler vector
+}
+
+; ---------------------------------------------------------------------
 ; Selected PETSCII / control codes.
 ; ---------------------------------------------------------------------
 PETSCII_WHITE     = $05

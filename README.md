@@ -90,15 +90,60 @@ treated as caller-save scratch.
 | `X16_USE_VERA` | `vera_set_addr0/1`, `vera_fill`, `vera_copy`, `vera_has_fx` |
 | `X16_USE_SCREEN` | `screen_set_mode`/`get_mode`/`reset`/`cls`/`chrout`/`color`/`border`, `screen_locate`, `screen_get_cursor`, `screen_charset`, `screen_puts` |
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
+| `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
+| `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line` |
+| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off` |
+| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait` |
+| `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off` |
+| `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_vol`, `ym_pan`, `ym_drum` |
+| `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
+| `X16_USE_INPUT` | `joy_scan`, `joy_get`, `mouse_show`/`hide`/`get`, `key_get`, `key_wait`, `key_peek` |
+| `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem` |
+| `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
 | `X16_USE_COLLIDE` | `collide8` (AABB overlap) |
+| `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
+| `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
 
 Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
 asking for a module twice is not an error.
 
-Planned: tilemap and layer config, bitmap graphics + VERA FX, PSG/YM2151/PCM
-audio, joystick / mouse / keyboard, load-save, banked RAM, VSYNC + IRQ.
+`tile_*` reads `L1_CONFIG` and `L1_MAPBASE` at run time rather than assuming a
+screen width, so it keeps working across `screen_set_mode`.
+
+`irq_install` chains onto the KERNAL's `CINV` vector rather than replacing it,
+so the keyboard, mouse, cursor and the VERA VSYNC acknowledge all keep running.
+It is idempotent on purpose: a second install that stored `irq_handler` as its
+own "previous" vector would make the chaining `jmp (irq_old_vector)` jump to
+itself and hang the machine.
+
+`fx_*` needs VERA firmware v0.3.1+ (emulator R44+) — probe with `vera_has_fx`
+first. Every FX routine leaves `FX_CTRL = 0` and `DCSEL = 0` on exit, because a
+lingering Addr1 Mode silently changes how ordinary VRAM addressing behaves for
+everyone downstream.
+
+The `bank_*` bulk copies auto-advance across the 8 KB bank boundary, and all of
+them save and restore `RAM_BANK`.
+
+`ym_write` talks to the chip directly — fast, and the only way to reach the LFO
+and per-operator envelopes. But the ROM audio driver keeps RAM shadows of volume
+and pan, and a raw write leaves those stale. If you also use the note API
+(`ym_note`, `ym_vol`), poke registers through `ym_poke` instead. This is
+`AUDIOYM.TXT`'s `YM!` versus `FMPOKE` distinction.
+
+Joystick bits are **active low**: a pressed button reads 0. Test with
+`and #JOY_LEFT : beq moving_left`.
+
+## Examples
+
+| | |
+|---|---|
+| `examples/hello.asm` | Smallest thing that proves the toolchain: assemble, autorun, print, touch VRAM. |
+| `examples/bounce.asm` | Frame-locked sprite on 8.8 fixed-point velocity, bouncing, colliding with a target box, printing the live frame counter. Exercises VSYNC, sprites, palette, fixed point, collision, and number formatting together. |
+
+`bounce` needs real VSYNC, so run it windowed:
+`.\build.ps1 -Source examples\bounce.asm -Run`
 
 ## Things the hardware will get you wrong
 
@@ -145,6 +190,16 @@ return the last value the *host* wrote, not the hardware's state. Reading back
 your own writes is fine — the tests rely on it — but you cannot discover the
 state after a reset that way.
 
+**The FX multiplier adds into an accumulator before writing out.** If you drive
+the FX registers yourself rather than through `fx_mult`, clear the accumulator
+first (read `FX_ACCUM_RESET`) or a leftover value silently corrupts your product.
+
+**A routine that answers in the carry is fragile.** `collide8` returns its result
+in the carry, and so do `fs_load`/`fs_save`/`ym_write`. Almost anything you call
+next clobbers it — `screen_locate` does a `clc` on its way into `PLOT`. Capture
+the flag immediately (`lda #0 : rol`) before doing anything else. `bounce.asm`
+has this exact trap commented at the point it bites.
+
 ## Tests
 
 `test/runner.asm` runs on the real emulated machine. Each test drives the
@@ -154,14 +209,32 @@ Results are printed over `CHROUT`; `build.ps1 -Test` greps them and fails the
 build on any `FAIL`, on a pass count that disagrees with the reported total, or
 on a run that never prints `DONE`.
 
-The suite has been mutation-tested: breaking `+vera_dcsel` into a naive store,
-removing `vera_fill`'s zero-count guard, deleting the `ADDRSEL` guard from
-`screen_cls` or `screen_chrout`, and corrupting an expected value each make
-exactly the corresponding test fail and the build exit non-zero.
+The suite has been mutation-tested. Each of these makes exactly the corresponding
+test fail and the build exit non-zero: breaking `+vera_dcsel` into a naive store;
+removing `vera_fill`'s zero-count guard; deleting the `ADDRSEL` guard from
+`screen_cls` or `screen_chrout`; dropping `irq_install`'s idempotency guard;
+removing `mem_to_bank`'s bank roll; skipping `fx_fill`'s 1-3 byte tail; dropping
+`fx_mult`'s accumulator reset; removing `gfx_pset`'s clipping; changing
+`gfx_vline`'s stride off `VERA_INC_320`; losing `u16_to_dec`'s always-print-the-
+units-digit rule; and corrupting an expected value.
+
+`FS_ROUNDTRIP` really saves and loads: `build.ps1 -Test` points `-fsroot` at
+`test/fsroot`, so device 8 is a scratch directory rather than a real SD-card
+image.
 
 That exercise also earns its keep the other way. Removing the guard from
 `screen_locate` changes nothing, because `PLOT` never touches VERA — so there is
 no guard there, and a comment says why.
+
+**Skips.** `x16emu -testbench` is headless: it runs no video, so VERA never
+raises a VSYNC interrupt and the KERNAL's jiffy clock stands still. Rather than
+drop `VSYNC_COUNTER` or let it fail, it consults the jiffy clock (`RDTIM`, which
+only advances inside the IRQ) as an independent oracle — frames stuck *and*
+jiffy stuck means no interrupts exist here, so it reports `SKIP`; frames stuck
+while the jiffy moves is a real bug and reports `FAIL`. Skips are counted
+separately and excluded from the pass/total, so they can never be mistaken for
+passes. Run the suite windowed (`-run -warp -echo`, no `-testbench`) and
+`VSYNC_COUNTER` passes.
 
 ## Layout
 
@@ -173,10 +246,19 @@ src/
   x16.asm        constants + macros (source first, emits nothing)
   x16_code.asm   routine modules, gated by X16_USE_*
   core/          const_zp, const_vera, const_kernal, const_rom, macros
-  video/         vera, screen, palette
+  video/         vera, screen, palette, tile
   sprite/        sprite
-  util/          fixed, collide
-examples/    hello.asm
+  gfx/           bitmap, verafx
+  audio/         psg, ym, pcm
+  input/         input
+  system/        irq
+  storage/       bank, load
+  util/          fixed, collide, bits, number
+examples/    hello.asm, bounce.asm
 test/        runner.asm, testlib.asm
 build.ps1
 ```
+
+ROM entry points in `core/const_rom.asm` carry a `rom_` prefix (`rom_ym_init`,
+`rom_psg_init`), leaving the unprefixed names free for the library's own
+routines.

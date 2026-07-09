@@ -19,15 +19,33 @@
 ; ---------------------------------------------------------------------
 ; Module            Provides
 ;   X16_USE_VERA      vera_set_addr0/1, vera_fill, vera_copy, vera_has_fx
-;   X16_USE_SCREEN    screen_set_mode/get_mode/reset/cls/color/border,
-;                     screen_locate, screen_get_cursor, screen_charset,
-;                     screen_puts
+;   X16_USE_SCREEN    screen_set_mode/get_mode/reset/cls/chrout/color/
+;                     border, screen_locate, screen_get_cursor,
+;                     screen_charset, screen_puts
 ;   X16_USE_PALETTE   pal_set, pal_load
+;   X16_USE_TILE      layer_on/off, layer_set_config/mapbase/tilebase,
+;                     layer_scroll_x/y, tile_setptr, tile_put, tile_get
 ;   X16_USE_SPRITE    sprites_on/off, sprite_pos, sprite_get_pos,
 ;                     sprite_image, sprite_flags, sprite_z, sprite_size,
-;                     sprite_init_all          (requires X16_USE_VERA)
+;                     sprite_init_all
+;   X16_USE_BITMAP    gfx_init, gfx_clear, gfx_pset, gfx_hline,
+;                     gfx_vline, gfx_rect, gfx_frame, gfx_line
+;   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off
+;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait
+;   X16_USE_PSG       psg_init, psg_set_freq/vol/wave, psg_note_off
+;   X16_USE_YM        ym_write, ym_busy, ym_init, ym_poke, ym_patch,
+;                     ym_note, ym_vol, ym_pan, ym_drum
+;   X16_USE_PCM       pcm_ctrl, pcm_rate, pcm_reset, pcm_full/empty,
+;                     pcm_put, pcm_write
+;   X16_USE_INPUT     joy_scan, joy_get, mouse_show/hide/get,
+;                     key_get, key_wait, key_peek
+;   X16_USE_BANK      bank_set/get, bank_peek/poke, mem_to_bank,
+;                     bank_to_mem
+;   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
 ;   X16_USE_FIXED     umul16, mul88
 ;   X16_USE_COLLIDE   collide8
+;   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
+;   X16_USE_NUMBER    u16_to_dec, u16_to_hex, dec_to_u16
 ; =====================================================================
 
 ; Gates are set with !ifndef so that asking for a module twice -- say via
@@ -37,32 +55,49 @@
     !ifndef X16_USE_VERA    { X16_USE_VERA    = 1 }
     !ifndef X16_USE_SCREEN  { X16_USE_SCREEN  = 1 }
     !ifndef X16_USE_PALETTE { X16_USE_PALETTE = 1 }
+    !ifndef X16_USE_TILE    { X16_USE_TILE    = 1 }
     !ifndef X16_USE_SPRITE  { X16_USE_SPRITE  = 1 }
+    !ifndef X16_USE_BITMAP  { X16_USE_BITMAP  = 1 }
+    !ifndef X16_USE_VERAFX  { X16_USE_VERAFX  = 1 }
+    !ifndef X16_USE_IRQ     { X16_USE_IRQ     = 1 }
+    !ifndef X16_USE_PSG     { X16_USE_PSG     = 1 }
+    !ifndef X16_USE_YM      { X16_USE_YM      = 1 }
+    !ifndef X16_USE_PCM     { X16_USE_PCM     = 1 }
+    !ifndef X16_USE_INPUT   { X16_USE_INPUT   = 1 }
+    !ifndef X16_USE_BANK    { X16_USE_BANK    = 1 }
+    !ifndef X16_USE_LOAD    { X16_USE_LOAD    = 1 }
     !ifndef X16_USE_FIXED   { X16_USE_FIXED   = 1 }
     !ifndef X16_USE_COLLIDE { X16_USE_COLLIDE = 1 }
+    !ifndef X16_USE_BITS    { X16_USE_BITS    = 1 }
+    !ifndef X16_USE_NUMBER  { X16_USE_NUMBER  = 1 }
 }
 
-; Dependencies. sprite_init_all calls vera_fill, so pulling in sprites
-; pulls in the VERA module too.
-!ifdef X16_USE_SPRITE {
-    !ifndef X16_USE_VERA { X16_USE_VERA = 1 }
+; --- dependencies ----------------------------------------------------
+; sprite_init_all, psg_init, gfx_clear and gfx_hline all call vera_fill.
+; gfx_init calls screen_set_mode.
+!ifdef X16_USE_SPRITE { !ifndef X16_USE_VERA { X16_USE_VERA = 1 } }
+!ifdef X16_USE_PSG    { !ifndef X16_USE_VERA { X16_USE_VERA = 1 } }
+!ifdef X16_USE_BITMAP {
+    !ifndef X16_USE_VERA   { X16_USE_VERA   = 1 }
+    !ifndef X16_USE_SCREEN { X16_USE_SCREEN = 1 }
 }
 
-!ifdef X16_USE_VERA {
-    !source "video/vera.asm"
-}
-!ifdef X16_USE_SCREEN {
-    !source "video/screen.asm"
-}
-!ifdef X16_USE_PALETTE {
-    !source "video/palette.asm"
-}
-!ifdef X16_USE_SPRITE {
-    !source "sprite/sprite.asm"
-}
-!ifdef X16_USE_FIXED {
-    !source "util/fixed.asm"
-}
-!ifdef X16_USE_COLLIDE {
-    !source "util/collide.asm"
-}
+; --- modules ---------------------------------------------------------
+!ifdef X16_USE_VERA    { !source "video/vera.asm" }
+!ifdef X16_USE_SCREEN  { !source "video/screen.asm" }
+!ifdef X16_USE_PALETTE { !source "video/palette.asm" }
+!ifdef X16_USE_TILE    { !source "video/tile.asm" }
+!ifdef X16_USE_SPRITE  { !source "sprite/sprite.asm" }
+!ifdef X16_USE_BITMAP  { !source "gfx/bitmap.asm" }
+!ifdef X16_USE_VERAFX  { !source "gfx/verafx.asm" }
+!ifdef X16_USE_IRQ     { !source "system/irq.asm" }
+!ifdef X16_USE_PSG     { !source "audio/psg.asm" }
+!ifdef X16_USE_YM      { !source "audio/ym.asm" }
+!ifdef X16_USE_PCM     { !source "audio/pcm.asm" }
+!ifdef X16_USE_INPUT   { !source "input/input.asm" }
+!ifdef X16_USE_BANK    { !source "storage/bank.asm" }
+!ifdef X16_USE_LOAD    { !source "storage/load.asm" }
+!ifdef X16_USE_FIXED   { !source "util/fixed.asm" }
+!ifdef X16_USE_COLLIDE { !source "util/collide.asm" }
+!ifdef X16_USE_BITS    { !source "util/bits.asm" }
+!ifdef X16_USE_NUMBER  { !source "util/number.asm" }

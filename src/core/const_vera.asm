@@ -216,6 +216,11 @@ VRAM_PSG          = $1F9C0       ; 16 voices x 4 bytes
 VRAM_PALETTE      = $1FA00       ; 256 entries x 2 bytes
 VRAM_SPRITE_ATTR  = $1FC00       ; 128 sprites x 8 bytes
 
+; The FX multiplier writes its 32-bit result to VRAM rather than to a
+; register, so it needs four scratch bytes. $1F800-$1F9BF is unused in
+; the VERA memory map. Redefine before sourcing x16.asm to relocate.
+!ifndef VRAM_FX_SCRATCH { VRAM_FX_SCRATCH = $1F800 }
+
 VERA_PSG_VOICE_SIZE   = 4
 VERA_SPRITE_ATTR_SIZE = 8
 
