@@ -70,48 +70,90 @@ ym_busy
 
 ; ---------------------------------------------------------------------
 ; ROM driver entry points. All of these live in BANK_AUDIO at $C000+,
-; not in the $FFxx jump table, so they go through jsrfar -- which saves
-; and restores the caller's ROM bank and preserves A/X/Y.
+; not in the $FFxx jump table, so they go through jsrfar.
+;
+; jsrfar restores the callee's processor status on the way out, so the
+; carry flag survives in BOTH directions: you can pass a flag in (as
+; ym_patch does) and read a result out.
+;
+; ***  THE CHANNEL GOES IN .A, NOT .X.  ***
+; Every one of these takes the FM channel (0-7) in .A and its payload in
+; .X. That is the opposite of what the register-level ym_write does, and
+; the opposite of what you would guess. Getting it backwards plays a
+; valid-looking note on the wrong channel rather than failing.
 ; ---------------------------------------------------------------------
 
 ; ym_init -- reset the chip and load the default instrument patches
+;   out: carry set on failure
 ym_init
     +jsrfar rom_audio_init, BANK_AUDIO
     +jsrfar rom_ym_loaddefpatches, BANK_AUDIO
     rts
 
-; ym_poke -- in: A = value, X = register.  Keeps the driver's shadows.
+; ym_poke -- in: A = value, X = register.  Keeps the driver's shadows
+;            coherent, unlike ym_write.  Preserves A and X.
 ym_poke
     +jsrfar rom_ym_write, BANK_AUDIO
     rts
 
-; ym_patch -- in: A = patch number (0-162), X = channel (0-7)
+; ym_patch -- load an instrument
+;   in:  A = channel (0-7)
+;        carry set: X = ROM patch index (0-162)
+;        carry clear: X/Y = address of a patch in RAM
+;   out: carry set on failure
 ym_patch
     +jsrfar rom_ym_loadpatch, BANK_AUDIO
     rts
 
-; ym_note -- in: A = packed note ((octave<<4) | 1..12), X = channel
-;            0 releases the note
+; ym_note -- play a raw YM2151 key code
+;   in:  A = channel, X = KC (key code), Y = KF (key fraction / bend)
+;        carry clear to retrigger the envelope, set to just change pitch
 ym_note
     +jsrfar rom_ym_playnote, BANK_AUDIO
     rts
 
-; ym_release -- in: X = channel
+; ym_note_bas -- play a packed note, the FMNOTE of AUDIOFM.TXT
+;   in:  A = channel, X = (octave << 4) | 1..12,  X = 0 releases
+;        carry clear to retrigger
+;   out: carry set on failure
+;
+; Goes through the ROM's BASIC shim, which converts the packed note to a
+; key code for us. This is the one you want for playing tunes.
+ym_note_bas
+    +jsrfar rom_bas_fmnote, BANK_AUDIO
+    rts
+
+; ym_release_note -- in: A = channel
 ym_release_note
     +jsrfar rom_ym_release, BANK_AUDIO
     rts
 
-; ym_vol -- in: A = attenuation (0 = loudest), X = channel
+; ym_vol -- in: A = channel, X = attenuation (0 = the patch's own volume,
+;                                             larger = quieter)
 ym_vol
     +jsrfar rom_ym_setatten, BANK_AUDIO
     rts
 
-; ym_pan -- in: A = pan bits, X = channel
+; ym_pan -- in: A = channel, X = 0 off, 1 left, 2 right, 3 both
 ym_pan
     +jsrfar rom_ym_setpan, BANK_AUDIO
     rts
 
-; ym_drum -- in: A = drum (25-87), X = channel
+; ym_get_pan -- in: A = channel.  out: X = pan setting
+; ym_get_vol -- in: A = channel.  out: X = attenuation
+;
+; Read the ROM driver's shadows. These only agree with the chip if you
+; have been writing through ym_poke / ym_vol / ym_pan rather than the
+; raw ym_write.
+ym_get_pan
+    +jsrfar rom_ym_getpan, BANK_AUDIO
+    rts
+
+ym_get_vol
+    +jsrfar rom_ym_getatten, BANK_AUDIO
+    rts
+
+; ym_drum -- in: A = channel, X = drum note (25-87)
 ym_drum
     +jsrfar rom_ym_playdrum, BANK_AUDIO
     rts

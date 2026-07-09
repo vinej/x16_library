@@ -45,6 +45,7 @@ main
     jsr test_collide_overlap
     jsr test_collide_apart
     jsr test_collide_touching
+    jsr test_collide16
     jsr test_tile_addr
     jsr test_tile_roundtrip
     jsr test_irq_hook
@@ -62,6 +63,7 @@ main
     jsr test_psg_regs
     jsr test_pcm_rate_clamp
     jsr test_ym_write
+    jsr test_ym_channel_in_a
     jsr test_bits
     jsr test_number_dec
     jsr test_number_hex
@@ -593,6 +595,79 @@ test_collide_touching
     ldy #>@name
     jmp t_result
 @name !text "COLLIDE_TOUCHING", $00
+
+; =====================================================================
+; collide16 works in display space, where the X16's default text mode is
+; 640x480. Everything here lives past x=255, which collide8 could not
+; even express -- the exact case bounce.asm needs.
+; =====================================================================
+!macro set16 .addr, .value {
+    lda #<(.value)
+    sta .addr
+    lda #>(.value)
+    sta .addr + 1
+}
+
+test_collide16
+    ; A = (300,200,80,80) overlapping B = (350,250,40,40)
+    +set16 cl_ax, 300
+    +set16 cl_ay, 200
+    +set16 cl_aw, 80
+    +set16 cl_ah, 80
+    +set16 cl_bx, 350
+    +set16 cl_by, 250
+    +set16 cl_bw, 40
+    +set16 cl_bh, 40
+    jsr collide16
+    bcc @fail_far               ; must overlap
+
+    ; Move B clear of A on x only. Boxes that miss on one axis miss.
+    +set16 cl_bx, 500
+    jsr collide16
+    bcs @fail_far
+
+    ; Edges that merely touch: A spans x 300..379, B starts at 380.
+    +set16 cl_bx, 380
+    +set16 cl_by, 200
+    jsr collide16
+    bcs @fail_far               ; touching is not overlapping
+    bra @deeper
+
+@fail_far                       ; @fail is out of branch range from here
+    jmp @fail
+
+@deeper
+    ; One pixel of penetration is an overlap.
+    +set16 cl_bx, 379
+    jsr collide16
+    bcc @fail
+
+    ; Both far past 255 on both axes, and only just overlapping.
+    +set16 cl_ax, 600
+    +set16 cl_ay, 400
+    +set16 cl_aw, 16
+    +set16 cl_ah, 16
+    +set16 cl_bx, 615
+    +set16 cl_by, 415
+    +set16 cl_bw, 16
+    +set16 cl_bh, 16
+    jsr collide16
+    bcc @fail
+
+    +set16 cl_bx, 616           ; one pixel further: now only touching
+    +set16 cl_by, 416
+    jsr collide16
+    bcs @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "COLLIDE16", $00
 
 ; =====================================================================
 ; tile_setptr must derive the cell address from L1_CONFIG / L1_MAPBASE,
@@ -1470,6 +1545,59 @@ test_ym_write
     ldy #>@name
     jmp t_result
 @name !text "YM_WRITE", $00
+
+; =====================================================================
+; The ROM's FM note API takes the CHANNEL IN .A and the payload in .X --
+; the opposite of the register-level ym_write, and the opposite of what
+; you would guess. Swapping them plays a valid-looking note on the wrong
+; channel, so nothing crashes and nothing complains.
+;
+; Pin it down through the driver's own shadow: set a distinctive pan on
+; channel 5, then read it back per channel. If the arguments were
+; reversed, the setting would land on channel 2 (the pan value) instead.
+; =====================================================================
+test_ym_channel_in_a
+    jsr ym_init
+    bcs @skip                   ; no YM2151 on this machine
+
+    lda #5                      ; channel
+    ldx #2                      ; pan = right
+    jsr ym_pan
+    bcs @fail
+
+    lda #5
+    jsr ym_get_pan
+    cpx #2
+    bne @fail                   ; the pan did not reach channel 5
+
+    lda #2                      ; the channel the swapped call would hit
+    jsr ym_get_pan
+    cpx #2
+    beq @fail                   ; ...and it must not have landed there
+
+    ; Attenuation travels the same way round.
+    lda #5
+    ldx #40
+    jsr ym_vol
+    bcs @fail
+    lda #5
+    jsr ym_get_vol
+    cpx #40
+    bne @fail
+
+    lda #0
+    bra @report
+@skip
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "YM_CHANNEL_IN_A", $00
 
 ; =====================================================================
 ; Bit and nibble helpers.

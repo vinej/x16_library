@@ -27,6 +27,20 @@ ForthX16 help pages (`doc/*.TXT`) are committed here.
 
 ## Quick start
 
+Double-click a `.bat`, or from a shell:
+
+```
+run-hello.bat               assemble and run examples\hello.asm
+run-bounce.bat              assemble and run examples\bounce.asm
+run.bat <example> [scale]   any file in examples\, at an optional window scale
+test.bat                    the headless regression suite
+```
+
+`run.bat` runs the emulator **windowed**. `-testbench` is headless and raises no
+VSYNC interrupt, so anything calling `vsync_wait` would hang there.
+
+Or drive the PowerShell script directly, which is what the batch files do:
+
 ```powershell
 .\build.ps1                 # assemble examples\hello.asm -> build\HELLO.PRG
 .\build.ps1 -Run            # ...and run it in the emulator
@@ -96,13 +110,13 @@ treated as caller-save scratch.
 | `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off` |
 | `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait` |
 | `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off` |
-| `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_vol`, `ym_pan`, `ym_drum` |
+| `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_note_bas`, `ym_release_note`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_get_pan`, `ym_get_vol` |
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
 | `X16_USE_INPUT` | `joy_scan`, `joy_get`, `mouse_show`/`hide`/`get`, `key_get`, `key_wait`, `key_peek` |
 | `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem` |
 | `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
-| `X16_USE_COLLIDE` | `collide8` (AABB overlap) |
+| `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
 | `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
 
@@ -132,6 +146,16 @@ and pan, and a raw write leaves those stale. If you also use the note API
 (`ym_note`, `ym_vol`), poke registers through `ym_poke` instead. This is
 `AUDIOYM.TXT`'s `YM!` versus `FMPOKE` distinction.
 
+**Every FM note-API routine takes the channel in `A` and its payload in `X`** —
+`ym_note_bas`, `ym_patch`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_release_note`. That
+is the opposite way round from the register-level `ym_write` (`A` = value,
+`X` = register), and the opposite of what most people guess. Get it backwards and
+you play a valid-looking note on the wrong channel: nothing crashes, nothing
+complains. `YM_CHANNEL_IN_A` in the suite pins it.
+
+`ym_init` must run before `ym_patch` — it resets the chip and loads the default
+patch set, so without it there is nothing to select.
+
 Joystick bits are **active low**: a pressed button reads 0. Test with
 `and #JOY_LEFT : beq moving_left`.
 
@@ -140,7 +164,22 @@ Joystick bits are **active low**: a pressed button reads 0. Test with
 | | |
 |---|---|
 | `examples/hello.asm` | Smallest thing that proves the toolchain: assemble, autorun, print, touch VRAM. |
-| `examples/bounce.asm` | Frame-locked sprite on 8.8 fixed-point velocity, bouncing, colliding with a target box, printing the live frame counter. Exercises VSYNC, sprites, palette, fixed point, collision, and number formatting together. |
+| `examples/bounce.asm` | A sprite bouncing over the full 640×480 display on fixed-point velocity, frame-locked to VSYNC. A PSG blip with a per-frame decay envelope on every wall bounce; a YM2151 FM note while it overlaps the outlined target box, released when it leaves. Exercises VSYNC, sprites, palette, fixed point, 16-bit collision, tilemap drawing, PSG, FM, and number formatting together. |
+
+`bounce.asm` shows two audio patterns worth copying. **Play on the edge, not the
+level:** `hit` is true for every frame of an overlap, so retriggering the FM note
+each frame would buzz at 60 Hz — compare against the previous frame and act only
+on the transition. **Envelopes belong in the frame loop:** `start_blip` just sets
+pitch and arms a timer; `update_blip` scales the remaining frames into a PSG
+volume once per frame, which is a linear decay for free.
+
+It also shows how to move over a 640×480 field. A plain 8.8 word only has eight
+integer bits, so the position is three bytes — an 8-bit fraction under a 16-bit
+pixel coordinate — and the velocity's integer byte is sign-extended when it
+ripples into the high half. Bounces **clamp to the edge** as well as reversing:
+reversing alone leaves the sprite a fraction of a pixel outside the wall, and on
+the left that is a negative coordinate which wraps to `$FFFF` and gets masked to
+10 bits, flicking the sprite across the screen for a frame.
 
 `bounce` needs real VSYNC, so run it windowed:
 `.\build.ps1 -Source examples\bounce.asm -Run`
@@ -175,6 +214,16 @@ selected. The `screen_*` routines force `ADDRSEL = 0` before entering the
 KERNAL; if you call `CHROUT` or `CINT` yourself, go through `screen_chrout` or
 emit `+vera_addrsel 0` first. Note also that the KERNAL leaves `DCSEL = 0`, so a
 `DCSEL` selection does not survive a call into it.
+
+**Sprite coordinates are display coordinates, and the default display is
+640×480.** In the standard 80×60 text mode the KERNAL leaves `HSCALE`/`VSCALE` at
+128, so a sprite's 10-bit X and Y address a 640×480 field. Only screen modes 2, 3
+and `$80` shift the scale by one to give 320×240. Assume 320×240 in the default
+mode and your sprite is confined to the top-left quarter of the screen — it moves
+and bounces correctly, so it looks like a coordinate bug rather than a scale one.
+
+This is also why `collide8` is not enough on its own: byte coordinates cannot
+reach past x=255. Use `collide16` for anything positioned in display space.
 
 **The YM2151 is at `$9F40`/`$9F41`**, not `$9FE0`.
 
@@ -216,7 +265,8 @@ removing `vera_fill`'s zero-count guard; deleting the `ADDRSEL` guard from
 removing `mem_to_bank`'s bank roll; skipping `fx_fill`'s 1-3 byte tail; dropping
 `fx_mult`'s accumulator reset; removing `gfx_pset`'s clipping; changing
 `gfx_vline`'s stride off `VERA_INC_320`; losing `u16_to_dec`'s always-print-the-
-units-digit rule; and corrupting an expected value.
+units-digit rule; swapping the FM channel and payload registers; and corrupting
+an expected value.
 
 `FS_ROUNDTRIP` really saves and loads: `build.ps1 -Test` points `-fsroot` at
 `test/fsroot`, so device 8 is a scratch directory rather than a real SD-card
