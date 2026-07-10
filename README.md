@@ -18,7 +18,7 @@ Two third-party tools are expected in the working tree but are **not** committed
 | `acme\acme.exe` | ACME 0.97 assembler | <https://sourceforge.net/projects/acme-crossass/> |
 | `emulator\x16emu.exe` + `rom.bin` | X16 emulator r49 | <https://github.com/X16Community/x16-emulator>, ROM from <https://github.com/X16Community/x16-rom> |
 
-Use the **r49** emulator and ROM: the constants in `src/core/` are transcribed
+Use the **r49** emulator and ROM: the constants in `src_acme/core/` are transcribed
 from the r49 ROM sources, and the test suite asserts against r49 behaviour.
 
 The official X16 and VERA reference documents are likewise omitted from the
@@ -43,9 +43,9 @@ VSYNC interrupt, so anything calling `vsync_wait` would hang there.
 Or drive the PowerShell script directly, which is what the batch files do:
 
 ```powershell
-.\build.ps1                 # assemble examples\hello.asm -> build\HELLO.PRG
-.\build.ps1 -Run            # ...and run it in the emulator
-.\build.ps1 -Test           # headless regression suite
+.\build_acme.ps1                 # assemble examples\hello.asm -> build\HELLO.PRG
+.\build_acme.ps1 -Run            # ...and run it in the emulator
+.\build_acme.ps1 -Test           # headless regression suite
 ```
 
 ## Writing a program
@@ -70,10 +70,10 @@ main
 !source "x16_code.asm"      ; library routines land here
 ```
 
-Assemble with `src\` on the include path:
+Assemble with `src_acme\` on the include path:
 
 ```
-acme -I src -f cbm -o OUT.PRG myprog.asm
+acme -I src_acme -f cbm -o OUT.PRG myprog.asm
 ```
 
 `x16.asm` must come **before** any code, because ACME macros have to be defined
@@ -84,10 +84,36 @@ gates are for.
 
 ## Other assemblers: ca65, 64tass, KickAssembler
 
-The ACME sources are the single, tested implementation, but you do not need
-ACME to *use* the library. `dist.ps1` assembles the whole library into a
-binary at a fixed address and generates bindings for the three other major
-6502 assemblers straight from that build's symbol list, so the addresses can
+Two ways in, pick per project:
+
+### Native sources (full `X16_USE_*` gating)
+
+`src_ca65/` + `test_ca65/` is a **native ca65 port** of the whole library —
+same file layout, same module gates, same macros, same routine contracts as
+the ACME tree. It is not a reimplementation: `src_acme/` remains the
+reference, `tools/acme2ca65.py` converts the mechanical 90% (three files are
+maintained by hand: `x16.asm`, `core/macros.asm`, and `util/math.asm` whose
+trig tables ACME computes but ca65 cannot), and the port is held to the
+hardest possible bar — **its test runner assembles to a byte-identical PRG**
+(same SHA-256) as the ACME build and passes the same 132-test suite on the
+emulator, headless and windowed.
+
+```
+ca65 --cpu 65C02 -I src_ca65 -o prog.o prog.s
+ld65 -C test_ca65\runner.cfg -o PROG.PRG prog.o     (or your own cfg)
+.\build_ca65.ps1 -Test                              the suite, via ca65
+```
+
+A ca65 program is the ACME skeleton with `.include` in place of `!source`
+and no `+` on macro calls; `.ifdef`-based `X16_USE_*` gating works
+identically. Native 64tass (`src_64tass/`) and KickAssembler (`src_kick/`)
+trees follow next, on the same convert-and-prove pattern.
+
+### Prebuilt binary + bindings (no gating, any assembler)
+
+Alternatively, `dist.ps1` assembles the whole library into a binary at a
+fixed address and generates bindings for the three other major 6502
+assemblers straight from that build's symbol list, so the addresses can
 never drift from the binary:
 
 ```
@@ -552,10 +578,10 @@ has this exact trap commented at the point it bites.
 
 ## Tests
 
-`test/runner.asm` runs on the real emulated machine. Each test drives the
+`test_acme/runner.asm` runs on the real emulated machine. Each test drives the
 library one way and verifies through an independent path (write via port 0, read
 back via port 1), so a bug in the address plumbing cannot hide behind itself.
-Results are printed over `CHROUT`; `build.ps1 -Test` greps them and fails the
+Results are printed over `CHROUT`; `build_acme.ps1 -Test` greps them and fails the
 build on any `FAIL`, on a pass count that disagrees with the reported total, or
 on a run that never prints `DONE`.
 
@@ -572,7 +598,7 @@ guard; making `i32_cmps` ignore sign; giving `i16_divmod_s`'s remainder the
 divisor's sign; turning `i16_asr` into a logical shift; nudging `i16_sqrt` off by
 one; and corrupting an expected value.
 
-`FS_ROUNDTRIP` really saves and loads: `build.ps1 -Test` points `-fsroot` at
+`FS_ROUNDTRIP` really saves and loads: `build_acme.ps1 -Test` points `-fsroot` at
 `test/fsroot`, so device 8 is a scratch directory rather than a real SD-card
 image.
 
@@ -596,21 +622,30 @@ passes. Run the suite windowed (`-run -warp -echo`, no `-testbench`) and
 acme/        ACME 0.97 assembler
 doc/         ForthX16 help pages + official X16/VERA references
 emulator/    x16emu r49 + rom.bin
-src/
+src_acme/    THE REFERENCE IMPLEMENTATION
   x16.asm        constants + macros (source first, emits nothing)
   x16_code.asm   routine modules, gated by X16_USE_*
   core/          const_zp, const_vera, const_kernal, const_rom, macros
   video/         vera, screen, palette, tile
   sprite/        sprite
   gfx/           bitmap, verafx
-  audio/         psg, ym, pcm
+  audio/         psg, ym, pcm, adpcm
   input/         input
   system/        irq
-  storage/       bank, load
-  util/          fixed, collide, bits, number, int16, int32, float
-examples/    hello.asm, bounce.asm
-test/        runner.asm, testlib.asm
-build.ps1
+  storage/       bank, bankalloc, mem, load, dos, bmx
+  util/          fixed, collide, bits, number, int16, int32, float,
+                 math, clip, buffers, zx0, tscrunch
+src_ca65/    the native ca65 port (generated + 3 hand files; see
+             tools/acme2ca65.py -- byte-identical output, same suite)
+src_64tass/  native 64tass port: next
+src_kick/    native KickAssembler port: next
+examples/    hello.asm, bounce.asm, numbers.asm
+test_acme/   runner.asm, testlib.asm, blobsmoke.asm (132 tests)
+test_ca65/   the converted runner + runner.cfg (same 132 tests)
+tools/       acme2ca65.py -- the dialect converter
+dist/        the prebuilt-binary + bindings pipeline (dist.ps1)
+build_acme.ps1
+build_ca65.ps1
 ```
 
 ROM entry points in `core/const_rom.asm` carry a `rom_` prefix (`rom_ym_init`,

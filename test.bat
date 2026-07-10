@@ -3,14 +3,14 @@ setlocal
 rem ---------------------------------------------------------------------
 rem x16lib :: test.bat -- run the headless regression suite
 rem
-rem Thin wrapper over build.ps1 -Test, which assembles test\runner.asm,
+rem Thin wrapper over build_acme.ps1 -Test, which assembles test\runner.asm,
 rem runs it under x16emu -testbench, and fails on any FAIL, on a pass
 rem count that disagrees with the program's own total, or on a run that
 rem never reports DONE.
 rem ---------------------------------------------------------------------
 cd /d "%~dp0"
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "build.ps1" -Test
+powershell -NoProfile -ExecutionPolicy Bypass -File "build_acme.ps1" -Test
 set "RC=%ERRORLEVEL%"
 
 echo.

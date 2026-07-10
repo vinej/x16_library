@@ -157,7 +157,7 @@ smoke_vera_fill
 @name !text "BLOB_VERA_FILL", $00
 
 ; ---------------------------------------------------------------------
-!source "test/testlib.asm"
+!source "test_acme/testlib.asm"
 
 * = X16LIB_ORG                  ; the org travels in the generated inc
 !binary "dist/x16lib.bin"

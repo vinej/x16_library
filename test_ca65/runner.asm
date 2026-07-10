@@ -9,8 +9,7 @@
 ; the address plumbing cannot hide behind itself.
 ; =====================================================================
 
-!cpu 65c02
-!source "x16.asm"
+.include "x16.asm"
 
 X16_USE_ALL = 1
 
@@ -23,8 +22,10 @@ TESTVRAM = $04000
 ; picks up this value rather than its own default.
 T_ZP = $70
 
-* = $0801
-    +basic_stub
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
 
 ; ---------------------------------------------------------------------
 main
@@ -176,21 +177,21 @@ main
 ; =====================================================================
 test_fill
     ; Poison 200 bytes with $00 so a runaway fill is visible.
-    +vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
     lda #$00
     ldx #200
     ldy #0
     jsr vera_fill
 
     ; Fill the first 100 with $AB.
-    +vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
     lda #$AB
     ldx #100
     ldy #0
     jsr vera_fill
 
     ; Read back through the OTHER port.
-    +vera_addr 1, TESTVRAM, VERA_INC_1
+    vera_addr 1, TESTVRAM, VERA_INC_1
     lda #$AB
     ldx #100
     jsr t_vcmp_const
@@ -209,7 +210,7 @@ test_fill
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_FILL", $00
+@name .byte "VERA_FILL", $00
 
 ; =====================================================================
 ; A count of 0 must write nothing at all.  The 16-bit loop rounds a
@@ -217,26 +218,26 @@ test_fill
 ; a naive implementation.
 ; =====================================================================
 test_fill_zero
-    +vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
     lda #$11
     ldx #4
     ldy #0
     jsr vera_fill
 
-    +vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
     lda #$EE
     ldx #0                      ; count = 0
     ldy #0
     jsr vera_fill
 
-    +vera_addr 1, TESTVRAM, VERA_INC_1
+    vera_addr 1, TESTVRAM, VERA_INC_1
     lda #$11
     ldx #4
     jsr t_vcmp_const
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_FILL_ZERO_COUNT", $00
+@name .byte "VERA_FILL_ZERO_COUNT", $00
 
 ; =====================================================================
 ; The ADDR_H increment field is an INDEX, not a byte count.
@@ -244,14 +245,14 @@ test_fill_zero
 ; =====================================================================
 test_fill_stride
     ; Clear 32 bytes.
-    +vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
     lda #$00
     ldx #32
     ldy #0
     jsr vera_fill
 
     ; Write 8 bytes of $55, stepping by 2.
-    +vera_addr 0, TESTVRAM, VERA_INC_2
+    vera_addr 0, TESTVRAM, VERA_INC_2
     lda #$55
     ldx #8
     ldy #0
@@ -259,7 +260,7 @@ test_fill_stride
 
     ; Even offsets are $55, odd offsets are still $00.
     ; Read linearly and check the alternation.
-    +vera_addr 1, TESTVRAM, VERA_INC_1
+    vera_addr 1, TESTVRAM, VERA_INC_1
     ldx #8
 @loop
     lda VERA_DATA1              ; even offset
@@ -279,14 +280,14 @@ test_fill_stride
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_INC_STRIDE", $00
+@name .byte "VERA_INC_STRIDE", $00
 
 ; =====================================================================
 ; vera_copy streams through both data ports at once.
 ; =====================================================================
 test_copy
     ; Lay down a known ramp at TESTVRAM.
-    +vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
     ldx #0
 @write
     txa
@@ -296,14 +297,14 @@ test_copy
     bne @write
 
     ; Copy it 1 KB further along: port 0 reads, port 1 writes.
-    +vera_addr 0, TESTVRAM, VERA_INC_1
-    +vera_addr 1, TESTVRAM + $400, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1
+    vera_addr 1, TESTVRAM + $400, VERA_INC_1
     ldx #100
     ldy #0
     jsr vera_copy
 
     ; Verify the destination holds the same ramp.
-    +vera_addr 1, TESTVRAM + $400, VERA_INC_1
+    vera_addr 1, TESTVRAM + $400, VERA_INC_1
     ldx #0
 @check
     lda VERA_DATA1
@@ -322,7 +323,7 @@ test_copy
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_COPY", $00
+@name .byte "VERA_COPY", $00
 
 ; =====================================================================
 ; +vera_dcsel must not clobber ADDRSEL.  CTRL packs RESET(7),
@@ -330,8 +331,8 @@ test_copy
 ; silently switches the active address port out from under the caller.
 ; =====================================================================
 test_dcsel_preserves_addrsel
-    +vera_addrsel 1             ; ADDRSEL = 1
-    +vera_dcsel 2               ; select the FX register bank
+    vera_addrsel 1             ; ADDRSEL = 1
+    vera_dcsel 2               ; select the FX register bank
 
     lda VERA_CTRL
     and #VERA_CTRL_ADDRSEL
@@ -343,31 +344,31 @@ test_dcsel_preserves_addrsel
     bne @fail                   ; DCSEL didn't take
 
     ; And the other direction: changing ADDRSEL must not disturb DCSEL.
-    +vera_addrsel 0
+    vera_addrsel 0
     lda VERA_CTRL
     and #VERA_CTRL_DCSEL
     cmp #(2 << 1)
     bne @fail
 
-    +vera_dcsel 0
+    vera_dcsel 0
     lda #0
     bra @report
 @fail
-    +vera_dcsel 0
-    +vera_addrsel 0
+    vera_dcsel 0
+    vera_addrsel 0
     lda #1
 @report
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "DCSEL_KEEPS_ADDRSEL", $00
+@name .byte "DCSEL_KEEPS_ADDRSEL", $00
 
 ; =====================================================================
 ; vera_has_fx probes DCSEL=63 and must leave DCSEL back at 0.
 ; =====================================================================
 test_has_fx
-    +vera_addrsel 0
-    +vera_dcsel 0
+    vera_addrsel 0
+    vera_dcsel 0
     jsr vera_has_fx
     bcc @fail                   ; r49 emulator has FX
 
@@ -383,18 +384,18 @@ test_has_fx
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_HAS_FX", $00
+@name .byte "VERA_HAS_FX", $00
 
 ; =====================================================================
 ; screen_border must select DCSEL=0 before writing DC_BORDER -- at
 ; DCSEL=2 that same address is FX_MULT.
 ; =====================================================================
 test_border
-    +vera_dcsel 2               ; leave a hostile DCSEL behind
+    vera_dcsel 2               ; leave a hostile DCSEL behind
     lda #7
     jsr screen_border
 
-    +vera_dcsel 0
+    vera_dcsel 0
     lda VERA_DC_BORDER
     cmp #7
     bne @fail
@@ -409,7 +410,7 @@ test_border
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SCREEN_BORDER", $00
+@name .byte "SCREEN_BORDER", $00
 
 ; =====================================================================
 ; A 12-bit $0RGB colour stores little-endian into a palette entry.
@@ -420,7 +421,7 @@ test_palette
     ldy #$0F                    ; red nibble  -> $0F00, pure red
     jsr pal_set
 
-    +vera_addr 1, VRAM_PALETTE + 2, VERA_INC_1
+    vera_addr 1, VRAM_PALETTE + 2, VERA_INC_1
     lda VERA_DATA1
     cmp #$00
     bne @fail
@@ -445,7 +446,7 @@ test_palette
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PAL_SET", $00
+@name .byte "PAL_SET", $00
 
 ; =====================================================================
 ; A sprite's 10-bit X and Y split across two bytes each.  Write via
@@ -467,7 +468,7 @@ test_sprite_pos
     jsr sprite_pos
 
     ; Independent read of sprite 3's record, bytes 2..5.
-    +vera_addr 1, VRAM_SPRITE_ATTR + (3 * 8) + 2, VERA_INC_1
+    vera_addr 1, VRAM_SPRITE_ATTR + (3 * 8) + 2, VERA_INC_1
     lda VERA_DATA1
     cmp #$23                    ; X low
     bne @fail
@@ -506,7 +507,7 @@ test_sprite_pos
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SPRITE_POS", $00
+@name .byte "SPRITE_POS", $00
 
 ; =====================================================================
 ; The image address is stored as bits 16:5 across two bytes.
@@ -527,7 +528,7 @@ test_sprite_image
     lda #SPRITE_MODE_8BPP
     jsr sprite_image
 
-    +vera_addr 1, VRAM_SPRITE_ATTR + (5 * 8), VERA_INC_1
+    vera_addr 1, VRAM_SPRITE_ATTR + (5 * 8), VERA_INC_1
     lda VERA_DATA1
     cmp #$80
     bne @fail
@@ -543,7 +544,7 @@ test_sprite_image
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SPRITE_IMAGE", $00
+@name .byte "SPRITE_IMAGE", $00
 
 ; =====================================================================
 ; 8.8 fixed point: 1.5 * 2.0 = 3.0, i.e. 384 * 512 >> 8 = 768.
@@ -574,7 +575,7 @@ test_mul88
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "MUL88", $00
+@name .byte "MUL88", $00
 
 ; =====================================================================
 ; -1.5 * 2.0 = -3.0.  One negative operand must flip the sign exactly
@@ -622,20 +623,28 @@ test_mul88_negative
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "MUL88_SIGNED", $00
+@name .byte "MUL88_SIGNED", $00
 
 ; =====================================================================
 ; collide8: boxes that genuinely overlap.
 ; =====================================================================
 test_collide_overlap
-    lda #0   : sta X16_P0       ; ax
-    lda #0   : sta X16_P1       ; ay
-    lda #10  : sta X16_P2       ; aw
-    lda #10  : sta X16_P3       ; ah
-    lda #5   : sta X16_P4       ; bx
-    lda #5   : sta X16_P5       ; by
-    lda #10  : sta X16_P6       ; bw
-    lda #10  : sta X16_P7       ; bh
+    lda #0  
+    sta X16_P0       ; ax
+    lda #0  
+    sta X16_P1       ; ay
+    lda #10 
+    sta X16_P2       ; aw
+    lda #10 
+    sta X16_P3       ; ah
+    lda #5  
+    sta X16_P4       ; bx
+    lda #5  
+    sta X16_P5       ; by
+    lda #10 
+    sta X16_P6       ; bw
+    lda #10 
+    sta X16_P7       ; bh
     jsr collide8
     lda #0
     bcs @report                 ; carry set = overlap = pass
@@ -644,20 +653,28 @@ test_collide_overlap
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "COLLIDE_OVERLAP", $00
+@name .byte "COLLIDE_OVERLAP", $00
 
 ; =====================================================================
 ; collide8: boxes nowhere near each other.
 ; =====================================================================
 test_collide_apart
-    lda #0   : sta X16_P0
-    lda #0   : sta X16_P1
-    lda #10  : sta X16_P2
-    lda #10  : sta X16_P3
-    lda #20  : sta X16_P4
-    lda #20  : sta X16_P5
-    lda #5   : sta X16_P6
-    lda #5   : sta X16_P7
+    lda #0  
+    sta X16_P0
+    lda #0  
+    sta X16_P1
+    lda #10 
+    sta X16_P2
+    lda #10 
+    sta X16_P3
+    lda #20 
+    sta X16_P4
+    lda #20 
+    sta X16_P5
+    lda #5  
+    sta X16_P6
+    lda #5  
+    sta X16_P7
     jsr collide8
     lda #0
     bcc @report                 ; carry clear = no overlap = pass
@@ -666,7 +683,7 @@ test_collide_apart
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "COLLIDE_APART", $00
+@name .byte "COLLIDE_APART", $00
 
 ; =====================================================================
 ; collide8: edges that merely touch must NOT count as a collision.
@@ -674,14 +691,22 @@ test_collide_apart
 ; `<=` comparison gets wrong, and it is what GAME.TXT specifies.
 ; =====================================================================
 test_collide_touching
-    lda #0   : sta X16_P0
-    lda #0   : sta X16_P1
-    lda #10  : sta X16_P2
-    lda #10  : sta X16_P3
-    lda #10  : sta X16_P4       ; exactly at A's right edge
-    lda #0   : sta X16_P5
-    lda #10  : sta X16_P6
-    lda #10  : sta X16_P7
+    lda #0  
+    sta X16_P0
+    lda #0  
+    sta X16_P1
+    lda #10 
+    sta X16_P2
+    lda #10 
+    sta X16_P3
+    lda #10 
+    sta X16_P4       ; exactly at A's right edge
+    lda #0  
+    sta X16_P5
+    lda #10 
+    sta X16_P6
+    lda #10 
+    sta X16_P7
     jsr collide8
     lda #0
     bcc @report
@@ -690,41 +715,41 @@ test_collide_touching
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "COLLIDE_TOUCHING", $00
+@name .byte "COLLIDE_TOUCHING", $00
 
 ; =====================================================================
 ; collide16 works in display space, where the X16's default text mode is
 ; 640x480. Everything here lives past x=255, which collide8 could not
 ; even express -- the exact case bounce.asm needs.
 ; =====================================================================
-!macro set16 .addr, .value {
-    lda #<(.value)
-    sta .addr
-    lda #>(.value)
-    sta .addr + 1
-}
+.macro set16 p_addr, p_value
+    lda #<(p_value)
+    sta p_addr
+    lda #>(p_value)
+    sta p_addr + 1
+.endmacro
 
 test_collide16
     ; A = (300,200,80,80) overlapping B = (350,250,40,40)
-    +set16 cl_ax, 300
-    +set16 cl_ay, 200
-    +set16 cl_aw, 80
-    +set16 cl_ah, 80
-    +set16 cl_bx, 350
-    +set16 cl_by, 250
-    +set16 cl_bw, 40
-    +set16 cl_bh, 40
+    set16 cl_ax, 300
+    set16 cl_ay, 200
+    set16 cl_aw, 80
+    set16 cl_ah, 80
+    set16 cl_bx, 350
+    set16 cl_by, 250
+    set16 cl_bw, 40
+    set16 cl_bh, 40
     jsr collide16
     bcc @fail_far               ; must overlap
 
     ; Move B clear of A on x only. Boxes that miss on one axis miss.
-    +set16 cl_bx, 500
+    set16 cl_bx, 500
     jsr collide16
     bcs @fail_far
 
     ; Edges that merely touch: A spans x 300..379, B starts at 380.
-    +set16 cl_bx, 380
-    +set16 cl_by, 200
+    set16 cl_bx, 380
+    set16 cl_by, 200
     jsr collide16
     bcs @fail_far               ; touching is not overlapping
     bra @deeper
@@ -734,24 +759,24 @@ test_collide16
 
 @deeper
     ; One pixel of penetration is an overlap.
-    +set16 cl_bx, 379
+    set16 cl_bx, 379
     jsr collide16
     bcc @fail
 
     ; Both far past 255 on both axes, and only just overlapping.
-    +set16 cl_ax, 600
-    +set16 cl_ay, 400
-    +set16 cl_aw, 16
-    +set16 cl_ah, 16
-    +set16 cl_bx, 615
-    +set16 cl_by, 415
-    +set16 cl_bw, 16
-    +set16 cl_bh, 16
+    set16 cl_ax, 600
+    set16 cl_ay, 400
+    set16 cl_aw, 16
+    set16 cl_ah, 16
+    set16 cl_bx, 615
+    set16 cl_by, 415
+    set16 cl_bw, 16
+    set16 cl_bh, 16
     jsr collide16
     bcc @fail
 
-    +set16 cl_bx, 616           ; one pixel further: now only touching
-    +set16 cl_by, 416
+    set16 cl_bx, 616           ; one pixel further: now only touching
+    set16 cl_by, 416
     jsr collide16
     bcs @fail
 
@@ -763,7 +788,7 @@ test_collide16
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "COLLIDE16", $00
+@name .byte "COLLIDE16", $00
 
 ; =====================================================================
 ; tile_setptr must derive the cell address from L1_CONFIG / L1_MAPBASE,
@@ -785,7 +810,7 @@ test_tile_addr
     ldy #3                      ; row
     jsr tile_put
 
-    +vera_addr 1, $1B30A, VERA_INC_1
+    vera_addr 1, $1B30A, VERA_INC_1
     lda VERA_DATA1
     cmp #$41
     bne @fail
@@ -809,7 +834,7 @@ test_tile_addr
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "TILE_ADDR", $00
+@name .byte "TILE_ADDR", $00
 
 ; =====================================================================
 ; tile_put / tile_get round trip, at a cell far enough along that the
@@ -840,7 +865,7 @@ test_tile_roundtrip
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "TILE_ROUNDTRIP", $00
+@name .byte "TILE_ROUNDTRIP", $00
 
 ; =====================================================================
 ; irq_install must hook CINV, save the real previous vector, and be
@@ -890,8 +915,8 @@ test_irq_hook
     ldx #<@name
     ldy #>@name
     jmp t_result
-@old  !word 0
-@name !text "IRQ_HOOK", $00
+@old  .word 0
+@name .byte "IRQ_HOOK", $00
 
 ; =====================================================================
 ; The VSYNC hook must actually tick -- where VSYNC exists at all.
@@ -952,9 +977,9 @@ test_vsync_counter
     ldx #<@name
     ldy #>@name
     jmp t_result
-@jiffy0 !byte 0
-@start  !byte 0
-@name   !text "VSYNC_COUNTER", $00
+@jiffy0 .byte 0
+@start  .byte 0
+@name   .byte "VSYNC_COUNTER", $00
 
 ; =====================================================================
 ; The FX hardware multiplier: 1000 * 1000 = 1000000 = $000F4240.
@@ -1023,7 +1048,7 @@ test_fx_mult
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_MULT", $00
+@name .byte "FX_MULT", $00
 
 ; =====================================================================
 ; The FX multiplier is signed: -1000 * 1000 = -1000000 = $FFF0BDC0.
@@ -1067,7 +1092,7 @@ test_fx_mult_signed
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_MULT_SIGNED", $00
+@name .byte "FX_MULT_SIGNED", $00
 
 ; =====================================================================
 ; The FX multiplier adds its result to the accumulator before writing it
@@ -1081,11 +1106,11 @@ test_fx_accum_dirty
     bcc @skip
 
     ; Multiply-and-accumulate 300 * 300 to leave 90000 in the accumulator.
-    +vera_dcsel 2
+    vera_dcsel 2
     stz VERA_FX_CTRL
     lda #(VERA_FX_MULT_ENABLE | VERA_FX_MULT_ACCUMULATE)
     sta VERA_FX_MULT
-    +vera_dcsel 6
+    vera_dcsel 6
     lda #<300
     sta VERA_FX_CACHE_L
     lda #>300
@@ -1133,7 +1158,7 @@ test_fx_accum_dirty
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_ACCUM_RESET", $00
+@name .byte "FX_ACCUM_RESET", $00
 
 ; =====================================================================
 ; fx_fill writes four bytes per store through the 32-bit cache. Use a
@@ -1144,7 +1169,7 @@ test_fx_fill
     jsr vera_has_fx
     bcc @skip
 
-    +vera_addr 0, TESTVRAM + $100, VERA_INC_1
+    vera_addr 0, TESTVRAM + $100, VERA_INC_1
     lda #$00
     ldx #16
     ldy #0
@@ -1163,7 +1188,7 @@ test_fx_fill
     lda #$C3
     jsr fx_fill
 
-    +vera_addr 1, TESTVRAM + $100, VERA_INC_1
+    vera_addr 1, TESTVRAM + $100, VERA_INC_1
     lda #$C3
     ldx #10
     jsr t_vcmp_const
@@ -1184,7 +1209,7 @@ test_fx_fill
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_FILL", $00
+@name .byte "FX_FILL", $00
 
 ; =====================================================================
 ; mem_to_bank / bank_to_mem round trip, and RAM_BANK must come back the
@@ -1253,10 +1278,10 @@ test_bank_roundtrip
     ldx #<@name
     ldy #>@name
     jmp t_result
-@src   !byte $10, $21, $32, $43, $54, $65, $76, $87
-@dst   !fill 8, 0
-@saved !byte 0
-@name  !text "BANK_ROUNDTRIP", $00
+@src   .byte $10, $21, $32, $43, $54, $65, $76, $87
+@dst   .res 8, 0
+@saved .byte 0
+@name  .byte "BANK_ROUNDTRIP", $00
 
 ; =====================================================================
 ; A copy starting at offset 8190 must spill into the next bank: two
@@ -1328,9 +1353,9 @@ test_bank_boundary
     ldx #<@name
     ldy #>@name
     jmp t_result
-@pat   !byte $AA, $BB, $CC, $DD
-@saved !byte 0
-@name  !text "BANK_BOUNDARY", $00
+@pat   .byte $AA, $BB, $CC, $DD
+@saved .byte 0
+@name  .byte "BANK_BOUNDARY", $00
 
 ; =====================================================================
 ; A bitmap pixel is at y*320 + x. (100, 50) is 50*320+100 = 16100.
@@ -1346,7 +1371,7 @@ test_gfx_pset
     sta X16_P3
     jsr gfx_pset
 
-    +vera_addr 1, VRAM_BITMAP + 16100, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 16100, VERA_INC_1
     lda VERA_DATA1
     cmp #$5A
     bne @fail
@@ -1358,7 +1383,7 @@ test_gfx_pset
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_PSET", $00
+@name .byte "GFX_PSET", $00
 
 ; =====================================================================
 ; gfx_pset clips. x = 320 is off the right edge; unclipped it would
@@ -1367,7 +1392,7 @@ test_gfx_pset
 ; =====================================================================
 test_gfx_clip
     ; Sentinel where an unclipped (320, 0) would land: offset 320.
-    +vera_addr 0, VRAM_BITMAP + 320, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 320, VERA_INC_1
     lda #$11
     sta VERA_DATA0
     lda #<320
@@ -1379,13 +1404,13 @@ test_gfx_clip
     sta X16_P3
     jsr gfx_pset
 
-    +vera_addr 1, VRAM_BITMAP + 320, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 320, VERA_INC_1
     lda VERA_DATA1
     cmp #$11
     bne @fail                   ; the clip did not hold
 
     ; Sentinel where an unclipped (0, 240) would land: offset 76800.
-    +vera_addr 0, VRAM_BITMAP + 76800, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 76800, VERA_INC_1
     lda #$22
     sta VERA_DATA0
     stz X16_P0
@@ -1396,7 +1421,7 @@ test_gfx_clip
     sta X16_P3
     jsr gfx_pset
 
-    +vera_addr 1, VRAM_BITMAP + 76800, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 76800, VERA_INC_1
     lda VERA_DATA1
     cmp #$22
     bne @fail
@@ -1409,14 +1434,14 @@ test_gfx_clip
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_CLIP", $00
+@name .byte "GFX_CLIP", $00
 
 ; =====================================================================
 ; gfx_vline walks the column with VERA_INC_320, so pixels land 320
 ; bytes apart: (3,1) then +320 each. Check the neighbours stay clear.
 ; =====================================================================
 test_gfx_vline
-    +vera_addr 0, VRAM_BITMAP + 320, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 320, VERA_INC_1
     lda #$00
     ldx #<1600
     ldy #>1600
@@ -1435,7 +1460,7 @@ test_gfx_vline
 
     ; Four pixels, 320 bytes apart, starting at 1*320 + 3 = 323.
     ; Each is followed by an untouched neighbour.
-    +vera_addr 1, VRAM_BITMAP + 323, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 323, VERA_INC_1
     lda VERA_DATA1
     cmp #$88
     bne @fail_far
@@ -1443,7 +1468,7 @@ test_gfx_vline
     cmp #$00
     bne @fail_far
 
-    +vera_addr 1, VRAM_BITMAP + 643, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 643, VERA_INC_1
     lda VERA_DATA1
     cmp #$88
     bne @fail_far
@@ -1456,7 +1481,7 @@ test_gfx_vline
     jmp @fail
 
 @rest
-    +vera_addr 1, VRAM_BITMAP + 963, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 963, VERA_INC_1
     lda VERA_DATA1
     cmp #$88
     bne @fail
@@ -1464,7 +1489,7 @@ test_gfx_vline
     cmp #$00
     bne @fail
 
-    +vera_addr 1, VRAM_BITMAP + 1283, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 1283, VERA_INC_1
     lda VERA_DATA1
     cmp #$88
     bne @fail
@@ -1473,7 +1498,7 @@ test_gfx_vline
     bne @fail
 
     ; and the fifth row must be clear -- the length was 4
-    +vera_addr 1, VRAM_BITMAP + 1603, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 1603, VERA_INC_1
     lda VERA_DATA1
     cmp #$00
     bne @fail
@@ -1486,14 +1511,14 @@ test_gfx_vline
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_VLINE", $00
+@name .byte "GFX_VLINE", $00
 
 ; =====================================================================
 ; gfx_line, Bresenham. A pure diagonal (0,0)-(3,3) must hit exactly
 ; (0,0) (1,1) (2,2) (3,3), i.e. offsets 0, 321, 642, 963.
 ; =====================================================================
 test_gfx_line
-    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP, VERA_INC_1
     lda #$00
     ldx #<1300
     ldy #>1300
@@ -1511,7 +1536,7 @@ test_gfx_line
     sta X16_P6
     jsr gfx_line
 
-    +vera_addr 1, VRAM_BITMAP + 0, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 0, VERA_INC_1
     lda VERA_DATA1
     cmp #$C7
     bne @fail
@@ -1519,15 +1544,15 @@ test_gfx_line
     cmp #$00
     bne @fail
 
-    +vera_addr 1, VRAM_BITMAP + 321, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 321, VERA_INC_1
     lda VERA_DATA1
     cmp #$C7
     bne @fail
-    +vera_addr 1, VRAM_BITMAP + 642, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 642, VERA_INC_1
     lda VERA_DATA1
     cmp #$C7
     bne @fail
-    +vera_addr 1, VRAM_BITMAP + 963, VERA_INC_1
+    vera_addr 1, VRAM_BITMAP + 963, VERA_INC_1
     lda VERA_DATA1
     cmp #$C7
     bne @fail
@@ -1540,7 +1565,7 @@ test_gfx_line
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_LINE", $00
+@name .byte "GFX_LINE", $00
 
 ; =====================================================================
 ; PSG voice 3 lives at $1F9C0 + 3*4 = $1F9CC.
@@ -1567,7 +1592,7 @@ test_psg_regs
     ldy #32
     jsr psg_set_wave
 
-    +vera_addr 1, VRAM_PSG + (3 * 4), VERA_INC_1
+    vera_addr 1, VRAM_PSG + (3 * 4), VERA_INC_1
     lda VERA_DATA1
     cmp #$A5
     bne @fail
@@ -1589,7 +1614,7 @@ test_psg_regs
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PSG_REGS", $00
+@name .byte "PSG_REGS", $00
 
 ; =====================================================================
 ; AUDIO_RATE above 128 is invalid, so pcm_rate clamps. Checked on the
@@ -1621,7 +1646,7 @@ test_pcm_rate_clamp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PCM_RATE_CLAMP", $00
+@name .byte "PCM_RATE_CLAMP", $00
 
 ; =====================================================================
 ; ym_write must complete rather than time out on the busy flag.
@@ -1640,10 +1665,10 @@ test_ym_write
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "YM_WRITE", $00
+@name .byte "YM_WRITE", $00
 
 ; =====================================================================
-; The ROM's FM note API takes the CHANNEL IN .A and the payload in .X --
+; The ROM's FM note API takes the CHANNEL IN runner_A and the payload in runner_X --
 ; the opposite of the register-level ym_write, and the opposite of what
 ; you would guess. Swapping them plays a valid-looking note on the wrong
 ; channel, so nothing crashes and nothing complains.
@@ -1693,7 +1718,7 @@ test_ym_channel_in_a
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "YM_CHANNEL_IN_A", $00
+@name .byte "YM_CHANNEL_IN_A", $00
 
 ; =====================================================================
 ; Bit and nibble helpers.
@@ -1748,8 +1773,8 @@ test_bits
     ldx #<@name
     ldy #>@name
     jmp t_result
-@cell !byte 0
-@name !text "BITS", $00
+@cell .byte 0
+@name .byte "BITS", $00
 
 ; =====================================================================
 ; u16_to_dec: no leading zeros, but zero itself still prints "0".
@@ -1797,10 +1822,10 @@ test_number_dec
     ldx #<@name
     ldy #>@name
     jmp t_result
-@max  !text "65535", $00
-@zero !text "0", $00
-@thou !text "1000", $00
-@name !text "NUMBER_DEC", $00
+@max  .byte "65535", $00
+@zero .byte "0", $00
+@thou .byte "1000", $00
+@name .byte "NUMBER_DEC", $00
 
 ; =====================================================================
 test_number_hex
@@ -1824,8 +1849,8 @@ test_number_hex
     ldx #<@name
     ldy #>@name
     jmp t_result
-@beef !text "BEEF", $00
-@name !text "NUMBER_HEX", $00
+@beef .byte "BEEF", $00
+@name .byte "NUMBER_HEX", $00
 
 ; =====================================================================
 test_number_parse
@@ -1861,9 +1886,9 @@ test_number_parse
     ldx #<@name
     ldy #>@name
     jmp t_result
-@good !text "1234"
-@bad  !text "12A4"
-@name !text "NUMBER_PARSE", $00
+@good .byte "1234"
+@bad  .byte "12A4"
+@name .byte "NUMBER_PARSE", $00
 
 ; =====================================================================
 ; Branchless equality checks for the multi-byte integer tests.
@@ -1873,124 +1898,124 @@ test_number_parse
 ; after a few expansions -- and chk_err is already exactly the convention
 ; t_result wants (0 = pass).
 ; =====================================================================
-chk_err !byte 0
+chk_err .byte 0
 
-!macro chk16 .addr, .value {
-    lda .addr
-    eor #<(.value)
+.macro chk16 p_addr, p_value
+    lda p_addr
+    eor #<(p_value)
     ora chk_err
     sta chk_err
-    lda .addr + 1
-    eor #>(.value)
+    lda p_addr + 1
+    eor #>(p_value)
     ora chk_err
     sta chk_err
-}
+.endmacro
 
-!macro chk32 .addr, .value {
-    lda .addr
-    eor #<(.value)
+.macro chk32 p_addr, p_value
+    lda p_addr
+    eor #<(p_value)
     ora chk_err
     sta chk_err
-    lda .addr + 1
-    eor #>(.value)
+    lda p_addr + 1
+    eor #>(p_value)
     ora chk_err
     sta chk_err
-    lda .addr + 2
-    eor #<((.value) >>> 16)
+    lda p_addr + 2
+    eor #<((p_value) >> 16)
     ora chk_err
     sta chk_err
-    lda .addr + 3
-    eor #<((.value) >>> 24)
+    lda p_addr + 3
+    eor #<((p_value) >> 24)
     ora chk_err
     sta chk_err
-}
+.endmacro
 
-; Fold a carry flag into chk_err. .want is 1 to require carry set.
-!macro chk_carry .want {
+; Fold a carry flag into chk_err. runner_want is 1 to require carry set.
+.macro chk_carry p_want
     lda #0
     rol
-    eor #(.want)
+    eor #(p_want)
     ora chk_err
     sta chk_err
-}
+.endmacro
 
 test_i16_arith
     stz chk_err
-    +i16_const i16_a, 30000
-    +i16_const i16_b, 12345
+    i16_const i16_a, 30000
+    i16_const i16_b, 12345
     jsr i16_add
-    +chk16 i16_a, 42345
+    chk16 i16_a, 42345
 
-    +i16_const i16_a, $0100     ; a borrow out of the low byte
-    +i16_const i16_b, 1
+    i16_const i16_a, $0100     ; a borrow out of the low byte
+    i16_const i16_b, 1
     jsr i16_sub
-    +chk16 i16_a, $00FF
+    chk16 i16_a, $00FF
 
-    +i16_const i16_a, 5         ; 5 - 7 = -2
-    +i16_const i16_b, 7
+    i16_const i16_a, 5         ; 5 - 7 = -2
+    i16_const i16_b, 7
     jsr i16_sub
-    +chk16 i16_a, $FFFE
+    chk16 i16_a, $FFFE
 
     jsr i16_neg
-    +chk16 i16_a, 2
+    chk16 i16_a, 2
 
-    +i16_const i16_a, $FFFB     ; |-5| = 5
+    i16_const i16_a, $FFFB     ; |-5| = 5
     jsr i16_abs
-    +chk16 i16_a, 5
+    chk16 i16_a, 5
 
-    +i16_const i16_a, 1000      ; 1000 * 60 = 60000, still unsigned-clean
-    +i16_const i16_b, 60
+    i16_const i16_a, 1000      ; 1000 * 60 = 60000, still unsigned-clean
+    i16_const i16_b, 60
     jsr i16_mul
-    +chk16 i16_a, 60000
+    chk16 i16_a, 60000
 
-    +i16_const i16_a, 300       ; 300 * 300 = 90000, wraps to 24464
-    +i16_const i16_b, 300
+    i16_const i16_a, 300       ; 300 * 300 = 90000, wraps to 24464
+    i16_const i16_b, 300
     jsr i16_mul
-    +chk16 i16_a, 24464
+    chk16 i16_a, 24464
 
-    +i16_const i16_a, $8001     ; arithmetic vs logical right shift
+    i16_const i16_a, $8001     ; arithmetic vs logical right shift
     jsr i16_asr
-    +chk16 i16_a, $C000
-    +i16_const i16_a, $8001
+    chk16 i16_a, $C000
+    i16_const i16_a, $8001
     jsr i16_shr
-    +chk16 i16_a, $4000
+    chk16 i16_a, $4000
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_ARITH", $00
+@name .byte "I16_ARITH", $00
 
 ; =====================================================================
 ; 16-bit unsigned divide, and the divide-by-zero guard.
 ; =====================================================================
 test_i16_divmod
     stz chk_err
-    +i16_const i16_a, 1000
-    +i16_const i16_b, 7
+    i16_const i16_a, 1000
+    i16_const i16_b, 7
     jsr i16_divmod
-    +chk_carry 0
-    +chk16 i16_a, 142           ; 7 * 142 = 994
-    +chk16 i16_r, 6
+    chk_carry 0
+    chk16 i16_a, 142           ; 7 * 142 = 994
+    chk16 i16_r, 6
 
-    +i16_const i16_a, 65535     ; the full range
-    +i16_const i16_b, 256
+    i16_const i16_a, 65535     ; the full range
+    i16_const i16_b, 256
     jsr i16_divmod
-    +chk_carry 0
-    +chk16 i16_a, 255
-    +chk16 i16_r, 255
+    chk_carry 0
+    chk16 i16_a, 255
+    chk16 i16_r, 255
 
-    +i16_const i16_a, 42        ; divide by zero must report, not crash
-    +i16_const i16_b, 0
+    i16_const i16_a, 42        ; divide by zero must report, not crash
+    i16_const i16_b, 0
     jsr i16_divmod
-    +chk_carry 1
-    +chk16 i16_a, 42            ; ...and leave the operand alone
+    chk_carry 1
+    chk16 i16_a, 42            ; ...and leave the operand alone
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_DIVMOD", $00
+@name .byte "I16_DIVMOD", $00
 
 ; =====================================================================
 ; Signed divide truncates toward zero, and the remainder takes the sign
@@ -2000,49 +2025,49 @@ test_i16_divmod
 test_i16_divmod_s
     stz chk_err
 
-    +i16_const i16_a, -7
-    +i16_const i16_b, 2
+    i16_const i16_a, -7
+    i16_const i16_b, 2
     jsr i16_divmod_s
-    +chk_carry 0
-    +chk16 i16_a, -3
-    +chk16 i16_r, -1
+    chk_carry 0
+    chk16 i16_a, -3
+    chk16 i16_r, -1
 
-    +i16_const i16_a, 7         ; positive over negative
-    +i16_const i16_b, -2
+    i16_const i16_a, 7         ; positive over negative
+    i16_const i16_b, -2
     jsr i16_divmod_s
-    +chk16 i16_a, -3
-    +chk16 i16_r, 1             ; dividend was positive
+    chk16 i16_a, -3
+    chk16 i16_r, 1             ; dividend was positive
 
-    +i16_const i16_a, -7        ; both negative
-    +i16_const i16_b, -2
+    i16_const i16_a, -7        ; both negative
+    i16_const i16_b, -2
     jsr i16_divmod_s
-    +chk16 i16_a, 3
-    +chk16 i16_r, -1
+    chk16 i16_a, 3
+    chk16 i16_r, -1
 
-    +i16_const i16_a, 1000      ; and it agrees with the unsigned form
-    +i16_const i16_b, 7         ; when both operands are positive
+    i16_const i16_a, 1000      ; and it agrees with the unsigned form
+    i16_const i16_b, 7         ; when both operands are positive
     jsr i16_divmod_s
-    +chk16 i16_a, 142
-    +chk16 i16_r, 6
+    chk16 i16_a, 142
+    chk16 i16_r, 6
 
-    +i16_const i16_a, -1
-    +i16_const i16_b, 0
+    i16_const i16_a, -1
+    i16_const i16_b, 0
     jsr i16_divmod_s
-    +chk_carry 1
+    chk_carry 1
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_DIVMOD_S", $00
+@name .byte "I16_DIVMOD_S", $00
 
 ; =====================================================================
 ; Signed and unsigned comparison must disagree about $FFFF: -1 signed,
 ; the largest value unsigned.
 ; =====================================================================
 test_i16_cmp
-    +i16_const i16_a, $FFFF
-    +i16_const i16_b, 1
+    i16_const i16_a, $FFFF
+    i16_const i16_b, 1
 
     jsr i16_cmpu
     cmp #1
@@ -2052,15 +2077,15 @@ test_i16_cmp
     cmp #$FF
     bne @fail                   ; signed: a is -1, so a < b
 
-    +i16_const i16_a, 12345
-    +i16_const i16_b, 12345
+    i16_const i16_a, 12345
+    i16_const i16_b, 12345
     jsr i16_cmps
     bne @fail                   ; Z set on equality
     cmp #0
     bne @fail
 
-    +i16_const i16_a, $8000     ; most negative vs most positive
-    +i16_const i16_b, $7FFF
+    i16_const i16_a, $8000     ; most negative vs most positive
+    i16_const i16_b, $7FFF
     jsr i16_cmps
     cmp #$FF
     bne @fail
@@ -2076,7 +2101,7 @@ test_i16_cmp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_CMP", $00
+@name .byte "I16_CMP", $00
 
 ; =====================================================================
 ; Integer square root: floor, exactly. The interesting cases are the
@@ -2085,37 +2110,37 @@ test_i16_cmp
 test_i16_sqrt
     stz chk_err
 
-    +i16_const i16_a, 0
+    i16_const i16_a, 0
     jsr i16_sqrt
     eor #0
     ora chk_err
     sta chk_err
 
-    +i16_const i16_a, 15        ; just under 16
+    i16_const i16_a, 15        ; just under 16
     jsr i16_sqrt
     eor #3
     ora chk_err
     sta chk_err
 
-    +i16_const i16_a, 16
+    i16_const i16_a, 16
     jsr i16_sqrt
     eor #4
     ora chk_err
     sta chk_err
 
-    +i16_const i16_a, 144
+    i16_const i16_a, 144
     jsr i16_sqrt
     eor #12
     ora chk_err
     sta chk_err
 
-    +i16_const i16_a, 65024     ; 255*255 = 65025, so this floors to 254
+    i16_const i16_a, 65024     ; 255*255 = 65025, so this floors to 254
     jsr i16_sqrt
     eor #254
     ora chk_err
     sta chk_err
 
-    +i16_const i16_a, 65535     ; the largest input
+    i16_const i16_a, 65535     ; the largest input
     jsr i16_sqrt
     eor #255
     ora chk_err
@@ -2125,14 +2150,14 @@ test_i16_sqrt
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_SQRT", $00
+@name .byte "I16_SQRT", $00
 
 ; =====================================================================
 ; Decimal output, signed and unsigned. $FFFF prints as 65535 or -1
 ; depending which you ask for.
 ; =====================================================================
 test_i16_to_dec
-    +i16_const i16_a, $FFFF
+    i16_const i16_a, $FFFF
     jsr i16_to_dec              ; unsigned: 65535
     cpy #5
     bne @fail_far
@@ -2141,7 +2166,7 @@ test_i16_to_dec
     jsr cmp_num_buf             ; i16_to_dec returns number.asm's buffer
     bcs @fail_far
 
-    +i16_const i16_a, $FFFF
+    i16_const i16_a, $FFFF
     jsr i16_to_dec_s            ; signed: the same bits are -1
     cpy #2
     bne @fail_far
@@ -2158,7 +2183,7 @@ test_i16_to_dec
     ; -32768 is its own negation. i16_to_dec_s negates it anyway and then
     ; prints the result UNSIGNED, where $8000 reads as 32768. The minus
     ; sign is added separately, so the answer comes out right.
-    +i16_const i16_a, -32768
+    i16_const i16_a, -32768
     jsr i16_to_dec_s
     cpy #6
     bne @fail
@@ -2167,7 +2192,7 @@ test_i16_to_dec
     jsr cmp_i16_buf
     bcs @fail
 
-    +i16_const i16_a, 1234      ; positive: no sign printed
+    i16_const i16_a, 1234      ; positive: no sign printed
     jsr i16_to_dec_s
     cpy #4
     bne @fail
@@ -2184,11 +2209,11 @@ test_i16_to_dec
     ldx #<@name
     ldy #>@name
     jmp t_result
-@max    !text "65535", $00
-@minus1 !text "-1", $00
-@min    !text "-32768", $00
-@pos    !text "1234", $00
-@name   !text "I16_TO_DEC", $00
+@max    .byte "65535", $00
+@minus1 .byte "-1", $00
+@min    .byte "-32768", $00
+@pos    .byte "1234", $00
+@name   .byte "I16_TO_DEC", $00
 
 ; ---------------------------------------------------------------------
 cmp_i16_buf
@@ -2215,33 +2240,33 @@ cmp_i16_buf
 ; =====================================================================
 test_i32_addsub
     stz chk_err
-    +i32_const i32_a, 1000000
-    +i32_const i32_b, 2345678
+    i32_const i32_a, 1000000
+    i32_const i32_b, 2345678
     jsr i32_add
-    +chk32 i32_a, 3345678
+    chk32 i32_a, 3345678
 
-    +i32_const i32_a, $00010000 ; a borrow across every byte
-    +i32_const i32_b, 1
+    i32_const i32_a, $00010000 ; a borrow across every byte
+    i32_const i32_b, 1
     jsr i32_sub
-    +chk32 i32_a, $0000FFFF
+    chk32 i32_a, $0000FFFF
 
-    +i32_const i32_a, 5         ; 5 - 7 = -2, two's complement
-    +i32_const i32_b, 7
+    i32_const i32_a, 5         ; 5 - 7 = -2, two's complement
+    i32_const i32_b, 7
     jsr i32_sub
-    +chk32 i32_a, $FFFFFFFE
+    chk32 i32_a, $FFFFFFFE
 
     jsr i32_neg                 ; -(-2) = 2
-    +chk32 i32_a, 2
+    chk32 i32_a, 2
 
-    +i32_const i32_a, $FFFFFFFB ; |-5| = 5
+    i32_const i32_a, $FFFFFFFB ; |-5| = 5
     jsr i32_abs
-    +chk32 i32_a, 5
+    chk32 i32_a, 5
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I32_ADDSUB", $00
+@name .byte "I32_ADDSUB", $00
 
 ; =====================================================================
 ; 32-bit multiply. 100000 * 37 = 3700000 needs more than 16 bits on both
@@ -2249,60 +2274,60 @@ test_i32_addsub
 ; =====================================================================
 test_i32_mul
     stz chk_err
-    +i32_const i32_a, 100000
-    +i32_const i32_b, 37
+    i32_const i32_a, 100000
+    i32_const i32_b, 37
     jsr i32_mul
-    +chk32 i32_a, 3700000
+    chk32 i32_a, 3700000
 
-    +i32_const i32_a, 65536     ; 65536 * 65536 wraps to zero, exactly
-    +i32_const i32_b, 65536
+    i32_const i32_a, 65536     ; 65536 * 65536 wraps to zero, exactly
+    i32_const i32_b, 65536
     jsr i32_mul
-    +chk32 i32_a, 0
+    chk32 i32_a, 0
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I32_MUL", $00
+@name .byte "I32_MUL", $00
 
 ; =====================================================================
 ; 32-bit unsigned divide, and the divide-by-zero guard.
 ; =====================================================================
 test_i32_divmod
     stz chk_err
-    +i32_const i32_a, 1000000
-    +i32_const i32_b, 7
+    i32_const i32_a, 1000000
+    i32_const i32_b, 7
     jsr i32_divmod
-    +chk_carry 0                ; success: carry clear
-    +chk32 i32_a, 142857        ; 7 * 142857 = 999999
-    +chk32 i32_r, 1
+    chk_carry 0                ; success: carry clear
+    chk32 i32_a, 142857        ; 7 * 142857 = 999999
+    chk32 i32_r, 1
 
-    +i32_const i32_a, 4294967295
-    +i32_const i32_b, 65536
+    i32_const i32_a, 4294967295
+    i32_const i32_b, 65536
     jsr i32_divmod
-    +chk_carry 0
-    +chk32 i32_a, 65535
-    +chk32 i32_r, 65535
+    chk_carry 0
+    chk32 i32_a, 65535
+    chk32 i32_r, 65535
 
-    +i32_const i32_a, 42        ; dividing by zero must report, not crash
-    +i32_const i32_b, 0
+    i32_const i32_a, 42        ; dividing by zero must report, not crash
+    i32_const i32_b, 0
     jsr i32_divmod
-    +chk_carry 1                ; carry must be SET
-    +chk32 i32_a, 42            ; ...and the operand left alone
+    chk_carry 1                ; carry must be SET
+    chk32 i32_a, 42            ; ...and the operand left alone
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I32_DIVMOD", $00
+@name .byte "I32_DIVMOD", $00
 
 ; =====================================================================
 ; Signed and unsigned comparison disagree, and must each be right.
 ; $FFFFFFFF is -1 signed, but the largest value unsigned.
 ; =====================================================================
 test_i32_cmp
-    +i32_const i32_a, $FFFFFFFF
-    +i32_const i32_b, 1
+    i32_const i32_a, $FFFFFFFF
+    i32_const i32_b, 1
 
     jsr i32_cmpu                ; unsigned: a > b
     cmp #1
@@ -2312,15 +2337,15 @@ test_i32_cmp
     cmp #$FF
     bne @fail
 
-    +i32_const i32_a, 12345     ; equality
-    +i32_const i32_b, 12345
+    i32_const i32_a, 12345     ; equality
+    i32_const i32_b, 12345
     jsr i32_cmps
     bne @fail                   ; Z must be set
     cmp #0
     bne @fail
 
-    +i32_const i32_a, $80000000 ; most negative vs most positive
-    +i32_const i32_b, $7FFFFFFF
+    i32_const i32_a, $80000000 ; most negative vs most positive
+    i32_const i32_b, $7FFFFFFF
     jsr i32_cmps
     cmp #$FF
     bne @fail
@@ -2336,13 +2361,13 @@ test_i32_cmp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I32_CMP", $00
+@name .byte "I32_CMP", $00
 
 ; =====================================================================
 ; 32-bit decimal output, including the full-range value and zero.
 ; =====================================================================
 test_i32_to_dec
-    +i32_const i32_a, 4294967295
+    i32_const i32_a, 4294967295
     jsr i32_to_dec
     cpy #10
     bne @fail
@@ -2351,7 +2376,7 @@ test_i32_to_dec
     jsr cmp_i32_buf
     bcs @fail
 
-    +i32_const i32_a, 0
+    i32_const i32_a, 0
     jsr i32_to_dec
     cpy #1
     bne @fail
@@ -2360,7 +2385,7 @@ test_i32_to_dec
     jsr cmp_i32_buf
     bcs @fail
 
-    +i32_const i32_a, 1000000
+    i32_const i32_a, 1000000
     jsr i32_to_dec
     cpy #7
     bne @fail
@@ -2377,10 +2402,10 @@ test_i32_to_dec
     ldx #<@name
     ldy #>@name
     jmp t_result
-@max  !text "4294967295", $00
-@zero !text "0", $00
-@mil  !text "1000000", $00
-@name !text "I32_TO_DEC", $00
+@max  .byte "4294967295", $00
+@zero .byte "0", $00
+@mil  .byte "1000000", $00
+@name .byte "I32_TO_DEC", $00
 
 ; ---------------------------------------------------------------------
 cmp_i32_buf
@@ -2449,8 +2474,8 @@ test_f_roundtrip
     ldx #<@name
     ldy #>@name
     jmp t_result
-@tmp  !fill FP_SIZE, 0
-@name !text "F_ROUNDTRIP", $00
+@tmp  .res FP_SIZE, 0
+@name .byte "F_ROUNDTRIP", $00
 
 ; =====================================================================
 ; f_sub must compute FAC - mem, not mem - FAC.
@@ -2500,8 +2525,8 @@ test_f_sub_order
     ldx #<@name
     ldy #>@name
     jmp t_result
-@three !fill FP_SIZE, 0
-@name  !text "F_SUB_ORDER", $00
+@three .res FP_SIZE, 0
+@name  .byte "F_SUB_ORDER", $00
 
 ; =====================================================================
 ; f_div must compute FAC / mem. 100 / 4 = 25; backwards it would be 0.
@@ -2566,10 +2591,10 @@ test_f_div_order
     ldx #<@name
     ldy #>@name
     jmp t_result
-@four    !fill FP_SIZE, 0
-@hundred !fill FP_SIZE, 0
-@expect  !text ".04", $00
-@name    !text "F_DIV_ORDER", $00
+@four    .res FP_SIZE, 0
+@hundred .res FP_SIZE, 0
+@expect  .byte ".04", $00
+@name    .byte "F_DIV_ORDER", $00
 
 ; =====================================================================
 ; sqrt(144) = 12 exactly, and sgn / abs behave.
@@ -2608,7 +2633,7 @@ test_f_sqrt
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "F_SQRT", $00
+@name .byte "F_SQRT", $00
 
 ; =====================================================================
 ; String conversion, both ways. f_from_str parses "2.5"; doubling it
@@ -2666,9 +2691,9 @@ test_f_str
     ldx #<@name
     ldy #>@name
     jmp t_result
-@str  !text "2.5"
-@two  !fill FP_SIZE, 0
-@name !text "F_STR", $00
+@str  .byte "2.5"
+@two  .res FP_SIZE, 0
+@name .byte "F_STR", $00
 
 ; =====================================================================
 ; Save a block to device 8, load it back to a different address, and
@@ -2729,11 +2754,11 @@ test_fs_roundtrip
     ldx #<@name
     ldy #>@name
     jmp t_result
-@fname     !text "TESTDATA.BIN"
+@fname     .byte "TESTDATA.BIN"
 @fname_len = 12
-@src       !byte $DE, $AD, $BE, $EF, $CA, $FE, $BA, $BE
-@dst       !fill 8, 0
-@name      !text "FS_ROUNDTRIP", $00
+@src       .byte $DE, $AD, $BE, $EF, $CA, $FE, $BA, $BE
+@dst       .res 8, 0
+@name      .byte "FS_ROUNDTRIP", $00
 
 ; ---------------------------------------------------------------------
 ; cmp_num_buf -- compare util/number's output buffer against a
@@ -2768,14 +2793,14 @@ cmp_num_buf
 ; selected.  Plant a sentinel in the tilemap, clear, and check it went.
 ; =====================================================================
 test_cls_clears
-    +vera_addr 0, VRAM_TEXT + (10 * 2), VERA_INC_1
+    vera_addr 0, VRAM_TEXT + (10 * 2), VERA_INC_1
     lda #$AA                    ; sentinel screen code at column 10
     sta VERA_DATA0
 
-    +vera_addrsel 1             ; hostile: leave port 1 selected
+    vera_addrsel 1             ; hostile: leave port 1 selected
     jsr screen_cls
 
-    +vera_addr 1, VRAM_TEXT + (10 * 2), VERA_INC_1
+    vera_addr 1, VRAM_TEXT + (10 * 2), VERA_INC_1
     lda VERA_DATA1
     cmp #$20                    ; a cleared cell holds a space
     bne @fail
@@ -2787,7 +2812,7 @@ test_cls_clears
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "CLS_CLEARS", $00
+@name .byte "CLS_CLEARS", $00
 
 ; =====================================================================
 ; screen_color must actually change what CHROUT puts in VRAM, not just
@@ -2800,23 +2825,23 @@ test_cls_clears
 ; from video/screen.asm and this test fails.
 ; =====================================================================
 test_color_reaches_vram
-    +vera_addrsel 1
+    vera_addrsel 1
     jsr screen_cls
     lda #1                      ; foreground white
     ldx #6                      ; background blue
     jsr screen_color
 
-    +vera_addrsel 1
+    vera_addrsel 1
     ldx #0                      ; row 0
     ldy #0                      ; column 0
     jsr screen_locate
 
-    +vera_addrsel 1
+    vera_addrsel 1
     lda #'X'
     jsr screen_chrout
 
     ; Cell (0,0) is two bytes: screen code, then attribute.
-    +vera_addr 1, VRAM_TEXT, VERA_INC_1
+    vera_addr 1, VRAM_TEXT, VERA_INC_1
     lda VERA_DATA1
     sta @gotchar
     lda VERA_DATA1
@@ -2840,9 +2865,9 @@ test_color_reaches_vram
     ldx #<@name
     ldy #>@name
     jmp t_result
-@gotchar !byte 0
-@gotattr !byte 0
-@name !text "COLOR_TO_VRAM", $00
+@gotchar .byte 0
+@gotattr .byte 0
+@name .byte "COLOR_TO_VRAM", $00
 
 ; =====================================================================
 ; ============ additional coverage: the tests below fill the ==========
@@ -2851,12 +2876,12 @@ test_color_reaches_vram
 
 ; Fold one VERA_DATA1 read into chk_err (see chk16 above). Branchless,
 ; so long tests never push @fail out of branch range.
-!macro chkv .expect {
+.macro chkv p_expect
     lda VERA_DATA1
-    eor #(.expect)
+    eor #(p_expect)
     ora chk_err
     sta chk_err
-}
+.endmacro
 
 ; =====================================================================
 ; vera_set_addr0/1 are the run-time form of +vera_addr: A/X/Y carry an
@@ -2878,20 +2903,20 @@ test_vera_set_addr
     ldy #(VERA_INC_1 << 4)
     jsr vera_set_addr1
     stz chk_err
-    +chkv $5E
-    +chkv $6F
+    chkv $5E
+    chkv $6F
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_SET_ADDR", $00
+@name .byte "VERA_SET_ADDR", $00
 
 ; =====================================================================
 ; +vera_addr_decr walks DOWN. Writing 4 bytes from TESTVRAM+$403 must
 ; land them in descending addresses.
 ; =====================================================================
 test_vera_addr_decr
-    +vera_addr_decr 0, TESTVRAM + $403, VERA_INC_1
+    vera_addr_decr 0, TESTVRAM + $403, VERA_INC_1
     lda #$04
     sta VERA_DATA0              ; -> $403
     lda #$03
@@ -2901,43 +2926,43 @@ test_vera_addr_decr
     lda #$01
     sta VERA_DATA0              ; -> $400
 
-    +vera_addr 1, TESTVRAM + $400, VERA_INC_1
+    vera_addr 1, TESTVRAM + $400, VERA_INC_1
     stz chk_err
-    +chkv $01
-    +chkv $02
-    +chkv $03
-    +chkv $04
+    chkv $01
+    chkv $02
+    chkv $03
+    chkv $04
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_ADDR_DECR", $00
+@name .byte "VERA_ADDR_DECR", $00
 
 ; =====================================================================
 ; vera_copy with a count of 0 must copy nothing -- the same rounding
 ; trap as vera_fill's.
 ; =====================================================================
 test_copy_zero
-    +vera_addr 0, TESTVRAM + $480, VERA_INC_1
+    vera_addr 0, TESTVRAM + $480, VERA_INC_1
     lda #$DD                    ; poison the destination
     ldx #4
     ldy #0
     jsr vera_fill
 
-    +vera_addr 0, TESTVRAM, VERA_INC_1          ; source: anything
-    +vera_addr 1, TESTVRAM + $480, VERA_INC_1
+    vera_addr 0, TESTVRAM, VERA_INC_1          ; source: anything
+    vera_addr 1, TESTVRAM + $480, VERA_INC_1
     ldx #0
     ldy #0
     jsr vera_copy
 
-    +vera_addr 1, TESTVRAM + $480, VERA_INC_1
+    vera_addr 1, TESTVRAM + $480, VERA_INC_1
     lda #$DD
     ldx #4
     jsr t_vcmp_const            ; A = 0 when all four survived
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_COPY_ZERO", $00
+@name .byte "VERA_COPY_ZERO", $00
 
 ; =====================================================================
 ; vera_fill's 16-bit count loop: an exact page multiple ($0200) must
@@ -2947,44 +2972,44 @@ test_fill_page
     stz chk_err
 
     ; poison 514 bytes at +$500, then fill exactly 512
-    +vera_addr 0, TESTVRAM + $500, VERA_INC_1
+    vera_addr 0, TESTVRAM + $500, VERA_INC_1
     lda #$00
     ldx #<514
     ldy #>514
     jsr vera_fill
-    +vera_addr 0, TESTVRAM + $500, VERA_INC_1
+    vera_addr 0, TESTVRAM + $500, VERA_INC_1
     lda #$7A
     ldx #<$0200
     ldy #>$0200
     jsr vera_fill
 
-    +vera_addr 1, TESTVRAM + $500, VERA_INC_1   ; first byte
-    +chkv $7A
-    +vera_addr 1, TESTVRAM + $500 + 511, VERA_INC_1
-    +chkv $7A                   ; last byte of the 512
-    +chkv $00                   ; the 513th must be untouched
+    vera_addr 1, TESTVRAM + $500, VERA_INC_1   ; first byte
+    chkv $7A
+    vera_addr 1, TESTVRAM + $500 + 511, VERA_INC_1
+    chkv $7A                   ; last byte of the 512
+    chkv $00                   ; the 513th must be untouched
 
     ; and 257 = one full page plus one byte
-    +vera_addr 0, TESTVRAM + $800, VERA_INC_1
+    vera_addr 0, TESTVRAM + $800, VERA_INC_1
     lda #$00
     ldx #<260
     ldy #>260
     jsr vera_fill
-    +vera_addr 0, TESTVRAM + $800, VERA_INC_1
+    vera_addr 0, TESTVRAM + $800, VERA_INC_1
     lda #$3B
     ldx #<$0101
     ldy #>$0101
     jsr vera_fill
 
-    +vera_addr 1, TESTVRAM + $800 + 256, VERA_INC_1
-    +chkv $3B                   ; byte 257 written
-    +chkv $00                   ; byte 258 not
+    vera_addr 1, TESTVRAM + $800 + 256, VERA_INC_1
+    chkv $3B                   ; byte 257 written
+    chkv $00                   ; byte 258 not
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "VERA_FILL_PAGE", $00
+@name .byte "VERA_FILL_PAGE", $00
 
 ; =====================================================================
 ; pal_load streams entries. Index 200 forces the *2 to carry into
@@ -2999,20 +3024,20 @@ test_pal_load
     ldx #3                      ; three entries
     jsr pal_load
 
-    +vera_addr 1, VRAM_PALETTE + (200 * 2), VERA_INC_1
+    vera_addr 1, VRAM_PALETTE + (200 * 2), VERA_INC_1
     stz chk_err
-    +chkv $23
-    +chkv $01
-    +chkv $56
-    +chkv $04
-    +chkv $89
-    +chkv $07
+    chkv $23
+    chkv $01
+    chkv $56
+    chkv $04
+    chkv $89
+    chkv $07
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@colors !byte $23, $01, $56, $04, $89, $07   ; $0123, $0456, $0789
-@name   !text "PAL_LOAD", $00
+@colors .byte $23, $01, $56, $04, $89, $07   ; $0123, $0456, $0789
+@name   .byte "PAL_LOAD", $00
 
 ; =====================================================================
 ; pal_load with a count of 0 must load nothing. Without the guard the
@@ -3033,16 +3058,16 @@ test_pal_load_zero
     ldx #0                      ; zero entries
     jsr pal_load
 
-    +vera_addr 1, VRAM_PALETTE + (210 * 2), VERA_INC_1
+    vera_addr 1, VRAM_PALETTE + (210 * 2), VERA_INC_1
     stz chk_err
-    +chkv $AB                   ; entry 210 must have survived
-    +chkv $0C
+    chkv $AB                   ; entry 210 must have survived
+    chkv $0C
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@junk !byte $FF, $FF
-@name !text "PAL_LOAD_ZERO", $00
+@junk .byte $FF, $FF
+@name .byte "PAL_LOAD_ZERO", $00
 
 ; =====================================================================
 ; sprite_flags writes byte 6 whole; sprite_z must then change ONLY the
@@ -3059,14 +3084,14 @@ test_sprite_zdepth
     lda #SPRITE_Z_FRONT
     jsr sprite_z
 
-    +vera_addr 1, VRAM_SPRITE_ATTR + (7 * 8) + 6, VERA_INC_1
+    vera_addr 1, VRAM_SPRITE_ATTR + (7 * 8) + 6, VERA_INC_1
     stz chk_err
-    +chkv ($F0 | SPRITE_Z_FRONT | SPRITE_HFLIP)
+    chkv ($F0 | SPRITE_Z_FRONT | SPRITE_HFLIP)
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SPRITE_ZDEPTH", $00
+@name .byte "SPRITE_ZDEPTH", $00
 
 ; =====================================================================
 ; sprite_size packs height(7:6) | width(5:4) | palette offset(3:0),
@@ -3083,9 +3108,9 @@ test_sprite_size_pal
     ldy #SPRITE_SIZE_16         ; height -> bits 7:6 = $40
     jsr sprite_size
 
-    +vera_addr 1, VRAM_SPRITE_ATTR + (2 * 8) + 7, VERA_INC_1
+    vera_addr 1, VRAM_SPRITE_ATTR + (2 * 8) + 7, VERA_INC_1
     stz chk_err
-    +chkv ($40 | $20 | 5)
+    chkv ($40 | $20 | 5)
 
     lda #$15                    ; out-of-range offset: low nibble only
     sta X16_P0
@@ -3094,21 +3119,21 @@ test_sprite_size_pal
     ldy #SPRITE_SIZE_16
     jsr sprite_size
 
-    +vera_addr 1, VRAM_SPRITE_ATTR + (2 * 8) + 7, VERA_INC_1
-    +chkv ($40 | $20 | 5)       ; still $65 -- $15 must not set bit 4
+    vera_addr 1, VRAM_SPRITE_ATTR + (2 * 8) + 7, VERA_INC_1
+    chkv ($40 | $20 | 5)       ; still $65 -- $15 must not set bit 4
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SPRITE_SIZE_PAL", $00
+@name .byte "SPRITE_SIZE_PAL", $00
 
 ; =====================================================================
 ; sprites_on / sprites_off toggle exactly the sprite-enable bit of
 ; DC_VIDEO. Save and restore the register so the display is unchanged.
 ; =====================================================================
 test_sprite_enable
-    +vera_dcsel 0
+    vera_dcsel 0
     lda VERA_DC_VIDEO
     sta @saved
 
@@ -3134,15 +3159,15 @@ test_sprite_enable
     ldx #<@name
     ldy #>@name
     jmp t_result
-@saved !byte 0
-@name  !text "SPRITE_ENABLE", $00
+@saved .byte 0
+@name  .byte "SPRITE_ENABLE", $00
 
 ; =====================================================================
 ; layer_on / layer_off, exercised on layer 0 (idle in text mode) so
 ; nothing visible changes. Layer 1's bit must be left alone.
 ; =====================================================================
 test_layer_enable
-    +vera_dcsel 0
+    vera_dcsel 0
     lda VERA_DC_VIDEO
     sta @saved
 
@@ -3173,8 +3198,8 @@ test_layer_enable
     ldx #<@name
     ldy #>@name
     jmp t_result
-@saved !byte 0
-@name  !text "LAYER_ENABLE", $00
+@saved .byte 0
+@name  .byte "LAYER_ENABLE", $00
 
 ; =====================================================================
 ; layer_scroll_x/y: 12-bit value, high byte masked to 4 bits, and the
@@ -3236,7 +3261,7 @@ test_layer_scroll
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "LAYER_SCROLL", $00
+@name .byte "LAYER_SCROLL", $00
 
 ; =====================================================================
 ; gfx_clear must reach the WHOLE 320x240 bitmap. 76800 bytes is $12C00,
@@ -3245,34 +3270,34 @@ test_layer_scroll
 ; and the seam, and that the byte after the bitmap survives.
 ; =====================================================================
 test_gfx_clear_full
-    +vpoke VRAM_BITMAP + 40000, $00     ; past the truncated count
-    +vpoke VRAM_BITMAP + 76799, $00     ; the very last pixel
-    +vpoke VRAM_BITMAP + 76800, $77     ; first byte past the bitmap
+    vpoke VRAM_BITMAP + 40000, $00     ; past the truncated count
+    vpoke VRAM_BITMAP + 76799, $00     ; the very last pixel
+    vpoke VRAM_BITMAP + 76800, $77     ; first byte past the bitmap
 
     lda #$A5
     jsr gfx_clear
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP, VERA_INC_1
-    +chkv $A5                   ; first pixel
-    +vera_addr 1, VRAM_BITMAP + 40000, VERA_INC_1
-    +chkv $A5                   ; middle of the screen
-    +vera_addr 1, VRAM_BITMAP + 76799, VERA_INC_1
-    +chkv $A5                   ; last pixel
-    +chkv $77                   ; ...and not one byte more
+    vera_addr 1, VRAM_BITMAP, VERA_INC_1
+    chkv $A5                   ; first pixel
+    vera_addr 1, VRAM_BITMAP + 40000, VERA_INC_1
+    chkv $A5                   ; middle of the screen
+    vera_addr 1, VRAM_BITMAP + 76799, VERA_INC_1
+    chkv $A5                   ; last pixel
+    chkv $77                   ; ...and not one byte more
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_CLEAR_FULL", $00
+@name .byte "GFX_CLEAR_FULL", $00
 
 ; =====================================================================
 ; gfx_hline with a 16-bit length. 300 pixels from (10,30) spans offsets
 ; 9610..9909; both ends drawn, both neighbours clear.
 ; =====================================================================
 test_gfx_hline_long
-    +vera_addr 0, VRAM_BITMAP + 9600, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 9600, VERA_INC_1
     lda #$00
     ldx #<400
     ldy #>400
@@ -3293,25 +3318,25 @@ test_gfx_hline_long
     jsr gfx_hline
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 9609, VERA_INC_1
-    +chkv $00                   ; before the span
-    +chkv $66                   ; first pixel
-    +vera_addr 1, VRAM_BITMAP + 9909, VERA_INC_1
-    +chkv $66                   ; last pixel (10 + 300 - 1 = 309)
-    +chkv $00                   ; after the span
+    vera_addr 1, VRAM_BITMAP + 9609, VERA_INC_1
+    chkv $00                   ; before the span
+    chkv $66                   ; first pixel
+    vera_addr 1, VRAM_BITMAP + 9909, VERA_INC_1
+    chkv $66                   ; last pixel (10 + 300 - 1 = 309)
+    chkv $00                   ; after the span
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_HLINE_LONG", $00
+@name .byte "GFX_HLINE_LONG", $00
 
 ; =====================================================================
 ; gfx_rect: a 3x2 block at (10,20). Interior filled, all four sides'
 ; neighbours untouched.
 ; =====================================================================
 test_gfx_rect
-    +vera_addr 0, VRAM_BITMAP + 6080, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 6080, VERA_INC_1
     lda #$00
     ldx #<1280                  ; rows 19..22
     ldy #>1280
@@ -3334,32 +3359,32 @@ test_gfx_rect
     jsr gfx_rect
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 6409, VERA_INC_1   ; (9,20)
-    +chkv $00
-    +chkv $3C                   ; (10,20)
-    +chkv $3C                   ; (11,20)
-    +chkv $3C                   ; (12,20)
-    +chkv $00                   ; (13,20)
-    +vera_addr 1, VRAM_BITMAP + 6730, VERA_INC_1   ; (10,21)
-    +chkv $3C
-    +vera_addr 1, VRAM_BITMAP + 6732, VERA_INC_1   ; (12,21)
-    +chkv $3C
-    +vera_addr 1, VRAM_BITMAP + 7050, VERA_INC_1   ; (10,22): below
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 6090, VERA_INC_1   ; (10,19): above
-    +chkv $00
+    vera_addr 1, VRAM_BITMAP + 6409, VERA_INC_1   ; (9,20)
+    chkv $00
+    chkv $3C                   ; (10,20)
+    chkv $3C                   ; (11,20)
+    chkv $3C                   ; (12,20)
+    chkv $00                   ; (13,20)
+    vera_addr 1, VRAM_BITMAP + 6730, VERA_INC_1   ; (10,21)
+    chkv $3C
+    vera_addr 1, VRAM_BITMAP + 6732, VERA_INC_1   ; (12,21)
+    chkv $3C
+    vera_addr 1, VRAM_BITMAP + 7050, VERA_INC_1   ; (10,22): below
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 6090, VERA_INC_1   ; (10,19): above
+    chkv $00
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_RECT", $00
+@name .byte "GFX_RECT", $00
 
 ; =====================================================================
 ; gfx_frame: a 4x3 outline at (30,10). Edges drawn, interior hollow.
 ; =====================================================================
 test_gfx_frame
-    +vera_addr 0, VRAM_BITMAP + 3200, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 3200, VERA_INC_1
     lda #$00
     ldx #<960                   ; rows 10..12
     ldy #>960
@@ -3382,35 +3407,35 @@ test_gfx_frame
     jsr gfx_frame
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 3230, VERA_INC_1   ; top edge, (30..33,10)
-    +chkv $44
-    +chkv $44
-    +chkv $44
-    +chkv $44
-    +chkv $00                   ; (34,10) is outside
-    +vera_addr 1, VRAM_BITMAP + 3550, VERA_INC_1   ; middle row
-    +chkv $44                   ; (30,11) left edge
-    +chkv $00                   ; (31,11) hollow
-    +chkv $00                   ; (32,11) hollow
-    +chkv $44                   ; (33,11) right edge
-    +vera_addr 1, VRAM_BITMAP + 3870, VERA_INC_1   ; bottom edge
-    +chkv $44
-    +chkv $44
-    +chkv $44
-    +chkv $44
+    vera_addr 1, VRAM_BITMAP + 3230, VERA_INC_1   ; top edge, (30..33,10)
+    chkv $44
+    chkv $44
+    chkv $44
+    chkv $44
+    chkv $00                   ; (34,10) is outside
+    vera_addr 1, VRAM_BITMAP + 3550, VERA_INC_1   ; middle row
+    chkv $44                   ; (30,11) left edge
+    chkv $00                   ; (31,11) hollow
+    chkv $00                   ; (32,11) hollow
+    chkv $44                   ; (33,11) right edge
+    vera_addr 1, VRAM_BITMAP + 3870, VERA_INC_1   ; bottom edge
+    chkv $44
+    chkv $44
+    chkv $44
+    chkv $44
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_FRAME", $00
+@name .byte "GFX_FRAME", $00
 
 ; =====================================================================
 ; gfx_line beyond the pure diagonal: a vertical drop (dx = 0) and a
 ; right-to-left horizontal (sx = -1).
 ; =====================================================================
 test_gfx_line_steep
-    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP, VERA_INC_1
     lda #$00
     ldx #<1300
     ldy #>1300
@@ -3446,27 +3471,27 @@ test_gfx_line_steep
     jsr gfx_line
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 2, VERA_INC_1      ; (2,0)
-    +chkv $D1
-    +chkv $00                   ; (3,0) stays clear
-    +vera_addr 1, VRAM_BITMAP + 322, VERA_INC_1    ; (2,1)
-    +chkv $D1
-    +vera_addr 1, VRAM_BITMAP + 642, VERA_INC_1    ; (2,2)
-    +chkv $D1
-    +vera_addr 1, VRAM_BITMAP + 960, VERA_INC_1    ; row 3, from (0,3)
-    +chkv $00                   ; (0,3) clear
-    +chkv $D1                   ; (1,3)
-    +chkv $D1                   ; (2,3)
-    +chkv $D1                   ; (3,3)
-    +chkv $D1                   ; (4,3)
-    +chkv $D1                   ; (5,3)
-    +chkv $00                   ; (6,3) clear
+    vera_addr 1, VRAM_BITMAP + 2, VERA_INC_1      ; (2,0)
+    chkv $D1
+    chkv $00                   ; (3,0) stays clear
+    vera_addr 1, VRAM_BITMAP + 322, VERA_INC_1    ; (2,1)
+    chkv $D1
+    vera_addr 1, VRAM_BITMAP + 642, VERA_INC_1    ; (2,2)
+    chkv $D1
+    vera_addr 1, VRAM_BITMAP + 960, VERA_INC_1    ; row 3, from (0,3)
+    chkv $00                   ; (0,3) clear
+    chkv $D1                   ; (1,3)
+    chkv $D1                   ; (2,3)
+    chkv $D1                   ; (3,3)
+    chkv $D1                   ; (4,3)
+    chkv $D1                   ; (5,3)
+    chkv $00                   ; (6,3) clear
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_LINE_STEEP", $00
+@name .byte "GFX_LINE_STEEP", $00
 
 ; =====================================================================
 ; umul16 at the corners: $FFFF^2 = $FFFE0001 exercises every carry, and
@@ -3516,7 +3541,7 @@ test_umul16_edge
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "UMUL16_EDGE", $00
+@name .byte "UMUL16_EDGE", $00
 
 ; =====================================================================
 ; mul88 keeps the fraction: 0.5 * 0.5 = 0.25 lives entirely below the
@@ -3561,32 +3586,48 @@ test_mul88_frac
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "MUL88_FRAC", $00
+@name .byte "MUL88_FRAC", $00
 
 ; =====================================================================
 ; collide8's edge sums are 9-bit: boxes reaching past x = 255 must
 ; still collide, and edges that merely touch on the Y axis must not.
 ; =====================================================================
 test_collide8_9bit
-    lda #250 : sta X16_P0       ; A spans x 250..259 -- past 255
-    lda #0   : sta X16_P1
-    lda #10  : sta X16_P2
-    lda #10  : sta X16_P3
-    lda #252 : sta X16_P4       ; B spans x 252..261
-    lda #5   : sta X16_P5
-    lda #10  : sta X16_P6
-    lda #10  : sta X16_P7
+    lda #250
+    sta X16_P0       ; A spans x 250..259 -- past 255
+    lda #0  
+    sta X16_P1
+    lda #10 
+    sta X16_P2
+    lda #10 
+    sta X16_P3
+    lda #252
+    sta X16_P4       ; B spans x 252..261
+    lda #5  
+    sta X16_P5
+    lda #10 
+    sta X16_P6
+    lda #10 
+    sta X16_P7
     jsr collide8
     bcc @fail                   ; they overlap on both axes
 
-    lda #250 : sta X16_P0       ; same boxes, B moved to touch on Y:
-    lda #0   : sta X16_P1       ; A spans y 0..9, B starts at y 10
-    lda #10  : sta X16_P2
-    lda #10  : sta X16_P3
-    lda #252 : sta X16_P4
-    lda #10  : sta X16_P5
-    lda #10  : sta X16_P6
-    lda #10  : sta X16_P7
+    lda #250
+    sta X16_P0       ; same boxes, B moved to touch on Y:
+    lda #0  
+    sta X16_P1       ; A spans y 0..9, B starts at y 10
+    lda #10 
+    sta X16_P2
+    lda #10 
+    sta X16_P3
+    lda #252
+    sta X16_P4
+    lda #10 
+    sta X16_P5
+    lda #10 
+    sta X16_P6
+    lda #10 
+    sta X16_P7
     jsr collide8
     bcs @fail                   ; touching is not overlapping
 
@@ -3598,7 +3639,7 @@ test_collide8_9bit
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "COLLIDE8_9BIT", $00
+@name .byte "COLLIDE8_9BIT", $00
 
 ; =====================================================================
 ; bit_put routes on X: nonzero sets the masked bits, zero clears them.
@@ -3631,8 +3672,8 @@ test_bit_put
     ldx #<@name
     ldy #>@name
     jmp t_result
-@cell !byte 0
-@name !text "BIT_PUT", $00
+@cell .byte 0
+@name .byte "BIT_PUT", $00
 
 ; =====================================================================
 ; i16 conversions and shift carries. $FF is 255 zero-extended but -1
@@ -3643,36 +3684,36 @@ test_i16_convert
 
     lda #$FF
     jsr i16_from_u8
-    +chk16 i16_a, 255
+    chk16 i16_a, 255
 
     lda #$FF
     jsr i16_from_s8
-    +chk16 i16_a, -1
+    chk16 i16_a, -1
 
     lda #$7F
     jsr i16_from_s8
-    +chk16 i16_a, 127
+    chk16 i16_a, 127
 
-    +i16_const i16_a, $8000     ; shl: top bit out into carry
+    i16_const i16_a, $8000     ; shl: top bit out into carry
     jsr i16_shl
-    +chk_carry 1
-    +chk16 i16_a, 0
+    chk_carry 1
+    chk16 i16_a, 0
 
-    +i16_const i16_a, $4000     ; ...and only the top bit
+    i16_const i16_a, $4000     ; ...and only the top bit
     jsr i16_shl
-    +chk_carry 0
-    +chk16 i16_a, $8000
+    chk_carry 0
+    chk16 i16_a, $8000
 
-    +i16_const i16_a, 1         ; shr: bottom bit out into carry
+    i16_const i16_a, 1         ; shr: bottom bit out into carry
     jsr i16_shr
-    +chk_carry 1
-    +chk16 i16_a, 0
+    chk_carry 1
+    chk16 i16_a, 0
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_CONVERT", $00
+@name .byte "I16_CONVERT", $00
 
 ; =====================================================================
 ; i16_mul is shared between signed and unsigned because two's
@@ -3681,21 +3722,21 @@ test_i16_convert
 test_i16_mul_neg
     stz chk_err
 
-    +i16_const i16_a, -300
-    +i16_const i16_b, 3
+    i16_const i16_a, -300
+    i16_const i16_b, 3
     jsr i16_mul
-    +chk16 i16_a, -900
+    chk16 i16_a, -900
 
-    +i16_const i16_a, 5
-    +i16_const i16_b, -1
+    i16_const i16_a, 5
+    i16_const i16_b, -1
     jsr i16_mul
-    +chk16 i16_a, -5
+    chk16 i16_a, -5
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I16_MUL_NEG", $00
+@name .byte "I16_MUL_NEG", $00
 
 ; =====================================================================
 ; 32-bit shifts: carry out of shl, and asr versus shr on the sign bit.
@@ -3703,24 +3744,24 @@ test_i16_mul_neg
 test_i32_shift
     stz chk_err
 
-    +i32_const i32_a, $80000001
+    i32_const i32_a, $80000001
     jsr i32_shl
-    +chk_carry 1
-    +chk32 i32_a, 2
+    chk_carry 1
+    chk32 i32_a, 2
 
-    +i32_const i32_a, $80000000
+    i32_const i32_a, $80000000
     jsr i32_asr
-    +chk32 i32_a, $C0000000     ; sign fill
+    chk32 i32_a, $C0000000     ; sign fill
 
-    +i32_const i32_a, $80000000
+    i32_const i32_a, $80000000
     jsr i32_shr
-    +chk32 i32_a, $40000000     ; zero fill
+    chk32 i32_a, $40000000     ; zero fill
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I32_SHIFT", $00
+@name .byte "I32_SHIFT", $00
 
 ; =====================================================================
 ; i32 conversions: $8000 is 32768 zero-extended but -32768 sign-
@@ -3732,14 +3773,14 @@ test_i32_convert
     lda #<$8000
     ldx #>$8000
     jsr i32_from_u16
-    +chk32 i32_a, $00008000
+    chk32 i32_a, $00008000
 
     lda #<$8000
     ldx #>$8000
     jsr i32_from_s16
-    +chk32 i32_a, $FFFF8000
+    chk32 i32_a, $FFFF8000
 
-    +i32_const i32_a, $12345678
+    i32_const i32_a, $12345678
     jsr i32_to_s16
     eor #$78                    ; A = low byte
     ora chk_err
@@ -3753,7 +3794,7 @@ test_i32_convert
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "I32_CONVERT", $00
+@name .byte "I32_CONVERT", $00
 
 ; =====================================================================
 ; u16_to_hex must zero-pad: $000A is "000A", never "A".
@@ -3779,8 +3820,8 @@ test_number_hex_low
     ldx #<@name
     ldy #>@name
     jmp t_result
-@expect !text "000A", $00
-@name   !text "NUMBER_HEX_LOW", $00
+@expect .byte "000A", $00
+@name   .byte "NUMBER_HEX_LOW", $00
 
 ; =====================================================================
 ; dec_to_u16 boundaries: the largest value, plain zero, and an empty
@@ -3833,9 +3874,9 @@ test_number_parse_edge
     ldx #<@name
     ldy #>@name
     jmp t_result
-@max  !text "65535"
-@zero !text "0"
-@name !text "NUMBER_PARSE_EDGE", $00
+@max  .byte "65535"
+@zero .byte "0"
+@name .byte "NUMBER_PARSE_EDGE", $00
 
 ; =====================================================================
 ; f_from_u8 reaches values above the s16 low byte, f_neg flips the
@@ -3901,8 +3942,8 @@ test_f_neg_cmp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@five !fill FP_SIZE, 0
-@name !text "F_NEG_CMP", $00
+@five .res FP_SIZE, 0
+@name .byte "F_NEG_CMP", $00
 
 ; =====================================================================
 ; f_pow computes FAC ^ mem: 2 ^ 10 = 1024. Verified as a string --
@@ -3944,9 +3985,9 @@ test_f_pow
     ldx #<@name
     ldy #>@name
     jmp t_result
-@ten    !fill FP_SIZE, 0
-@expect !text "1024", $00
-@name   !text "F_POW", $00
+@ten    .res FP_SIZE, 0
+@expect .byte "1024", $00
+@name   .byte "F_POW", $00
 
 ; =====================================================================
 ; ln(1) = 0 and e^0 = 1 exactly -- the two anchor points every
@@ -3981,7 +4022,7 @@ test_f_ln_exp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "F_LN_EXP", $00
+@name .byte "F_LN_EXP", $00
 
 ; =====================================================================
 ; f_int truncates toward NEGATIVE infinity, BASIC's INT: -2.5 floors
@@ -4007,8 +4048,8 @@ test_f_int_floor
     ldx #<@name
     ldy #>@name
     jmp t_result
-@str  !text "-2.5"
-@name !text "F_INT_FLOOR", $00
+@str  .byte "-2.5"
+@name .byte "F_INT_FLOOR", $00
 
 ; =====================================================================
 ; psg_note_off zeroes the volume but must keep the panning bits and
@@ -4035,18 +4076,18 @@ test_psg_note_off
     ldx #4
     jsr psg_note_off
 
-    +vera_addr 1, VRAM_PSG + (4 * 4), VERA_INC_1
+    vera_addr 1, VRAM_PSG + (4 * 4), VERA_INC_1
     stz chk_err
-    +chkv $67                   ; frequency survives
-    +chkv $05
-    +chkv PSG_PAN_BOTH          ; volume 0, pan intact
-    +chkv (PSG_WAVE_SAWTOOTH | 10)
+    chkv $67                   ; frequency survives
+    chkv $05
+    chkv PSG_PAN_BOTH          ; volume 0, pan intact
+    chkv (PSG_WAVE_SAWTOOTH | 10)
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PSG_NOTE_OFF", $00
+@name .byte "PSG_NOTE_OFF", $00
 
 ; =====================================================================
 ; The PCM FIFO flags: empty after a reset, no longer empty (and not
@@ -4081,7 +4122,7 @@ test_pcm_fifo
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PCM_FIFO", $00
+@name .byte "PCM_FIFO", $00
 
 ; =====================================================================
 ; key_get is non-blocking: with nothing queued it returns 0, and
@@ -4112,7 +4153,7 @@ test_key_empty
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "KEY_EMPTY", $00
+@name .byte "KEY_EMPTY", $00
 
 ; =====================================================================
 ; Loading a file that does not exist must come back with carry set,
@@ -4144,10 +4185,10 @@ test_fs_missing
     ldx #<@name
     ldy #>@name
     jmp t_result
-@fname     !text "NOFILE.XYZ"
+@fname     .byte "NOFILE.XYZ"
 @fname_len = 10
-@dst       !fill 2, 0
-@name      !text "FS_MISSING", $00
+@dst       .res 2, 0
+@name      .byte "FS_MISSING", $00
 
 ; =====================================================================
 ; fs_vload pulls a file straight into VRAM. TESTDATA.BIN was written by
@@ -4155,7 +4196,7 @@ test_fs_missing
 ; the VRAM address (the two-byte PRG header is consumed, not stored).
 ; =====================================================================
 test_fs_vload
-    +vera_addr 0, TESTVRAM + $600, VERA_INC_1
+    vera_addr 0, TESTVRAM + $600, VERA_INC_1
     lda #$00                    ; scrub the landing zone
     ldx #12
     ldy #0
@@ -4177,16 +4218,16 @@ test_fs_vload
     jsr fs_vload
     bcs @fail
 
-    +vera_addr 1, TESTVRAM + $600, VERA_INC_1
+    vera_addr 1, TESTVRAM + $600, VERA_INC_1
     stz chk_err
-    +chkv $DE                   ; FS_ROUNDTRIP's payload
-    +chkv $AD
-    +chkv $BE
-    +chkv $EF
-    +chkv $CA
-    +chkv $FE
-    +chkv $BA
-    +chkv $BE
+    chkv $DE                   ; FS_ROUNDTRIP's payload
+    chkv $AD
+    chkv $BE
+    chkv $EF
+    chkv $CA
+    chkv $FE
+    chkv $BA
+    chkv $BE
 
     lda chk_err
     bra @report
@@ -4196,9 +4237,9 @@ test_fs_vload
     ldx #<@name
     ldy #>@name
     jmp t_result
-@fname     !text "TESTDATA.BIN"
+@fname     .byte "TESTDATA.BIN"
 @fname_len = 12
-@name      !text "FS_VLOAD", $00
+@name      .byte "FS_VLOAD", $00
 
 ; =====================================================================
 ; bank_set/get and bank_poke: the byte lands in the right bank at the
@@ -4249,8 +4290,8 @@ test_bank_poke
     ldx #<@name
     ldy #>@name
     jmp t_result
-@saved !byte 0
-@name  !text "BANK_POKE", $00
+@saved .byte 0
+@name  .byte "BANK_POKE", $00
 
 ; =====================================================================
 ; mem_to_bank with a byte count of 0 copies nothing.
@@ -4299,9 +4340,9 @@ test_bank_zero_count
     ldx #<@name
     ldy #>@name
     jmp t_result
-@junk  !byte $FF
-@saved !byte 0
-@name  !text "BANK_ZERO_COUNT", $00
+@junk  .byte $FF
+@saved .byte 0
+@name  .byte "BANK_ZERO_COUNT", $00
 
 ; =====================================================================
 ; screen_set_mode / screen_get_mode round trip, and an unsupported
@@ -4338,8 +4379,8 @@ test_screen_mode_rt
     ldx #<@name
     ldy #>@name
     jmp t_result
-@saved !byte 0
-@name  !text "SCREEN_MODE_RT", $00
+@saved .byte 0
+@name  .byte "SCREEN_MODE_RT", $00
 
 ; =====================================================================
 ; screen_locate / screen_get_cursor round trip.
@@ -4362,7 +4403,7 @@ test_screen_cursor
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SCREEN_CURSOR", $00
+@name .byte "SCREEN_CURSOR", $00
 
 ; =====================================================================
 ; screen_puts must land its characters in the tilemap. 'H' and 'I'
@@ -4378,17 +4419,17 @@ test_screen_puts_vram
     ldx #>@text
     jsr screen_puts
 
-    +vera_addr 1, VRAM_TEXT + (20 * 128 + 4) * 2, VERA_INC_2
+    vera_addr 1, VRAM_TEXT + (20 * 128 + 4) * 2, VERA_INC_2
     stz chk_err
-    +chkv $08                   ; 'H' (stepping by 2 skips the attributes)
-    +chkv $09                   ; 'I'
+    chkv $08                   ; 'H' (stepping by 2 skips the attributes)
+    chkv $09                   ; 'I'
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@text !text "HI", $00
-@name !text "SCREEN_PUTS", $00
+@text .byte "HI", $00
+@name .byte "SCREEN_PUTS", $00
 
 ; =====================================================================
 ; ============ KERNAL block ops, IRQ sources, FX line/poly, ==========
@@ -4429,7 +4470,7 @@ test_mem_fill
     bne @check
 
     ; VERA: aim port 0, then fill "address" VERA_DATA0
-    +vera_addr 0, TESTVRAM + $900, VERA_INC_1
+    vera_addr 0, TESTVRAM + $900, VERA_INC_1
     lda #<VERA_DATA0
     sta X16_P0
     lda #>VERA_DATA0
@@ -4440,7 +4481,7 @@ test_mem_fill
     lda #$37
     jsr mem_fill
 
-    +vera_addr 1, TESTVRAM + $900, VERA_INC_1
+    vera_addr 1, TESTVRAM + $900, VERA_INC_1
     lda #$37
     ldx #8
     jsr t_vcmp_const
@@ -4454,8 +4495,8 @@ test_mem_fill
     ldx #<@name
     ldy #>@name
     jmp t_result
-@buf  !fill 42, 0
-@name !text "MEM_FILL", $00
+@buf  .res 42, 0
+@name .byte "MEM_FILL", $00
 
 ; =====================================================================
 ; mem_copy: RAM to RAM, RAM into VRAM through DATA0, and VRAM back out.
@@ -4482,7 +4523,7 @@ test_mem_copy
     bpl @ram
 
     ; upload: RAM -> VRAM via the non-incrementing DATA0 target
-    +vera_addr 0, TESTVRAM + $920, VERA_INC_1
+    vera_addr 0, TESTVRAM + $920, VERA_INC_1
     lda #<@src
     sta X16_P0
     lda #>@src
@@ -4497,7 +4538,7 @@ test_mem_copy
     jsr mem_copy
 
     ; download: VRAM -> RAM via the non-incrementing DATA0 source
-    +vera_addr 0, TESTVRAM + $920, VERA_INC_1
+    vera_addr 0, TESTVRAM + $920, VERA_INC_1
     lda #<VERA_DATA0
     sta X16_P0
     lda #>VERA_DATA0
@@ -4526,10 +4567,10 @@ test_mem_copy
     ldx #<@name
     ldy #>@name
     jmp t_result
-@src  !byte $91, $82, $73, $64, $55, $46, $37, $28
-@dst  !fill 8, 0
-@dst2 !fill 8, 0
-@name !text "MEM_COPY", $00
+@src  .byte $91, $82, $73, $64, $55, $46, $37, $28
+@dst  .res 8, 0
+@dst2 .res 8, 0
+@name .byte "MEM_COPY", $00
 
 ; =====================================================================
 ; mem_crc computes CRC-16/IBM-3740; the check value of "123456789" is
@@ -4565,8 +4606,8 @@ test_mem_crc
     ldx #<@name
     ldy #>@name
     jmp t_result
-@check !text "123456789"
-@name  !text "MEM_CRC", $00
+@check .byte "123456789"
+@name  .byte "MEM_CRC", $00
 
 ; =====================================================================
 ; mem_decompress unpacks a real LZSA2 block (`lzsa -r -f2`): 31
@@ -4623,7 +4664,7 @@ test_mem_decompress
 
 @vram
     ; and the flagship trick: decompress directly into VRAM
-    +vera_addr 0, TESTVRAM + $A00, VERA_INC_1
+    vera_addr 0, TESTVRAM + $A00, VERA_INC_1
     lda #<@packed
     sta X16_P0
     lda #>@packed
@@ -4634,7 +4675,7 @@ test_mem_decompress
     sta X16_P3
     jsr mem_decompress
 
-    +vera_addr 1, TESTVRAM + $A00, VERA_INC_1
+    vera_addr 1, TESTVRAM + $A00, VERA_INC_1
     ldx #4
 @vrep
     ldy #0
@@ -4656,13 +4697,13 @@ test_mem_decompress
     ldx #<@name
     ldy #>@name
     jmp t_result
-@expect !text "X16LIB-DECOMPRESS-TEST!!"
+@expect .byte "X16LIB-DECOMPRESS-TEST!!"
 @packed                         ; lzsa -r -f2 of that phrase repeated 4x
-    !byte $3f, $f4, $06, $58, $31, $36, $4c, $49, $42, $2d, $44, $45
-    !byte $43, $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53
-    !byte $54, $21, $21, $ff, $30, $e7, $e8
-@out    !fill 97, 0
-@name   !text "MEM_DECOMPRESS", $00
+    .byte $3f, $f4, $06, $58, $31, $36, $4c, $49, $42, $2d, $44, $45
+    .byte $43, $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53
+    .byte $54, $21, $21, $ff, $30, $e7, $e8
+@out    .res 97, 0
+@name   .byte "MEM_DECOMPRESS", $00
 
 ; =====================================================================
 ; bank_copy_far moves banked RAM to banked RAM, rolling both sides
@@ -4763,8 +4804,8 @@ test_bank_copy_far
     ldx #<@name
     ldy #>@name
     jmp t_result
-@saved !byte 0
-@name  !text "BANK_COPY_FAR", $00
+@saved .byte 0
+@name  .byte "BANK_COPY_FAR", $00
 
 ; =====================================================================
 ; The bank allocator: lowest-first allocation, exhaustion, free and
@@ -4814,7 +4855,7 @@ test_bank_alloc
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "BANK_ALLOC", $00
+@name .byte "BANK_ALLOC", $00
 
 ; =====================================================================
 ; irq_line_install must raise IEN's LINE bit and route scanline bit 8
@@ -4865,7 +4906,7 @@ test_irq_line_regs
     jmp t_result
 @handler
     rts
-@name !text "IRQ_LINE_REGS", $00
+@name .byte "IRQ_LINE_REGS", $00
 
 ; =====================================================================
 ; The line interrupt must actually fire at its scanline -- where
@@ -4922,9 +4963,9 @@ test_irq_line_fires
 @handler
     inc @fired
     rts
-@fired  !byte 0
-@jiffy0 !byte 0
-@name   !text "IRQ_LINE_FIRES", $00
+@fired  .byte 0
+@jiffy0 .byte 0
+@name   .byte "IRQ_LINE_FIRES", $00
 
 ; =====================================================================
 ; Sprite collision plumbing: install/remove toggle IEN's SPRCOL bit,
@@ -4969,7 +5010,7 @@ test_sprcol_regs
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "SPRCOL_REGS", $00
+@name .byte "SPRCOL_REGS", $00
 
 ; =====================================================================
 ; fx_line, against pixels the emulator verifiably produces: an
@@ -4983,7 +5024,7 @@ test_fx_line
     ldx #>@name
     jmp t_skip
 @go
-    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP, VERA_INC_1
     lda #$00
     ldx #<2560                  ; clear rows 0..7
     ldy #>2560
@@ -5040,57 +5081,57 @@ test_fx_line
     jsr fx_line
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 0, VERA_INC_1      ; horizontal row
-    +chkv $C1
-    +chkv $C1
-    +chkv $C1
-    +chkv $C1
-    +chkv $C1
-    +chkv $C1
-    +chkv $C1
-    +chkv $C1
-    +chkv $00                   ; exactly 8 pixels
-    +vera_addr 1, VRAM_BITMAP + 320, VERA_INC_1    ; nothing on row 1
-    +chkv $00
+    vera_addr 1, VRAM_BITMAP + 0, VERA_INC_1      ; horizontal row
+    chkv $C1
+    chkv $C1
+    chkv $C1
+    chkv $C1
+    chkv $C1
+    chkv $C1
+    chkv $C1
+    chkv $C1
+    chkv $00                   ; exactly 8 pixels
+    vera_addr 1, VRAM_BITMAP + 320, VERA_INC_1    ; nothing on row 1
+    chkv $00
 
-    +vera_addr 1, VRAM_BITMAP + 20, VERA_INC_1     ; diagonal endpoints
-    +chkv $C2
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 3*320 + 23, VERA_INC_1
-    +chkv $C2
-    +vera_addr 1, VRAM_BITMAP + 7*320 + 27, VERA_INC_1
-    +chkv $C2
+    vera_addr 1, VRAM_BITMAP + 20, VERA_INC_1     ; diagonal endpoints
+    chkv $C2
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 3*320 + 23, VERA_INC_1
+    chkv $C2
+    vera_addr 1, VRAM_BITMAP + 7*320 + 27, VERA_INC_1
+    chkv $C2
 
-    +vera_addr 1, VRAM_BITMAP + 60, VERA_INC_1     ; anti-diagonal
-    +chkv $C3
-    +vera_addr 1, VRAM_BITMAP + 1*320 + 59, VERA_INC_1
-    +chkv $C3
-    +vera_addr 1, VRAM_BITMAP + 7*320 + 53, VERA_INC_1
-    +chkv $C3
+    vera_addr 1, VRAM_BITMAP + 60, VERA_INC_1     ; anti-diagonal
+    chkv $C3
+    vera_addr 1, VRAM_BITMAP + 1*320 + 59, VERA_INC_1
+    chkv $C3
+    vera_addr 1, VRAM_BITMAP + 7*320 + 53, VERA_INC_1
+    chkv $C3
 
     ; the slant's full Bresenham: two pixels per row, descending
-    +vera_addr 1, VRAM_BITMAP + 40, VERA_INC_1
-    +chkv $C4
-    +chkv $C4
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 1*320 + 42, VERA_INC_1
-    +chkv $C4
-    +chkv $C4
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 2*320 + 44, VERA_INC_1
-    +chkv $C4
-    +chkv $C4
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 3*320 + 46, VERA_INC_1
-    +chkv $C4
-    +chkv $C4
-    +chkv $00
+    vera_addr 1, VRAM_BITMAP + 40, VERA_INC_1
+    chkv $C4
+    chkv $C4
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 1*320 + 42, VERA_INC_1
+    chkv $C4
+    chkv $C4
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 2*320 + 44, VERA_INC_1
+    chkv $C4
+    chkv $C4
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 3*320 + 46, VERA_INC_1
+    chkv $C4
+    chkv $C4
+    chkv $00
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_LINE", $00
+@name .byte "FX_LINE", $00
 
 ; =====================================================================
 ; fx_triangle: a flat-top staircase whose every row width is exactly
@@ -5104,19 +5145,19 @@ test_fx_triangle
     ldx #>@name
     jmp t_skip
 @go
-    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP, VERA_INC_1
     lda #$00
     ldx #<9600                  ; clear rows 0..29
     ldy #>9600
     jsr vera_fill
 
-    +i16_const tri_x0, 10       ; right triangle: (10,5) (30,5) (10,25)
+    i16_const tri_x0, 10       ; right triangle: (10,5) (30,5) (10,25)
     lda #5
     sta tri_y0
-    +i16_const tri_x1, 30
+    i16_const tri_x1, 30
     lda #5
     sta tri_y1
-    +i16_const tri_x2, 10
+    i16_const tri_x2, 10
     lda #25
     sta tri_y2
     lda #$AA
@@ -5124,65 +5165,65 @@ test_fx_triangle
     jsr fx_triangle
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 5*320 + 9, VERA_INC_1
-    +chkv $00                   ; left of the triangle
-    +chkv $AA                   ; (10,5): top row runs 10..29
-    +vera_addr 1, VRAM_BITMAP + 5*320 + 29, VERA_INC_1
-    +chkv $AA
-    +chkv $00                   ; (30,5) is outside
-    +vera_addr 1, VRAM_BITMAP + 15*320 + 19, VERA_INC_1
-    +chkv $AA                   ; row 15 runs 10..19
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 24*320 + 10, VERA_INC_1
-    +chkv $AA                   ; the last drawn row is one pixel
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 25*320 + 10, VERA_INC_1
-    +chkv $00                   ; half-open: row y2 stays empty
+    vera_addr 1, VRAM_BITMAP + 5*320 + 9, VERA_INC_1
+    chkv $00                   ; left of the triangle
+    chkv $AA                   ; (10,5): top row runs 10..29
+    vera_addr 1, VRAM_BITMAP + 5*320 + 29, VERA_INC_1
+    chkv $AA
+    chkv $00                   ; (30,5) is outside
+    vera_addr 1, VRAM_BITMAP + 15*320 + 19, VERA_INC_1
+    chkv $AA                   ; row 15 runs 10..19
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 24*320 + 10, VERA_INC_1
+    chkv $AA                   ; the last drawn row is one pixel
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 25*320 + 10, VERA_INC_1
+    chkv $00                   ; half-open: row y2 stays empty
 
     ; general triangle, vertices deliberately out of order
-    +vera_addr 0, VRAM_BITMAP, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP, VERA_INC_1
     lda #$00
     ldx #<9600
     ldy #>9600
     jsr vera_fill
 
-    +i16_const tri_x0, 45       ; the BOTTOM vertex first
+    i16_const tri_x0, 45       ; the BOTTOM vertex first
     lda #20
     sta tri_y0
-    +i16_const tri_x1, 40       ; the top
+    i16_const tri_x1, 40       ; the top
     lda #0
     sta tri_y1
-    +i16_const tri_x2, 60       ; the middle
+    i16_const tri_x2, 60       ; the middle
     lda #10
     sta tri_y2
     lda #$AB
     sta tri_color
     jsr fx_triangle
 
-    +vera_addr 1, VRAM_BITMAP + 0*320 + 40, VERA_INC_1
-    +chkv $AB                   ; apex
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 9*320 + 41, VERA_INC_1
-    +chkv $00                   ; row 9 runs 42..58
-    +chkv $AB
-    +vera_addr 1, VRAM_BITMAP + 9*320 + 58, VERA_INC_1
-    +chkv $AB
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 13*320 + 43, VERA_INC_1
-    +chkv $AB                   ; row 13 runs 43..54
-    +vera_addr 1, VRAM_BITMAP + 13*320 + 54, VERA_INC_1
-    +chkv $AB
-    +chkv $00
-    +vera_addr 1, VRAM_BITMAP + 19*320 + 45, VERA_INC_1
-    +chkv $AB                   ; the last row narrows to one pixel
-    +vera_addr 1, VRAM_BITMAP + 20*320 + 45, VERA_INC_1
-    +chkv $00                   ; half-open bottom
+    vera_addr 1, VRAM_BITMAP + 0*320 + 40, VERA_INC_1
+    chkv $AB                   ; apex
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 9*320 + 41, VERA_INC_1
+    chkv $00                   ; row 9 runs 42..58
+    chkv $AB
+    vera_addr 1, VRAM_BITMAP + 9*320 + 58, VERA_INC_1
+    chkv $AB
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 13*320 + 43, VERA_INC_1
+    chkv $AB                   ; row 13 runs 43..54
+    vera_addr 1, VRAM_BITMAP + 13*320 + 54, VERA_INC_1
+    chkv $AB
+    chkv $00
+    vera_addr 1, VRAM_BITMAP + 19*320 + 45, VERA_INC_1
+    chkv $AB                   ; the last row narrows to one pixel
+    vera_addr 1, VRAM_BITMAP + 20*320 + 45, VERA_INC_1
+    chkv $00                   ; half-open bottom
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_TRIANGLE", $00
+@name .byte "FX_TRIANGLE", $00
 
 ; =====================================================================
 ; The PCM streamer's bookkeeping, headless-safe with the DAC stopped
@@ -5254,7 +5295,7 @@ test_pcm_stream
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PCM_STREAM", $00
+@name .byte "PCM_STREAM", $00
 
 ; =====================================================================
 ; irq_remove while a PCM stream is still refilling must take AFLOW out
@@ -5306,7 +5347,7 @@ test_irq_remove_aflow
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "IRQ_REMOVE_AFLOW", $00
+@name .byte "IRQ_REMOVE_AFLOW", $00
 
 ; =====================================================================
 ; ============ Prog8-parity features (2026-07): vreg saving, ==========
@@ -5376,7 +5417,7 @@ test_irq_save_regs
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "IRQ_SAVE_REGS", $00
+@name .byte "IRQ_SAVE_REGS", $00
 
 ; =====================================================================
 ; The PRNG: deterministic from a seed, actually changes, and a zero
@@ -5420,8 +5461,8 @@ test_math_rnd
     ldx #<@name
     ldy #>@name
     jmp t_result
-@first !word 0
-@name  !text "MATH_RND", $00
+@first .word 0
+@name  .byte "MATH_RND", $00
 
 ; =====================================================================
 ; The sine tables at their anchor points, and the signed/unsigned pair.
@@ -5462,7 +5503,7 @@ test_math_sin
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "MATH_SIN", $00
+@name .byte "MATH_SIN", $00
 
 ; =====================================================================
 ; atan2 at the four cardinals, the four diagonals, and one odd vector
@@ -5520,7 +5561,7 @@ test_math_atan2
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "MATH_ATAN2", $00
+@name .byte "MATH_ATAN2", $00
 
 ; =====================================================================
 ; lerp8: exact at both ends, the documented value in the middle, and
@@ -5561,25 +5602,25 @@ test_math_lerp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "MATH_LERP", $00
+@name .byte "MATH_LERP", $00
 
 ; =====================================================================
 ; Cohen-Sutherland: inside untouched, outside rejected, and edge
 ; crossings landing exactly on the boundary.
 ; =====================================================================
-!macro cset16 .addr, .value {
-    lda #<(.value)
-    sta .addr
-    lda #>(.value)
-    sta .addr + 1
-}
+.macro cset16 p_addr, p_value
+    lda #<(p_value)
+    sta p_addr
+    lda #>(p_value)
+    sta p_addr + 1
+.endmacro
 
 test_clip_line
     ; fully inside: accepted, coordinates untouched
-    +cset16 clipl_x0, 5
-    +cset16 clipl_y0, 5
-    +cset16 clipl_x1, 50
-    +cset16 clipl_y1, 40
+    cset16 clipl_x0, 5
+    cset16 clipl_y0, 5
+    cset16 clipl_x1, 50
+    cset16 clipl_y1, 40
     jsr clip_line
     bcs @fail_far
     lda X16_P0
@@ -5590,10 +5631,10 @@ test_clip_line
     bne @fail_far
 
     ; fully off the right: rejected
-    +cset16 clipl_x0, 400
-    +cset16 clipl_y0, 10
-    +cset16 clipl_x1, 500
-    +cset16 clipl_y1, 20
+    cset16 clipl_x0, 400
+    cset16 clipl_y0, 10
+    cset16 clipl_x1, 500
+    cset16 clipl_y1, 20
     jsr clip_line
     bcc @fail_far
     bra @cross
@@ -5606,10 +5647,10 @@ test_clip_line
     ; The OUTSIDE endpoint is the one moved: y = 120 - 420/40 with the
     ; division truncating toward zero, so 110 (the exact crossing is
     ; 109.5).
-    +cset16 clipl_x0, 300
-    +cset16 clipl_y0, 100
-    +cset16 clipl_x1, 340
-    +cset16 clipl_y1, 120
+    cset16 clipl_x0, 300
+    cset16 clipl_y0, 100
+    cset16 clipl_x1, 340
+    cset16 clipl_y1, 120
     jsr clip_line
     bcs @fail
     lda clipl_x1
@@ -5623,10 +5664,10 @@ test_clip_line
     bne @fail
 
     ; entering from above: (10,-10)-(30,10) clips to (20,0)
-    +cset16 clipl_x0, 10
-    +cset16 clipl_y0, -10
-    +cset16 clipl_x1, 30
-    +cset16 clipl_y1, 10
+    cset16 clipl_x0, 10
+    cset16 clipl_y0, -10
+    cset16 clipl_x1, 30
+    cset16 clipl_y1, 10
     jsr clip_line
     bcs @fail
     lda clipl_x0
@@ -5645,20 +5686,20 @@ test_clip_line
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "CLIP_LINE", $00
+@name .byte "CLIP_LINE", $00
 
 ; =====================================================================
 ; gfx_circle and gfx_disc: the four cardinal points of the outline,
 ; a hollow centre, a filled centre, and clean edges.
 ; =====================================================================
 test_gfx_circle
-    +vera_addr 0, VRAM_BITMAP + 40*320, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 40*320, VERA_INC_1
     lda #$00
     ldx #<6400                  ; clear rows 40..59
     ldy #>6400
     jsr vera_fill
 
-    +i16_const X16_P0, 50       ; outline at (50,50), r 5
+    i16_const X16_P0, 50       ; outline at (50,50), r 5
     lda #50
     sta X16_P2
     lda #$D5
@@ -5668,19 +5709,19 @@ test_gfx_circle
     jsr gfx_circle
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 50*320 + 55, VERA_INC_1
-    +chkv $D5                   ; (55,50)
-    +chkv $00                   ; (56,50) is outside
-    +vera_addr 1, VRAM_BITMAP + 50*320 + 45, VERA_INC_1
-    +chkv $D5                   ; (45,50)
-    +vera_addr 1, VRAM_BITMAP + 55*320 + 50, VERA_INC_1
-    +chkv $D5                   ; (50,55)
-    +vera_addr 1, VRAM_BITMAP + 45*320 + 50, VERA_INC_1
-    +chkv $D5                   ; (50,45)
-    +vera_addr 1, VRAM_BITMAP + 50*320 + 50, VERA_INC_1
-    +chkv $00                   ; hollow centre
+    vera_addr 1, VRAM_BITMAP + 50*320 + 55, VERA_INC_1
+    chkv $D5                   ; (55,50)
+    chkv $00                   ; (56,50) is outside
+    vera_addr 1, VRAM_BITMAP + 50*320 + 45, VERA_INC_1
+    chkv $D5                   ; (45,50)
+    vera_addr 1, VRAM_BITMAP + 55*320 + 50, VERA_INC_1
+    chkv $D5                   ; (50,55)
+    vera_addr 1, VRAM_BITMAP + 45*320 + 50, VERA_INC_1
+    chkv $D5                   ; (50,45)
+    vera_addr 1, VRAM_BITMAP + 50*320 + 50, VERA_INC_1
+    chkv $00                   ; hollow centre
 
-    +i16_const X16_P0, 100      ; disc at (100,50), r 4
+    i16_const X16_P0, 100      ; disc at (100,50), r 4
     lda #50
     sta X16_P2
     lda #$D6
@@ -5689,18 +5730,18 @@ test_gfx_circle
     sta X16_P4
     jsr gfx_disc
 
-    +vera_addr 1, VRAM_BITMAP + 50*320 + 100, VERA_INC_1
-    +chkv $D6                   ; filled centre
-    +vera_addr 1, VRAM_BITMAP + 50*320 + 104, VERA_INC_1
-    +chkv $D6                   ; right extreme
-    +chkv $00                   ; ...and no further
-    +vera_addr 1, VRAM_BITMAP + 54*320 + 100, VERA_INC_1
-    +chkv $D6                   ; bottom extreme
-    +vera_addr 1, VRAM_BITMAP + 55*320 + 100, VERA_INC_1
-    +chkv $00
+    vera_addr 1, VRAM_BITMAP + 50*320 + 100, VERA_INC_1
+    chkv $D6                   ; filled centre
+    vera_addr 1, VRAM_BITMAP + 50*320 + 104, VERA_INC_1
+    chkv $D6                   ; right extreme
+    chkv $00                   ; ...and no further
+    vera_addr 1, VRAM_BITMAP + 54*320 + 100, VERA_INC_1
+    chkv $D6                   ; bottom extreme
+    vera_addr 1, VRAM_BITMAP + 55*320 + 100, VERA_INC_1
+    chkv $00
 
     ; a circle hanging off the left edge must simply clip
-    +i16_const X16_P0, 2
+    i16_const X16_P0, 2
     lda #50
     sta X16_P2
     lda #$D7
@@ -5708,14 +5749,14 @@ test_gfx_circle
     lda #5
     sta X16_P4
     jsr gfx_circle
-    +vera_addr 1, VRAM_BITMAP + 50*320 + 7, VERA_INC_1
-    +chkv $D7                   ; the on-screen extreme survived
+    vera_addr 1, VRAM_BITMAP + 50*320 + 7, VERA_INC_1
+    chkv $D7                   ; the on-screen extreme survived
 
     lda chk_err
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_CIRCLE", $00
+@name .byte "GFX_CIRCLE", $00
 
 ; =====================================================================
 ; Bitmap text. Screen code $A0 (reverse space) is a solid 8x8 block --
@@ -5724,13 +5765,13 @@ test_gfx_circle
 ; byte against gfx_char of screen code 8.
 ; =====================================================================
 test_gfx_text
-    +vera_addr 0, VRAM_BITMAP + 20*320, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 20*320, VERA_INC_1
     lda #$00
     ldx #<3200                  ; clear rows 20..29
     ldy #>3200
     jsr vera_fill
 
-    +i16_const X16_P0, 10       ; the solid block
+    i16_const X16_P0, 10       ; the solid block
     lda #20
     sta X16_P2
     lda #$E1
@@ -5739,24 +5780,24 @@ test_gfx_text
     jsr gfx_char
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 20*320 + 9, VERA_INC_1
-    +chkv $00                   ; left neighbour clear
-    +chkv $E1                   ; (10,20)
-    +vera_addr 1, VRAM_BITMAP + 20*320 + 17, VERA_INC_1
-    +chkv $E1                   ; (17,20)
-    +chkv $00                   ; (18,20) clear
-    +vera_addr 1, VRAM_BITMAP + 27*320 + 10, VERA_INC_1
-    +chkv $E1                   ; (10,27)
-    +vera_addr 1, VRAM_BITMAP + 28*320 + 10, VERA_INC_1
-    +chkv $00                   ; row 28 untouched
+    vera_addr 1, VRAM_BITMAP + 20*320 + 9, VERA_INC_1
+    chkv $00                   ; left neighbour clear
+    chkv $E1                   ; (10,20)
+    vera_addr 1, VRAM_BITMAP + 20*320 + 17, VERA_INC_1
+    chkv $E1                   ; (17,20)
+    chkv $00                   ; (18,20) clear
+    vera_addr 1, VRAM_BITMAP + 27*320 + 10, VERA_INC_1
+    chkv $E1                   ; (10,27)
+    vera_addr 1, VRAM_BITMAP + 28*320 + 10, VERA_INC_1
+    chkv $00                   ; row 28 untouched
 
     ; gfx_char(8) at (60,20) vs gfx_text "H" at (80,20)
-    +i16_const X16_P0, 60
+    i16_const X16_P0, 60
     lda #20
     sta X16_P2
     lda #8                      ; screen code of 'H'
     jsr gfx_char
-    +i16_const X16_P0, 80
+    i16_const X16_P0, 80
     lda #<@h
     ldx #>@h
     jsr gfx_text
@@ -5843,7 +5884,7 @@ test_gfx_text
     lda X16_T1
     adc #0
     sta X16_T1
-    +vera_addrsel 1
+    vera_addrsel 1
     lda X16_T0
     sta VERA_ADDR_L
     lda X16_T1
@@ -5852,9 +5893,9 @@ test_gfx_text
     sta VERA_ADDR_H
     rts
 
-@h      !text "H", $00
-@rowbuf !fill 8, 0
-@name   !text "GFX_TEXT", $00
+@h      .byte "H", $00
+@rowbuf .res 8, 0
+@name   .byte "GFX_TEXT", $00
 
 ; =====================================================================
 ; The PSG envelope: attack ramps to the peak, sustain holds it, the
@@ -5918,10 +5959,10 @@ test_psg_env
     jmp t_result
 
 @vol2                           ; A = voice 2's volume/pan shadow byte
-    +vera_addr 1, VRAM_PSG + (2*4) + 2, VERA_INC_1
+    vera_addr 1, VRAM_PSG + (2*4) + 2, VERA_INC_1
     lda VERA_DATA1
     rts
-@name !text "PSG_ENV", $00
+@name .byte "PSG_ENV", $00
 
 ; =====================================================================
 ; fx_copy moves 13 bytes (three quads and a 1-byte tail) and stops.
@@ -5933,7 +5974,7 @@ test_fx_copy
     ldx #>@name
     jmp t_skip
 @go
-    +vera_addr 0, TESTVRAM + $B00, VERA_INC_1
+    vera_addr 0, TESTVRAM + $B00, VERA_INC_1
     ldx #0
 @src
     txa
@@ -5943,7 +5984,7 @@ test_fx_copy
     cpx #16
     bne @src
 
-    +vera_addr 0, TESTVRAM + $B40, VERA_INC_1   ; scrub the target
+    vera_addr 0, TESTVRAM + $B40, VERA_INC_1   ; scrub the target
     lda #$00
     ldx #16
     ldy #0
@@ -5966,7 +6007,7 @@ test_fx_copy
     stz X16_P7
     jsr fx_copy
 
-    +vera_addr 1, TESTVRAM + $B40, VERA_INC_1
+    vera_addr 1, TESTVRAM + $B40, VERA_INC_1
     ldx #0
 @check
     txa
@@ -5987,7 +6028,7 @@ test_fx_copy
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_COPY", $00
+@name .byte "FX_COPY", $00
 
 ; =====================================================================
 ; Transparent writes: while enabled, writing zero leaves the target
@@ -6000,28 +6041,28 @@ test_fx_transp
     ldx #>@name
     jmp t_skip
 @go
-    +vpoke TESTVRAM + $B80, $AA
+    vpoke TESTVRAM + $B80, $AA
 
     jsr fx_transp_on
-    +vera_addr 0, TESTVRAM + $B80, VERA_INC_0
+    vera_addr 0, TESTVRAM + $B80, VERA_INC_0
     stz VERA_DATA0              ; a zero write must bounce off
-    +vera_addr 1, TESTVRAM + $B80, VERA_INC_0
+    vera_addr 1, TESTVRAM + $B80, VERA_INC_0
     lda VERA_DATA1
     cmp #$AA
     bne @fail
 
-    +vera_addr 0, TESTVRAM + $B80, VERA_INC_0
+    vera_addr 0, TESTVRAM + $B80, VERA_INC_0
     lda #$BB                    ; nonzero still writes
     sta VERA_DATA0
-    +vera_addr 1, TESTVRAM + $B80, VERA_INC_0
+    vera_addr 1, TESTVRAM + $B80, VERA_INC_0
     lda VERA_DATA1
     cmp #$BB
     bne @fail
 
     jsr fx_transp_off
-    +vera_addr 0, TESTVRAM + $B80, VERA_INC_0
+    vera_addr 0, TESTVRAM + $B80, VERA_INC_0
     stz VERA_DATA0              ; and now zero writes again
-    +vera_addr 1, TESTVRAM + $B80, VERA_INC_0
+    vera_addr 1, TESTVRAM + $B80, VERA_INC_0
     lda VERA_DATA1
     bne @fail
 
@@ -6034,7 +6075,7 @@ test_fx_transp
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_TRANSP", $00
+@name .byte "FX_TRANSP", $00
 
 ; =====================================================================
 ; The ring buffer is FIFO across an index wrap; the stack is LIFO;
@@ -6099,8 +6140,8 @@ test_buffers
     ldx #<@name
     ldy #>@name
     jmp t_result
-@i    !byte 0
-@name !text "BUFFERS", $00
+@i    .byte 0
+@name .byte "BUFFERS", $00
 
 ; =====================================================================
 ; IMA ADPCM against an independent reference: these 8 bytes were
@@ -6150,14 +6191,14 @@ test_adpcm
     ldx #<@name
     ldy #>@name
     jmp t_result
-@packed !byte $17, $28, $93, $4C, $E5, $0A, $71, $BF
+@packed .byte $17, $28, $93, $4C, $E5, $0A, $71, $BF
 @expect                         ; audioop's 16 little-endian samples
-    !byte $0b, $00, $11, $00, $10, $00, $17, $00
-    !byte $21, $00, $1e, $00, $13, $00, $20, $00
-    !byte $32, $00, $11, $00, $fb, $ff, $ff, $ff
-    !byte $09, $00, $3d, $00, $cd, $ff, $5c, $ff
-@out    !fill 32, 0
-@name   !text "ADPCM", $00
+    .byte $0b, $00, $11, $00, $10, $00, $17, $00
+    .byte $21, $00, $1e, $00, $13, $00, $20, $00
+    .byte $32, $00, $11, $00, $fb, $ff, $ff, $ff
+    .byte $09, $00, $3d, $00, $cd, $ff, $5c, $ff
+@out    .res 32, 0
+@name   .byte "ADPCM", $00
 
 ; =====================================================================
 ; The DOS command channel: a syntax error is reported as one, the
@@ -6236,11 +6277,11 @@ test_dos
     ldx #<@name
     ldy #>@name
     jmp t_result
-@badcmd  !text "X9"
-@dirname !text "TDIR"
-@fname   !text "TESTDOS.BIN"
-@fname2  !text "TESTREN.BIN"
-@name    !text "DOS", $00
+@badcmd  .byte "X9"
+@dirname .byte "TDIR"
+@fname   .byte "TESTDOS.BIN"
+@fname2  .byte "TESTREN.BIN"
+@name    .byte "DOS", $00
 
 ; =====================================================================
 ; BMX round trip: draw a 16x4 stamp and four palette entries, save,
@@ -6268,7 +6309,7 @@ test_bmx
     jsr pal_set
 
     ; a 16x4 stamp at TESTVRAM+$C00, rows 320 apart, plus guard bytes
-    +vera_addr 0, TESTVRAM + $BFF, VERA_INC_1
+    vera_addr 0, TESTVRAM + $BFF, VERA_INC_1
     lda #$77                    ; guard byte just before the stamp
     sta VERA_DATA0
     stz @row
@@ -6300,16 +6341,16 @@ test_bmx
     bne @paint
 
     ; describe and save it
-    +cset16 bmx_width, 16
-    +cset16 bmx_height, 4
+    cset16 bmx_width, 16
+    cset16 bmx_height, 4
     lda #8
     sta bmx_bpp
     lda #40
     sta bmx_palstart
-    +cset16 bmx_palcount, 4
+    cset16 bmx_palcount, 4
     lda #6
     sta bmx_border
-    +cset16 bmx_stride, 320
+    cset16 bmx_stride, 320
     jsr @name_params
     jsr bmx_save
     bcs @fail_far
@@ -6335,7 +6376,7 @@ test_bmx
     lda #$00
     ldy #$00
     jsr pal_set
-    +cset16 bmx_width, 0        ; and the header fields
+    cset16 bmx_width, 0        ; and the header fields
     stz bmx_palstart
 
     jsr @name_params            ; load it back
@@ -6384,7 +6425,7 @@ test_bmx
     lda @row
     cmp #4
     bne @vrows
-    +vera_addr 1, TESTVRAM + $BFF, VERA_INC_1
+    vera_addr 1, TESTVRAM + $BFF, VERA_INC_1
     lda VERA_DATA1              ; ...and the one before the stamp
     cmp #$77
     beq @guards_ok
@@ -6392,14 +6433,14 @@ test_bmx
     jmp @fail
 @guards_ok
 
-    +vera_addr 1, VRAM_PALETTE + (40*2), VERA_INC_1
-    +chkv $21                   ; the palette came back
-    +chkv $03
-    +chkv $54
-    +chkv $06
-    +vera_addr 1, VRAM_PALETTE + (43*2), VERA_INC_1
-    +chkv $BA
-    +chkv $0C
+    vera_addr 1, VRAM_PALETTE + (40*2), VERA_INC_1
+    chkv $21                   ; the palette came back
+    chkv $03
+    chkv $54
+    chkv $06
+    vera_addr 1, VRAM_PALETTE + (43*2), VERA_INC_1
+    chkv $BA
+    chkv $0C
     lda chk_err
     bne @fail
 
@@ -6431,7 +6472,7 @@ test_bmx
     lda #8
     sta X16_P3
     stz X16_P4
-    +cset16 X16_P5, TESTVRAM
+    cset16 X16_P5, TESTVRAM
     jsr bmx_load
     bcc @fail                   ; it "loaded" garbage
     cmp #BMX_ERR_FORMAT
@@ -6467,17 +6508,17 @@ test_bmx
     lda #8
     sta X16_P3
     stz X16_P4                  ; VRAM bank 0
-    +cset16 X16_P5, TESTVRAM + $C00
+    cset16 X16_P5, TESTVRAM + $C00
     rts
 
 ; point port 0 / port 1 at row A of the stamp (base + A*320)
 @row_port0
     jsr @row_calc
-    +vera_addrsel 0
+    vera_addrsel 0
     bra @row_set
 @row_port1
     jsr @row_calc
-    +vera_addrsel 1
+    vera_addrsel 1
 @row_set
     lda X16_T0
     sta VERA_ADDR_L
@@ -6510,12 +6551,12 @@ test_bmx
     sta X16_T1
     rts
 
-@row    !byte 0
-@fname  !text "TEST.BMX"
-@fname2 !text "JUNK.BMX9"
-@junk   !byte $DE, $AD, $DE, $AD, $DE, $AD, $DE, $AD
-        !byte $DE, $AD, $DE, $AD, $DE, $AD, $DE, $AD
-@name   !text "BMX", $00
+@row    .byte 0
+@fname  .byte "TEST.BMX"
+@fname2 .byte "JUNK.BMX9"
+@junk   .byte $DE, $AD, $DE, $AD, $DE, $AD, $DE, $AD
+        .byte $DE, $AD, $DE, $AD, $DE, $AD, $DE, $AD
+@name   .byte "BMX", $00
 
 ; =====================================================================
 ; A file that is not there is an I/O error, not a format error.
@@ -6539,7 +6580,7 @@ test_bmx_missing
     lda #8
     sta X16_P3
     stz X16_P4                  ; VRAM bank 0
-    +cset16 X16_P5, TESTVRAM
+    cset16 X16_P5, TESTVRAM
     jsr bmx_load
     bcc @fail                   ; it "loaded" a file that does not exist
     cmp #BMX_ERR_IO
@@ -6554,9 +6595,9 @@ test_bmx_missing
     ldy #>@name
     jmp t_result
 
-@fname     !text "NOSUCH.BMX"
+@fname     .byte "NOSUCH.BMX"
 @fname_len = 10
-@name      !text "BMX_MISSING", $00
+@name      .byte "BMX_MISSING", $00
 
 ; =====================================================================
 ; t_write_file -- write exactly the bytes given, and nothing else.
@@ -6615,7 +6656,7 @@ t_write_file
 ; kind.
 ; =====================================================================
 test_bmx_truncated
-    +cset16 X16_P0, @file
+    cset16 X16_P0, @file
     lda #@file_len
     sta X16_P2
     lda #@fname_len
@@ -6633,7 +6674,7 @@ test_bmx_truncated
     lda #8
     sta X16_P3
     stz X16_P4                  ; VRAM bank 0
-    +cset16 X16_P5, TESTVRAM
+    cset16 X16_P5, TESTVRAM
     jsr bmx_load
     bcc @fail_del               ; it "loaded" an image that is not all there
     cmp #BMX_ERR_IO
@@ -6658,25 +6699,25 @@ test_bmx_truncated
     jmp dos_delete
 
 @file
-    !text "BMX"                 ; magic
-    !byte 1                     ; version
-    !byte 8                     ; bits per pixel
-    !byte 3                     ; VERA colour depth code, log2(bpp)
-    !word 4                     ; width
-    !word 4                     ; height
-    !byte 1                     ; one palette entry
-    !byte 0                     ; starting at index 0
-    !word 18                    ; pixel data offset: 16 + 1*2, no gap
-    !byte 0                     ; not compressed
-    !byte 0                     ; border
-    !byte $0F, $00              ; the palette entry
-    !byte 1, 2, 3, 4            ; row 0
-    !byte 5, 6, 7, 8            ; row 1 -- and here the file simply stops
+    .byte "BMX"                 ; magic
+    .byte 1                     ; version
+    .byte 8                     ; bits per pixel
+    .byte 3                     ; VERA colour depth code, log2(bpp)
+    .word 4                     ; width
+    .word 4                     ; height
+    .byte 1                     ; one palette entry
+    .byte 0                     ; starting at index 0
+    .word 18                    ; pixel data offset: 16 + 1*2, no gap
+    .byte 0                     ; not compressed
+    .byte 0                     ; border
+    .byte $0F, $00              ; the palette entry
+    .byte 1, 2, 3, 4            ; row 0
+    .byte 5, 6, 7, 8            ; row 1 -- and here the file simply stops
 @file_len  = 26
 
-@fname     !text "TRUNC.BMX"
+@fname     .byte "TRUNC.BMX"
 @fname_len = 9
-@name      !text "BMX_TRUNCATED", $00
+@name      .byte "BMX_TRUNCATED", $00
 
 ; =====================================================================
 ; ...and a file that stops inside the PALETTE, before a single pixel.
@@ -6691,7 +6732,7 @@ test_bmx_truncated
 ; file supplies two.
 ; =====================================================================
 test_bmx_short_pal
-    +cset16 X16_P0, @file
+    cset16 X16_P0, @file
     lda #@file_len
     sta X16_P2
     lda #@fname_len
@@ -6709,7 +6750,7 @@ test_bmx_short_pal
     lda #8
     sta X16_P3
     stz X16_P4
-    +cset16 X16_P5, TESTVRAM
+    cset16 X16_P5, TESTVRAM
     jsr bmx_load
     bcc @fail_del               ; it "loaded" a palette that is not there
     cmp #BMX_ERR_IO
@@ -6734,23 +6775,23 @@ test_bmx_short_pal
     jmp dos_delete
 
 @file
-    !text "BMX"
-    !byte 1
-    !byte 8                     ; bits per pixel
-    !byte 3
-    !word 4                     ; width
-    !word 1                     ; height: ONE row, so no per-row check runs
-    !byte 4                     ; four palette entries = eight bytes...
-    !byte 0
-    !word 24                    ; pixel data offset: 16 + 4*2
-    !byte 0
-    !byte 0
-    !byte $0F, $00              ; ...of which the file holds two
+    .byte "BMX"
+    .byte 1
+    .byte 8                     ; bits per pixel
+    .byte 3
+    .word 4                     ; width
+    .word 1                     ; height: ONE row, so no per-row check runs
+    .byte 4                     ; four palette entries = eight bytes...
+    .byte 0
+    .word 24                    ; pixel data offset: 16 + 4*2
+    .byte 0
+    .byte 0
+    .byte $0F, $00              ; ...of which the file holds two
 @file_len  = 18
 
-@fname     !text "SHORTPAL.BMX"
+@fname     .byte "SHORTPAL.BMX"
 @fname_len = 12
-@name      !text "BMX_SHORT_PAL", $00
+@name      .byte "BMX_SHORT_PAL", $00
 
 ; =====================================================================
 ; ZX0: these 30 bytes are the same 96-byte phrase the LZSA2 test uses,
@@ -6811,13 +6852,13 @@ test_zx0
     ldx #<@name
     ldy #>@name
     jmp t_result
-@expect !text "X16LIB-DECOMPRESS-TEST!!"
+@expect .byte "X16LIB-DECOMPRESS-TEST!!"
 @packed                         ; salvador payload.bin payload.zx0
-    !byte $15, $b8, $58, $31, $36, $4c, $49, $42, $2d, $44, $45, $43
-    !byte $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53, $54
-    !byte $21, $d0, $15, $d5, $55, $60
-@out    !fill 97, 0
-@name   !text "ZX0", $00
+    .byte $15, $b8, $58, $31, $36, $4c, $49, $42, $2d, $44, $45, $43
+    .byte $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53, $54
+    .byte $21, $d0, $15, $d5, $55, $60
+@out    .res 97, 0
+@name   .byte "ZX0", $00
 
 ; =====================================================================
 ; Flood fill: a hollow rectangle's inside fills to its walls and not
@@ -6826,23 +6867,23 @@ test_zx0
 ; the wall colour instead.
 ; =====================================================================
 test_gfx_flood
-    +vera_addr 0, VRAM_BITMAP + 60*320, VERA_INC_1
+    vera_addr 0, VRAM_BITMAP + 60*320, VERA_INC_1
     lda #$00
     ldx #<6400                  ; clear rows 60..79
     ldy #>6400
     jsr vera_fill
 
-    +i16_const X16_P0, 100      ; a 20x12 frame at (100,64)
+    i16_const X16_P0, 100      ; a 20x12 frame at (100,64)
     lda #64
     sta X16_P2
     lda #$F1
     sta X16_P3
-    +i16_const X16_P4, 20
+    i16_const X16_P4, 20
     lda #12
     sta X16_P6
     jsr gfx_frame
 
-    +i16_const X16_P0, 110      ; seed inside it
+    i16_const X16_P0, 110      ; seed inside it
     lda #70
     sta X16_P2
     lda #$F2
@@ -6853,27 +6894,27 @@ test_gfx_flood
 @filled
 
     stz chk_err
-    +vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
-    +chkv $F2                   ; the seed itself
-    +vera_addr 1, VRAM_BITMAP + 65*320 + 100, VERA_INC_1
-    +chkv $F1                   ; left wall intact...
-    +chkv $F2                   ; ...interior right against it
-    +vera_addr 1, VRAM_BITMAP + 65*320 + 118, VERA_INC_1
-    +chkv $F2                   ; interior against the right wall
-    +chkv $F1                   ; the wall
-    +chkv $00                   ; and NOTHING leaked past it
-    +vera_addr 1, VRAM_BITMAP + 65*320 + 99, VERA_INC_1
-    +chkv $00                   ; nothing leaked out to the left
-    +vera_addr 1, VRAM_BITMAP + 74*320 + 110, VERA_INC_1
-    +chkv $F2                   ; bottom interior row (y = 74)
-    +vera_addr 1, VRAM_BITMAP + 75*320 + 110, VERA_INC_1
-    +chkv $F1                   ; the bottom wall (y = 75)
-    +vera_addr 1, VRAM_BITMAP + 76*320 + 110, VERA_INC_1
-    +chkv $00                   ; below the box
+    vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
+    chkv $F2                   ; the seed itself
+    vera_addr 1, VRAM_BITMAP + 65*320 + 100, VERA_INC_1
+    chkv $F1                   ; left wall intact...
+    chkv $F2                   ; ...interior right against it
+    vera_addr 1, VRAM_BITMAP + 65*320 + 118, VERA_INC_1
+    chkv $F2                   ; interior against the right wall
+    chkv $F1                   ; the wall
+    chkv $00                   ; and NOTHING leaked past it
+    vera_addr 1, VRAM_BITMAP + 65*320 + 99, VERA_INC_1
+    chkv $00                   ; nothing leaked out to the left
+    vera_addr 1, VRAM_BITMAP + 74*320 + 110, VERA_INC_1
+    chkv $F2                   ; bottom interior row (y = 74)
+    vera_addr 1, VRAM_BITMAP + 75*320 + 110, VERA_INC_1
+    chkv $F1                   ; the bottom wall (y = 75)
+    vera_addr 1, VRAM_BITMAP + 76*320 + 110, VERA_INC_1
+    chkv $00                   ; below the box
     lda chk_err
     bne @fail_far
 
-    +i16_const X16_P0, 110      ; same colour again: a no-op, no hang
+    i16_const X16_P0, 110      ; same colour again: a no-op, no hang
     lda #70
     sta X16_P2
     lda #$F2
@@ -6887,7 +6928,7 @@ test_gfx_flood
 
 @wall
     ; seed ON the wall: the wall's colour is the target now
-    +i16_const X16_P0, 100
+    i16_const X16_P0, 100
     lda #64
     sta X16_P2
     lda #$F3
@@ -6895,12 +6936,12 @@ test_gfx_flood
     jsr gfx_flood
     bcs @fail
 
-    +vera_addr 1, VRAM_BITMAP + 64*320 + 119, VERA_INC_1
-    +chkv $F3                   ; the far corner of the frame recoloured
-    +vera_addr 1, VRAM_BITMAP + 75*320 + 100, VERA_INC_1
-    +chkv $F3
-    +vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
-    +chkv $F2                   ; the interior kept its fill
+    vera_addr 1, VRAM_BITMAP + 64*320 + 119, VERA_INC_1
+    chkv $F3                   ; the far corner of the frame recoloured
+    vera_addr 1, VRAM_BITMAP + 75*320 + 100, VERA_INC_1
+    chkv $F3
+    vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
+    chkv $F2                   ; the interior kept its fill
     lda chk_err
     bne @fail
 
@@ -6912,7 +6953,7 @@ test_gfx_flood
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "GFX_FLOOD", $00
+@name .byte "GFX_FLOOD", $00
 
 ; =====================================================================
 ; TSCrunch, against the reference Go encoder's output: the standard
@@ -7031,18 +7072,18 @@ test_tsc
     ldx #<@name
     ldy #>@name
     jmp t_result
-@expect !text "X16LIB-DECOMPRESS-TEST!!"
-@redge  !text "RLE-EDGE"
+@expect .byte "X16LIB-DECOMPRESS-TEST!!"
+@redge  .byte "RLE-EDGE"
 @packed                         ; tscrunch payload.bin payload.tsc
-    !byte $3f, $19, $58, $31, $36, $4c, $49, $42, $2d, $44, $45, $43
-    !byte $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53, $54
-    !byte $21, $21, $58, $fe, $18, $cc, $e8, $7f, $20
+    .byte $3f, $19, $58, $31, $36, $4c, $49, $42, $2d, $44, $45, $43
+    .byte $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53, $54
+    .byte $21, $21, $58, $fe, $18, $cc, $e8, $7f, $20
 @rpacked                        ; tscrunch rle.bin rle.tsc
-    !byte $31, $cf, $00, $08, $52, $4c, $45, $2d, $45, $44, $47, $45
-    !byte $ff, $55, $b3, $55, $81, $9e, $94, $20
-@out    !fill 97, 0
-@rout   !fill 196, 0
-@name   !text "TSC", $00
+    .byte $31, $cf, $00, $08, $52, $4c, $45, $2d, $45, $44, $47, $45
+    .byte $ff, $55, $b3, $55, $81, $9e, $94, $20
+@out    .res 97, 0
+@rout   .res 196, 0
+@name   .byte "TSC", $00
 
 ; =====================================================================
 ; The FX affine sampler: a 2x2-tile map of two 8bpp tiles, sampled by
@@ -7057,7 +7098,7 @@ test_fx_affine
     jmp t_skip
 @go
     ; tile data at $04800: tile 0 = $40+i, tile 1 = $80+i (i = 0..63)
-    +vera_addr 0, TESTVRAM + $800, VERA_INC_1
+    vera_addr 0, TESTVRAM + $800, VERA_INC_1
     ldx #0
 @tile0
     txa
@@ -7076,7 +7117,7 @@ test_fx_affine
     bne @tile1
 
     ; map at $05000, 2x2: [0,1 / 1,0]
-    +vera_addr 0, TESTVRAM + $1000, VERA_INC_1
+    vera_addr 0, TESTVRAM + $1000, VERA_INC_1
     stz VERA_DATA0
     lda #1
     sta VERA_DATA0
@@ -7104,8 +7145,8 @@ test_fx_affine
     stz X16_P1
     stz X16_P2
     stz X16_P3
-    +cset16 X16_P4, 512
-    +cset16 X16_P6, 0
+    cset16 X16_P4, 512
+    cset16 X16_P6, 0
     jsr fx_affine_ray
 
     stz chk_err
@@ -7136,11 +7177,11 @@ test_fx_affine
 
 @ray_b
     ; ray B: from (2,0), one texel DOWN per read
-    +cset16 X16_P0, 2
+    cset16 X16_P0, 2
     stz X16_P2
     stz X16_P3
-    +cset16 X16_P4, 0
-    +cset16 X16_P6, 512
+    cset16 X16_P4, 0
+    cset16 X16_P6, 512
     jsr fx_affine_ray
     ldx #0                      ; y 0..7: tile 0 column 2 = $40+y*8+2
 @colb0
@@ -7172,21 +7213,21 @@ test_fx_affine
     stz X16_P1
     stz X16_P2
     stz X16_P3
-    +cset16 X16_P4, 512
-    +cset16 X16_P6, 0
+    cset16 X16_P4, 512
+    cset16 X16_P6, 0
     jsr fx_affine_ray
-    +vera_addr 0, TESTVRAM + $D00, VERA_INC_1
-    +cset16 X16_P0, 16
+    vera_addr 0, TESTVRAM + $D00, VERA_INC_1
+    cset16 X16_P0, 16
     jsr fx_affine_span
     jsr fx_off
 
-    +vera_addr 1, TESTVRAM + $D00, VERA_INC_1
-    +chkv $40
-    +chkv $41
-    +vera_addr 1, TESTVRAM + $D00 + 8, VERA_INC_1
-    +chkv $80
-    +vera_addr 1, TESTVRAM + $D00 + 15, VERA_INC_1
-    +chkv $87
+    vera_addr 1, TESTVRAM + $D00, VERA_INC_1
+    chkv $40
+    chkv $41
+    vera_addr 1, TESTVRAM + $D00 + 8, VERA_INC_1
+    chkv $80
+    vera_addr 1, TESTVRAM + $D00 + 15, VERA_INC_1
+    chkv $87
     lda chk_err
     bne @fail
 
@@ -7208,10 +7249,10 @@ test_fx_affine
     sta X16_P7
     jsr fx_affine_on
 
-    +cset16 X16_P0, 20          ; (20,3): tile x=2, outside a 2x2 map
-    +cset16 X16_P2, 3
-    +cset16 X16_P4, 512
-    +cset16 X16_P6, 0
+    cset16 X16_P0, 20          ; (20,3): tile x=2, outside a 2x2 map
+    cset16 X16_P2, 3
+    cset16 X16_P4, 512
+    cset16 X16_P6, 0
     jsr fx_affine_ray
     lda VERA_DATA1              ; tile 0 at (20&7, 3) = $40+3*8+4 = $5C
     cmp #$5C
@@ -7227,7 +7268,7 @@ test_fx_affine
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "FX_AFFINE", $00
+@name .byte "FX_AFFINE", $00
 
 ; =====================================================================
 ; Banked-RAM streaming: priming 5000 bytes from bank 30 offset 8000
@@ -7302,8 +7343,8 @@ test_pcm_stream_bank
     ldx #<@name
     ldy #>@name
     jmp t_result
-@saved !byte 0
-@name  !text "PCM_STREAM_BANK", $00
+@saved .byte 0
+@name  .byte "PCM_STREAM_BANK", $00
 
 ; =====================================================================
 ; Loop mode: a 100-byte sample with pcm_str_loop set must wrap through
@@ -7364,8 +7405,8 @@ test_pcm_stream_loop
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name !text "PCM_STREAM_LOOP", $00
+@name .byte "PCM_STREAM_LOOP", $00
 
 ; ---------------------------------------------------------------------
-!source "test_acme/testlib.asm"
-!source "x16_code.asm"
+.include "testlib.asm"
+.include "x16_code.asm"

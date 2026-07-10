@@ -31,7 +31,7 @@ function Fail([string]$message) {
 
 $root = $PSScriptRoot
 $acme = Join-Path $root "acme\acme.exe"
-$src  = Join-Path $root "src"
+$src  = Join-Path $root "src_acme"
 $dist = Join-Path $root "dist"
 $build = Join-Path $root "build"
 
@@ -117,8 +117,8 @@ Write-Binding "kickass" "//" "" `
 
 # --- 4. smoke-test the blob + bindings on the emulator ------------------
 if (-not $SkipEmuTest) {
-    Write-Host "smoke: test\blobsmoke.asm against the generated ACME bindings"
-    & powershell -ExecutionPolicy Bypass -File (Join-Path $root "build.ps1") -Test -Source "test\blobsmoke.asm"
+    Write-Host "smoke: test_acme\blobsmoke.asm against the generated ACME bindings"
+    & powershell -ExecutionPolicy Bypass -File (Join-Path $root "build_acme.ps1") -Test -Source "test_acme\blobsmoke.asm"
     if ($LASTEXITCODE -ne 0) { Fail "blob smoke test failed" }
 }
 

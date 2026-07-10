@@ -2,7 +2,7 @@
 # Build output
 # ---------------------------------------------------------------------
 build/
-test/fsroot/
+test_acme/fsroot/
 *.prg
 *.PRG
 *.sym
@@ -42,3 +42,7 @@ desktop.ini
 .DS_Store
 *.swp
 *~
+
+# ca65 build products
+*.o
+
