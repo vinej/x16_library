@@ -12,7 +12,7 @@
 param(
     [string]$Source = "test_ca65\runner.asm",
     [string]$Config = "test_ca65\runner.cfg",
-    [string]$Ca65   = "ca65",
+    [string]$Ca65,
     [switch]$Test,
     [switch]$Run,
     [int]$Scale = 2
@@ -31,9 +31,18 @@ $rom   = Join-Path $root "emulator\rom.bin"
 $src   = Join-Path $root "src_ca65"
 $build = Join-Path $root "build"
 
-$ca65Exe = (Get-Command $Ca65 -ErrorAction SilentlyContinue)
-if (-not $ca65Exe) { Fail "ca65 not found on PATH (or pass -Ca65)" }
-$ld65 = Join-Path (Split-Path $ca65Exe.Source) "ld65.exe"
+# ca65 + ld65 live in the repo-local cc65\ folder, like acme\, 64tass\
+# and kickass\; -Ca65 overrides (a PATH name or a full path).
+if ($Ca65) {
+    $found = Get-Command $Ca65 -ErrorAction SilentlyContinue
+    if (-not $found) { Fail "ca65 not found: $Ca65" }
+    $ca65Path = $found.Source
+} else {
+    $ca65Path = Join-Path $root "cc65\ca65.exe"
+    if (-not (Test-Path $ca65Path)) { Fail "missing: $ca65Path (put cc65's ca65.exe and ld65.exe there -- see README)" }
+}
+$ld65 = Join-Path (Split-Path $ca65Path) "ld65.exe"
+if (-not (Test-Path $ld65)) { Fail "missing: $ld65 (ld65.exe must sit next to ca65.exe)" }
 
 foreach ($tool in @($emu, $rom)) {
     if (-not (Test-Path $tool)) { Fail "missing: $tool" }
@@ -45,7 +54,7 @@ $obj  = Join-Path $build "$name-ca65.o"
 $out  = Join-Path $build "$name-CA65.PRG"
 
 Write-Host "ca65  $Source -> $out"
-& $ca65Exe.Source --cpu 65C02 -I $src -o $obj $Source
+& $ca65Path --cpu 65C02 -I $src -o $obj $Source
 if ($LASTEXITCODE -ne 0) { Fail "ca65 assembly failed" }
 & $ld65 -C (Join-Path $root $Config) -o $out $obj
 if ($LASTEXITCODE -ne 0) { Fail "ld65 link failed" }

@@ -10,13 +10,22 @@ implementation with an assembly-shaped API.
 
 ## Prerequisites
 
-Two third-party tools are expected in the working tree but are **not** committed
-(see `.gitignore` — they are not ours to redistribute):
+The third-party toolchains are expected in the working tree but are **not**
+committed (see `.gitignore` — they are not ours to redistribute). Each
+assembler lives in its own repo-local folder, and the build scripts look
+only there:
 
 | Path | What | Where from |
 |---|---|---|
 | `acme\acme.exe` | ACME 0.97 assembler | <https://sourceforge.net/projects/acme-crossass/> |
+| `cc65\ca65.exe` + `ld65.exe` | ca65/ld65 V2.19 (from the cc65 suite) | <https://cc65.github.io/> — copy the two exes out of its `bin\` |
+| `64tass\64tass.exe` | 64tass V1.60 | <https://sourceforge.net/projects/tass64/> |
+| `kickass\KickAss.jar` | KickAssembler 5.25 (needs Java) | <http://theweb.dk/KickAssembler/> |
 | `emulator\x16emu.exe` + `rom.bin` | X16 emulator r49 | <https://github.com/X16Community/x16-emulator>, ROM from <https://github.com/X16Community/x16-rom> |
+
+Only `acme\` and `emulator\` are required to build the reference tree and run
+the tests; the other three folders are needed only to recompile their
+respective ports.
 
 Use the **r49** emulator and ROM: the constants in `src_acme/core/` are transcribed
 from the r49 ROM sources, and the test suite asserts against r49 behaviour.
@@ -99,18 +108,29 @@ bar — **its test runner assembles to a byte-identical PRG** (same SHA-256)
 as the ACME build and passes the same 132-test suite (134 windowed) on the
 emulator.
 
-```
-ca65 --cpu 65C02 -I src_ca65 -o prog.o prog.s
-ld65 -C test_ca65\runner.cfg -o PROG.PRG prog.o        (or your own cfg)
+Each port pairs a source tree with its repo-local toolchain folder:
 
-64tass -C -a --cbm-prg -I src_64tass -o PROG.PRG prog.asm
+```
+port            sources       toolchain (gitignored)   build script
+--------------  ------------  -----------------------  ------------------
+ACME            src_acme\     acme\acme.exe            build_acme.ps1
+ca65            src_ca65\     cc65\ca65.exe + ld65.exe build_ca65.ps1
+64tass          src_64tass\   64tass\64tass.exe        build_64tass.ps1
+KickAssembler   src_kick\     kickass\KickAss.jar      build_kick.ps1
+```
+
+```
+cc65\ca65 --cpu 65C02 -I src_ca65 -o prog.o prog.s
+cc65\ld65 -C test_ca65\runner.cfg -o PROG.PRG prog.o   (or your own cfg)
+
+64tass\64tass -C -a --cbm-prg -I src_64tass -o PROG.PRG prog.asm
 
 java -jar kickass\KickAss.jar prog.asm -libdir src_kick -o PROG.PRG
 
 .\build_ca65.ps1 -Test      the suite through each port's toolchain
-.\build_64tass.ps1 -Test    (64tass.exe and KickAss.jar ship in the repo,
-.\build_kick.ps1 -Test       under 64tass\ and kickass\; ca65 is expected
-                             on the PATH; KickAssembler needs Java)
+.\build_64tass.ps1 -Test    (each uses its repo-local folder above;
+.\build_kick.ps1 -Test       see Prerequisites for where to get them.
+                             -Ca65 overrides the cc65\ default.)
 ```
 
 A ca65 program is the ACME skeleton with `.include` in place of `!source`
@@ -142,6 +162,11 @@ dist\kickass\x16lib.inc
 dist\ca65\x16lib.cfg     ld65 linker config that embeds the blob
 dist\examples\           a working hello for each assembler
 ```
+
+The prebuilt binary and the generated bindings are **committed**, so this
+route needs no toolchain beyond your own assembler — running `dist.ps1`
+is only for regenerating them after a library change (there's also a
+`dist\acme\x16lib.inc` for using the blob from ACME itself).
 
 Your program owns `$0801` up to the library's org (the generated includes
 export it as `X16LIB_ORG`, currently `$6000`); the library claims zero page
@@ -630,9 +655,12 @@ passes. Run the suite windowed (`-run -warp -echo`, no `-testbench`) and
 ## Layout
 
 ```
-acme/        ACME 0.97 assembler
+acme/        ACME 0.97 assembler          (repo-local, .gitignored)
+cc65/        ca65.exe + ld65.exe V2.19    (repo-local, .gitignored)
+64tass/      64tass V1.60                 (repo-local, .gitignored)
+kickass/     KickAssembler 5.25           (repo-local, .gitignored; needs Java)
+emulator/    x16emu r49 + rom.bin         (repo-local, .gitignored)
 doc/         ForthX16 help pages + official X16/VERA references
-emulator/    x16emu r49 + rom.bin
 src_acme/    THE REFERENCE IMPLEMENTATION
   x16.asm        constants + macros (source first, emits nothing)
   x16_code.asm   routine modules, gated by X16_USE_*
@@ -656,8 +684,6 @@ test_64tass/ the converted runner (same 132 tests)
 test_kick/   the converted runner (same 132 tests)
 tools/       acme2ca65.py, acme2tass.py, acme2kick.py -- the converters
 dist/        the prebuilt-binary + bindings pipeline (dist.ps1)
-64tass/      64tass V1.60 (repo-local, .gitignored)
-kickass/     KickAssembler 5.25 (repo-local, .gitignored; needs Java)
 build_acme.ps1
 build_ca65.ps1
 build_64tass.ps1

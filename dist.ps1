@@ -131,7 +131,10 @@ function Find-Tool([string]$given, [string]$name) {
     return $null
 }
 
-# the repo carries 64tass and KickAssembler; -Tass/-KickJar override
+# the repo carries cc65, 64tass and KickAssembler; -Ca65/-Tass/-KickJar override
+if (-not $Ca65 -and (Test-Path (Join-Path $root "cc65\ca65.exe"))) {
+    $Ca65 = Join-Path $root "cc65\ca65.exe"
+}
 if (-not $Tass -and (Test-Path (Join-Path $root "64tass\64tass.exe"))) {
     $Tass = Join-Path $root "64tass\64tass.exe"
 }
