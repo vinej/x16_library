@@ -193,6 +193,15 @@ bmx_load
     bra @skip
 
 @data
+    ; The header, the palette and any gap all came out of the file, so
+    ; every pixel row must still be ahead of us. A nonzero ST here means
+    ; the file ended somewhere in the palette or the gap. (EOF cannot be
+    ; legitimate at this point unless the image has no rows at all, and a
+    ; zero-height BMX describes nothing.)
+    jsr READST
+    cmp #0
+    bne @io_short
+
     ; --- pixel rows, bmx_stride apart ----------------------------------
     lda X16_P5                  ; the walking VRAM address
     sta bmx_cur
@@ -242,7 +251,23 @@ bmx_load
     dec bmx_rows+1
 @dec_rows
     dec bmx_rows
-    bra @row
+
+    ; ST is checked once per row, not once per byte: CHRIN is already the
+    ; slow part, but a per-pixel READST would double it. Between rows the
+    ; test is exact -- another row is expected, so any status at all (EOF
+    ; included) means the file is shorter than its own header claims.
+    ; After the LAST row EOF is not merely allowed but expected, since the
+    ; final pixel is the final byte of the file.
+    lda bmx_rows
+    ora bmx_rows+1
+    beq @done
+    jsr READST
+    cmp #0
+    beq @row
+
+@io_short
+    lda #BMX_ERR_IO
+    jmp @close_err
 
 @done
     jsr .close_read
