@@ -159,6 +159,7 @@ main
     jsr test_dos
     jsr test_bmx
     jsr test_bmx_missing
+    jsr test_bmx_truncated
     jsr test_zx0
     jsr test_gfx_flood
     jsr test_tsc
@@ -6553,6 +6554,106 @@ test_bmx_missing
 @fname     !text "NOSUCH.BMX"
 @fname_len = 10
 @name      !text "BMX_MISSING", $00
+
+; =====================================================================
+; A file that stops in the middle of the image is an I/O error too.
+;
+; The header here is entirely valid and promises four rows of four
+; pixels; the file carries two. Without a status check the remaining
+; CHRINs return junk, bmx_load reports success, and half the image on
+; screen is whatever VRAM held before -- a silent wrong answer, which is
+; the worst kind.
+;
+; The file is written a byte at a time through CHROUT rather than with
+; fs_save, because the KERNAL's SAVE prepends a two-byte load address
+; and the first two bytes of a BMX must be its magic.
+; =====================================================================
+test_bmx_truncated
+    lda #@fname_len
+    ldx #<@fname
+    ldy #>@fname
+    jsr SETNAM
+    lda #2
+    ldx #8
+    ldy #1                      ; write
+    jsr SETLFS
+    jsr OPEN
+    bcs @fail
+    ldx #2
+    jsr CHKOUT
+    bcs @fail_close
+
+    stz X16_T0                  ; CHROUT is not documented to preserve X
+@put
+    ldx X16_T0
+    lda @file,x
+    jsr CHROUT
+    inc X16_T0
+    lda X16_T0
+    cmp #@file_len
+    bne @put
+    jsr CLRCHN
+    lda #2
+    jsr CLOSE
+
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4                  ; VRAM bank 0
+    +cset16 X16_P5, TESTVRAM
+    jsr bmx_load
+    bcc @fail_del               ; it "loaded" an image that is not all there
+    cmp #BMX_ERR_IO
+    bne @fail_del
+
+    jsr @unlink
+    lda #0
+    bra @report
+@fail_close
+    jsr CLRCHN
+    lda #2
+    jsr CLOSE
+    bra @fail
+@fail_del
+    jsr @unlink
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+
+@unlink
+    lda #<@fname
+    ldx #>@fname
+    ldy #@fname_len
+    jmp dos_delete
+
+@file
+    !text "BMX"                 ; magic
+    !byte 1                     ; version
+    !byte 8                     ; bits per pixel
+    !byte 3                     ; VERA colour depth code, log2(bpp)
+    !word 4                     ; width
+    !word 4                     ; height
+    !byte 1                     ; one palette entry
+    !byte 0                     ; starting at index 0
+    !word 18                    ; pixel data offset: 16 + 1*2, no gap
+    !byte 0                     ; not compressed
+    !byte 0                     ; border
+    !byte $0F, $00              ; the palette entry
+    !byte 1, 2, 3, 4            ; row 0
+    !byte 5, 6, 7, 8            ; row 1 -- and here the file simply stops
+@file_len  = 26
+
+@fname     !text "TRUNC.BMX"
+@fname_len = 9
+@name      !text "BMX_TRUNCATED", $00
 
 ; =====================================================================
 ; ZX0: these 30 bytes are the same 96-byte phrase the LZSA2 test uses,
