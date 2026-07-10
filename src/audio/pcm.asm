@@ -120,8 +120,17 @@ pcm_write
 ; =====================================================================
 !ifdef X16_USE_PCM_STREAM {
 
-pcm_str_rem    !word 0          ; bytes still to feed
+pcm_str_rem    !fill 3, 0       ; bytes still to feed (24-bit)
 pcm_str_active !byte 0
+pcm_str_loop   !byte 0          ; caller-owned: nonzero = wrap to the
+                                ; start when the data runs out; set or
+                                ; clear it BEFORE pcm_stream_start*
+pcm_str_mode   !byte 0          ; 0 = low RAM source, 1 = banked RAM
+pcm_str_bank   !byte 0          ; the bank currently being read (mode 1)
+pcm_str_rsrc   !word 0          ; rewind snapshot: source address...
+pcm_str_rbank  !byte 0          ; ...bank...
+pcm_str_rlen   !fill 3, 0       ; ...and byte count
+pcm_str_svbk   !byte 0          ; the interrupted code's RAM_BANK
 
 ; ---------------------------------------------------------------------
 ; pcm_stream_start -- play a sample buffer through the FIFO
@@ -129,25 +138,80 @@ pcm_str_active !byte 0
 ;        X16_P2/P3 = byte count
 ;        A         = sample rate (1-128; 128 = 48828 Hz)
 ;
-; Set the format and volume first with pcm_ctrl. The FIFO is primed
-; here in one go, THEN the rate starts playback, so it cannot underrun
-; at t=0. Requires interrupts enabled; installs the CINV hook itself.
+; Set the format and volume first with pcm_ctrl, and pcm_str_loop if
+; the sample should repeat. The FIFO is primed here in one go, THEN
+; the rate starts playback, so it cannot underrun at t=0. Requires
+; interrupts enabled; installs the CINV hook itself.
 ; ---------------------------------------------------------------------
 pcm_stream_start
     pha
     jsr pcm_stream_stop         ; quiesce a previous stream
 
+    stz pcm_str_mode
     lda X16_P0                  ; patch the source into the refiller
     sta .src+1
+    sta pcm_str_rsrc
     lda X16_P1
     sta .src+2
+    sta pcm_str_rsrc+1
     lda X16_P2
     sta pcm_str_rem
+    sta pcm_str_rlen
     lda X16_P3
     sta pcm_str_rem+1
+    sta pcm_str_rlen+1
+    stz pcm_str_rem+2
+    stz pcm_str_rlen+2
     ora X16_P2
-    beq @nothing                ; zero bytes: nothing to play
+    bne .start_common
+    pla                         ; zero bytes: nothing to play
+    rts
 
+; ---------------------------------------------------------------------
+; pcm_stream_start_bank -- play a sample living in banked RAM
+;   in:  X16_P0/P1 = offset within the bank window (0-8191)
+;        X16_P2/P3/P4 = byte count (24 bits: whole songs)
+;        X16_P5    = the bank the sample starts in
+;        A         = sample rate (1-128)
+;
+; The refiller maps banks in as it goes (rolling $C000 back to $A000,
+; bank + 1) and always restores the interrupted code's RAM_BANK, so
+; the main program never notices.
+; ---------------------------------------------------------------------
+pcm_stream_start_bank
+    pha
+    jsr pcm_stream_stop
+
+    lda #1
+    sta pcm_str_mode
+    lda X16_P0                  ; window address = $A000 + offset
+    sta .src+1
+    sta pcm_str_rsrc
+    lda X16_P1
+    clc
+    adc #$A0
+    sta .src+2
+    sta pcm_str_rsrc+1
+    lda X16_P5
+    sta pcm_str_bank
+    sta pcm_str_rbank
+    lda X16_P2
+    sta pcm_str_rem
+    sta pcm_str_rlen
+    lda X16_P3
+    sta pcm_str_rem+1
+    sta pcm_str_rlen+1
+    lda X16_P4
+    sta pcm_str_rem+2
+    sta pcm_str_rlen+2
+    ora X16_P2
+    ora X16_P3
+    bne .start_common
+    pla
+    rts
+
+; the shared tail: hook, prime, arm AFLOW if data remains, set the rate
+.start_common
     jsr irq_install
     lda #1
     sta pcm_str_active
@@ -163,13 +227,12 @@ pcm_stream_start
 @go
     pla
     jmp pcm_rate                ; ...and start the DAC
-@nothing
-    pla
-    rts
 
 ; ---------------------------------------------------------------------
 ; pcm_stream_stop -- stop refilling. What is already queued in the
 ; FIFO keeps playing; call pcm_reset/pcm_rate(0) for immediate silence.
+; (pcm_str_loop is caller-owned and survives; a looping stream stops
+; all the same -- the loop flag only matters when the data runs out.)
 ; ---------------------------------------------------------------------
 pcm_stream_stop
     php
@@ -183,6 +246,7 @@ pcm_stream_stop
 ; ---------------------------------------------------------------------
 ; pcm_stream_active -- out: A = 1 while data remains, 0 when the whole
 ;                      buffer has been handed to the FIFO (Z mirrors A)
+;                      A looping stream stays active until stopped.
 ; ---------------------------------------------------------------------
 pcm_stream_active
     lda pcm_str_active
@@ -202,13 +266,21 @@ pcm_stream_isr
     rts
 
 pcm_stream_fill
+    lda pcm_str_mode
+    beq @loop
+    lda RAM_BANK                ; banked source: map it in, and put the
+    sta pcm_str_svbk            ; interrupted code's bank back on exit
+    lda pcm_str_bank
+    sta RAM_BANK
 @loop
     lda pcm_str_rem
     ora pcm_str_rem+1
+    ora pcm_str_rem+2
     beq @exhausted
     bit VERA_AUDIO_CTRL         ; bit 7: FIFO full
-    bmi @full
-
+    bpl @feed
+    jmp @full                   ; out of branch range from here
+@feed
 .src
     lda $FFFF                   ; operand = current source (self-modified)
     sta VERA_AUDIO_DATA
@@ -216,19 +288,64 @@ pcm_stream_fill
     inc .src+1                  ; advance the source
     bne @dec
     inc .src+2
+    lda pcm_str_mode
+    beq @dec
+    lda .src+2                  ; banked: roll $C000 -> $A000, bank + 1
+    cmp #$C0
+    bne @dec
+    lda #$A0
+    sta .src+2
+    inc pcm_str_bank
+    lda pcm_str_bank
+    sta RAM_BANK
 @dec
-    lda pcm_str_rem             ; 16-bit decrement
-    bne @dec_low
+    lda pcm_str_rem             ; 24-bit decrement
+    bne @dec0
+    lda pcm_str_rem+1
+    bne @dec1
+    dec pcm_str_rem+2
+@dec1
     dec pcm_str_rem+1
-@dec_low
+@dec0
     dec pcm_str_rem
     bra @loop
 
 @exhausted
+    lda pcm_str_loop
+    beq @stop_refill
+    lda pcm_str_rlen            ; an empty snapshot cannot loop
+    ora pcm_str_rlen+1
+    ora pcm_str_rlen+2
+    beq @stop_refill
+    lda pcm_str_rsrc            ; rewind to the start...
+    sta .src+1
+    lda pcm_str_rsrc+1
+    sta .src+2
+    lda pcm_str_rlen
+    sta pcm_str_rem
+    lda pcm_str_rlen+1
+    sta pcm_str_rem+1
+    lda pcm_str_rlen+2
+    sta pcm_str_rem+2
+    lda pcm_str_mode
+    bne @rewind_bank
+    jmp @loop                   ; @loop is out of branch range from here
+@rewind_bank
+    lda pcm_str_rbank           ; ...including the starting bank
+    sta pcm_str_bank
+    sta RAM_BANK
+    jmp @loop
+
+@stop_refill
     lda #VERA_IRQ_AFLOW         ; out of data: stop the refill interrupt
     trb VERA_IEN                ; (leaving it enabled would storm: AFLOW
     stz pcm_str_active          ; only clears by refilling the FIFO)
 @full
+    lda pcm_str_mode
+    beq @out
+    lda pcm_str_svbk            ; the interrupted code's bank goes back
+    sta RAM_BANK
+@out
     rts
 
 }   ; !ifdef X16_USE_PCM_STREAM

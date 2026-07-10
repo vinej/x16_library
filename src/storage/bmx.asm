@@ -151,14 +151,9 @@ bmx_load
     sta bmx_cnt+1
     asl bmx_cnt
     rol bmx_cnt+1
-@pal_stream
-    lda bmx_cnt
-    ora bmx_cnt+1
-    beq @pal_done
-    jsr CHRIN
-    sta VERA_DATA0
-    jsr .dec_cnt
-    bra @pal_stream
+    jsr .bulk_read              ; MACPTR into DATA0; CHRIN fallback
+    bcc @pal_done
+    jmp @io_short
 @pal_done
 
     ; --- skip any gap up to the header's data offset -------------------
@@ -200,7 +195,10 @@ bmx_load
     ; zero-height BMX describes nothing.)
     jsr READST
     cmp #0
-    bne @io_short
+    beq @rows_ahead
+    jmp @io_short               ; @io_short is past the row loop: too far
+                                ; for a relative branch from here
+@rows_ahead
 
     ; --- pixel rows, bmx_stride apart ----------------------------------
     lda X16_P5                  ; the walking VRAM address
@@ -226,14 +224,9 @@ bmx_load
     sta bmx_cnt
     lda bmx_row+1
     sta bmx_cnt+1
-@pix
-    lda bmx_cnt
-    ora bmx_cnt+1
-    beq @row_done
-    jsr CHRIN
-    sta VERA_DATA0
-    jsr .dec_cnt
-    bra @pix
+    jsr .bulk_read              ; the whole row in MACPTR-sized gulps
+    bcc @row_done
+    jmp @io_short
 @row_done
     clc                         ; cur += stride (17-bit)
     lda bmx_cur
@@ -546,6 +539,61 @@ bmx_save
 .dc_lo
     dec bmx_cnt
     rts
+
+bmx_t !byte 0
+
+; read bmx_cnt bytes from the open channel into VERA_DATA0 (the port
+; is already aimed). MACPTR moves them in bulk -- with the input carry
+; SET the KERNAL holds the destination address fixed, which is exactly
+; the data-port streaming trick mem_copy uses. A device that cannot do
+; MACPTR answers carry set, and the byte-by-byte CHRIN path takes over.
+;   out: carry clear = done; carry set = the stream died mid-read
+.bulk_read
+@more
+    lda bmx_cnt
+    ora bmx_cnt+1
+    beq @br_ok
+    lda bmx_cnt+1
+    beq @small
+    lda #255                    ; a big remainder: largest single ask
+    bra @ask
+@small
+    lda bmx_cnt                 ; the exact remainder
+@ask
+    ldx #<VERA_DATA0
+    ldy #>VERA_DATA0
+    sec                         ; fixed destination: stream into VERA
+    jsr MACPTR
+    bcs @fallback               ; the device cannot do block reads
+    txa                         ; X/Y = bytes actually delivered
+    bne @got
+    tya
+    beq @br_short               ; zero bytes: the file ran out
+@got
+    stx bmx_t                   ; bmx_cnt -= bytes read
+    sec
+    lda bmx_cnt
+    sbc bmx_t
+    sta bmx_cnt
+    sty bmx_t
+    lda bmx_cnt+1
+    sbc bmx_t
+    sta bmx_cnt+1
+    bra @more
+@br_ok
+    clc
+    rts
+@br_short
+    sec
+    rts
+@fallback
+    lda bmx_cnt
+    ora bmx_cnt+1
+    beq @br_ok
+    jsr CHRIN
+    sta VERA_DATA0
+    jsr .dec_cnt
+    bra @fallback
 
 bmx_hdr  !fill 16, 0
 bmx_cnt  !word 0

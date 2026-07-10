@@ -160,10 +160,13 @@ main
     jsr test_bmx
     jsr test_bmx_missing
     jsr test_bmx_truncated
+    jsr test_bmx_short_pal
     jsr test_zx0
     jsr test_gfx_flood
     jsr test_tsc
     jsr test_fx_affine
+    jsr test_pcm_stream_bank
+    jsr test_pcm_stream_loop
 
     jsr t_summary
     rts
@@ -6556,45 +6559,70 @@ test_bmx_missing
 @name      !text "BMX_MISSING", $00
 
 ; =====================================================================
-; A file that stops in the middle of the image is an I/O error too.
+; t_write_file -- write exactly the bytes given, and nothing else.
 ;
-; The header here is entirely valid and promises four rows of four
-; pixels; the file carries two. Without a status check the remaining
-; CHRINs return junk, bmx_load reports success, and half the image on
-; screen is whatever VRAM held before -- a silent wrong answer, which is
-; the worst kind.
+; fs_save cannot be used to build a test fixture that starts with a
+; magic number: the KERNAL's SAVE prepends a two-byte load address. So
+; write the file a byte at a time through CHROUT, the same way bmx_save
+; does.
 ;
-; The file is written a byte at a time through CHROUT rather than with
-; fs_save, because the KERNAL's SAVE prepends a two-byte load address
-; and the first two bytes of a BMX must be its magic.
+;   in:  A = filename length, X/Y = filename lo/hi (SETNAM's order)
+;        X16_P0/P1 = data address, X16_P2 = byte count (1-255)
+;   out: carry set if the file could not be opened
 ; =====================================================================
-test_bmx_truncated
-    lda #@fname_len
-    ldx #<@fname
-    ldy #>@fname
+t_write_file
     jsr SETNAM
     lda #2
     ldx #8
     ldy #1                      ; write
     jsr SETLFS
     jsr OPEN
-    bcs @fail
+    bcs @bad
     ldx #2
     jsr CHKOUT
-    bcs @fail_close
+    bcs @bad_close
 
-    stz X16_T0                  ; CHROUT is not documented to preserve X
+    stz X16_T0                  ; CHROUT is not documented to preserve Y
 @put
-    ldx X16_T0
-    lda @file,x
+    ldy X16_T0
+    lda (X16_P0),y
     jsr CHROUT
     inc X16_T0
     lda X16_T0
-    cmp #@file_len
+    cmp X16_P2
     bne @put
+
     jsr CLRCHN
     lda #2
     jsr CLOSE
+    clc
+    rts
+@bad_close
+    jsr CLRCHN
+    lda #2
+    jsr CLOSE
+@bad
+    sec
+    rts
+
+; =====================================================================
+; A file that stops in the middle of the image is an I/O error too.
+;
+; The header here is entirely valid and promises four rows of four
+; pixels; the file carries two. Without a status check the remaining
+; CHRINs return junk, bmx_load reports success, and half the image is
+; whatever VRAM held before -- a silent wrong answer, which is the worst
+; kind.
+; =====================================================================
+test_bmx_truncated
+    +cset16 X16_P0, @file
+    lda #@file_len
+    sta X16_P2
+    lda #@fname_len
+    ldx #<@fname
+    ldy #>@fname
+    jsr t_write_file
+    bcs @fail
 
     lda #<@fname
     sta X16_P0
@@ -6614,11 +6642,6 @@ test_bmx_truncated
     jsr @unlink
     lda #0
     bra @report
-@fail_close
-    jsr CLRCHN
-    lda #2
-    jsr CLOSE
-    bra @fail
 @fail_del
     jsr @unlink
 @fail
@@ -6654,6 +6677,80 @@ test_bmx_truncated
 @fname     !text "TRUNC.BMX"
 @fname_len = 9
 @name      !text "BMX_TRUNCATED", $00
+
+; =====================================================================
+; ...and a file that stops inside the PALETTE, before a single pixel.
+;
+; This one exists because the per-row check above cannot see it. The
+; image is one row tall, so that check never runs: it deliberately
+; tolerates EOF after the last row, and the last row is the first. Only
+; the status test between the palette and the pixels catches this, which
+; is why that test is not redundant.
+;
+; The header asks for four palette entries -- eight bytes -- and the
+; file supplies two.
+; =====================================================================
+test_bmx_short_pal
+    +cset16 X16_P0, @file
+    lda #@file_len
+    sta X16_P2
+    lda #@fname_len
+    ldx #<@fname
+    ldy #>@fname
+    jsr t_write_file
+    bcs @fail
+
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4
+    +cset16 X16_P5, TESTVRAM
+    jsr bmx_load
+    bcc @fail_del               ; it "loaded" a palette that is not there
+    cmp #BMX_ERR_IO
+    bne @fail_del
+
+    jsr @unlink
+    lda #0
+    bra @report
+@fail_del
+    jsr @unlink
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+
+@unlink
+    lda #<@fname
+    ldx #>@fname
+    ldy #@fname_len
+    jmp dos_delete
+
+@file
+    !text "BMX"
+    !byte 1
+    !byte 8                     ; bits per pixel
+    !byte 3
+    !word 4                     ; width
+    !word 1                     ; height: ONE row, so no per-row check runs
+    !byte 4                     ; four palette entries = eight bytes...
+    !byte 0
+    !word 24                    ; pixel data offset: 16 + 4*2
+    !byte 0
+    !byte 0
+    !byte $0F, $00              ; ...of which the file holds two
+@file_len  = 18
+
+@fname     !text "SHORTPAL.BMX"
+@fname_len = 12
+@name      !text "BMX_SHORT_PAL", $00
 
 ; =====================================================================
 ; ZX0: these 30 bytes are the same 96-byte phrase the LZSA2 test uses,
@@ -7131,6 +7228,143 @@ test_fx_affine
     ldy #>@name
     jmp t_result
 @name !text "FX_AFFINE", $00
+
+; =====================================================================
+; Banked-RAM streaming: priming 5000 bytes from bank 30 offset 8000
+; must consume exactly the 4 KB FIFO, leave the stream's own cursor in
+; bank 31, keep 904 bytes pending -- and hand the CALLER's RAM_BANK
+; back untouched.
+; =====================================================================
+test_pcm_stream_bank
+    lda RAM_BANK
+    sta @saved
+    lda #7
+    sta RAM_BANK                ; a bank the streamer must not disturb
+
+    lda #0
+    jsr pcm_rate
+    lda #$0F
+    jsr pcm_ctrl
+    jsr pcm_reset
+    stz pcm_str_loop
+
+    lda #<8000                  ; offset 8000 in bank 30: the prime
+    sta X16_P0                  ; crosses into bank 31 partway
+    lda #>8000
+    sta X16_P1
+    lda #<5000
+    sta X16_P2
+    lda #>5000
+    sta X16_P3
+    stz X16_P4                  ; 24-bit count, high byte 0
+    lda #30
+    sta X16_P5
+    lda #0                      ; rate 0: prime but do not play
+    jsr pcm_stream_start_bank
+
+    lda RAM_BANK                ; the caller's bank survived priming
+    cmp #7
+    bne @fail
+    jsr pcm_full
+    bcc @fail                   ; the FIFO was filled to the brim
+    lda pcm_str_bank            ; 8000 + 4095 = 12095: into bank 31
+    cmp #31                     ; (the FIFO's full flag asserts at 4095
+    bne @fail                   ; -- the ring keeps one slot back)
+    lda pcm_str_rem             ; 5000 - 4095 = 905 = $0389 pending
+    cmp #<905
+    bne @fail
+    lda pcm_str_rem+1
+    cmp #>905
+    bne @fail
+    lda pcm_str_rem+2
+    bne @fail
+    jsr pcm_stream_active
+    beq @fail
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    beq @fail
+
+    jsr pcm_stream_stop
+    jsr pcm_reset
+    jsr irq_remove
+    lda @saved
+    sta RAM_BANK
+    lda #0
+    bra @report
+@fail
+    jsr pcm_stream_stop
+    jsr pcm_reset
+    jsr irq_remove
+    lda @saved
+    sta RAM_BANK
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@saved !byte 0
+@name  !text "PCM_STREAM_BANK", $00
+
+; =====================================================================
+; Loop mode: a 100-byte sample with pcm_str_loop set must wrap through
+; the buffer 40 times while priming (40*100 + 95 = the FIFO's 4095),
+; stay active, and keep AFLOW armed -- endless music from a tiny
+; buffer.
+; =====================================================================
+test_pcm_stream_loop
+    lda #0
+    jsr pcm_rate
+    lda #$0F
+    jsr pcm_ctrl
+    jsr pcm_reset
+
+    lda #1
+    sta pcm_str_loop
+    lda #<$2000                 ; any readable RAM does as sample data
+    sta X16_P0
+    lda #>$2000
+    sta X16_P1
+    lda #100
+    sta X16_P2
+    stz X16_P3
+    lda #0                      ; rate 0: prime but do not play
+    jsr pcm_stream_start
+
+    jsr pcm_full
+    bcc @fail                   ; primed to the brim across 40 wraps
+    jsr pcm_stream_active
+    beq @fail                   ; a looping stream never runs dry
+    lda VERA_IEN
+    and #VERA_IRQ_AFLOW
+    beq @fail
+    lda pcm_str_rem             ; 4095 = 40 laps + 95: 5 bytes left in
+    cmp #5                      ; the current lap
+    bne @fail
+    lda pcm_str_rem+1
+    ora pcm_str_rem+2
+    bne @fail
+
+    jsr pcm_stream_stop
+    lda pcm_str_loop            ; the flag is caller-owned: it survives
+    cmp #1
+    bne @fail
+
+    stz pcm_str_loop
+    jsr pcm_reset
+    jsr irq_remove
+    lda #0
+    bra @report
+@fail
+    jsr pcm_stream_stop
+    stz pcm_str_loop
+    jsr pcm_reset
+    jsr irq_remove
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "PCM_STREAM_LOOP", $00
 
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"

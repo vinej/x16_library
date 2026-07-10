@@ -181,7 +181,7 @@ treated as caller-save scratch.
 | `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off`, `psg_env_start`/`release`/`stop`/`tick` (per-voice ASR envelopes) |
 | `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_note_bas`, `ym_release_note`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_get_pan`, `ym_get_vol` |
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
-| `X16_USE_PCM_STREAM` | `pcm_stream_start`/`stop`/`active` — AFLOW-interrupt streaming beyond the 4 KB FIFO (pulls in PCM and IRQ) |
+| `X16_USE_PCM_STREAM` | `pcm_stream_start`/`start_bank`/`stop`/`active`, `pcm_str_loop` — AFLOW-interrupt streaming beyond the 4 KB FIFO, from low or banked RAM, looping (pulls in PCM and IRQ) |
 | `X16_USE_INPUT` | `joy_scan`, `joy_get`, `mouse_show`/`hide`/`get`, `key_get`, `key_wait`, `key_peek` |
 | `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem`, `bank_copy_far` |
 | `X16_USE_BANKALLOC` | `bank_alloc_init`, `bank_alloc`, `bank_free`, `bank_reserve` |
@@ -254,6 +254,13 @@ clears only by refilling, so when the data runs out the streamer disables it
 in `IEN`; forget that in hand-rolled code and the interrupt storms. Set the
 format with `pcm_ctrl` first; the rate is passed to `pcm_stream_start` and
 playback starts only after the FIFO is primed, so it cannot underrun at t=0.
+`pcm_stream_start_bank` streams from banked RAM instead — a 24-bit byte
+count and a starting bank; the refiller maps banks in as it crosses `$C000`
+and always hands the interrupted code's `RAM_BANK` back. Set `pcm_str_loop`
+(caller-owned, survives a stop) before starting and the sample wraps
+endlessly until `pcm_stream_stop`. One hardware detail the tests pin: the
+FIFO's full flag asserts at 4095 bytes, not 4096 — the ring keeps one slot
+back.
 
 **An IRQ callback that calls the library must save the zero page it
 borrows.** The KERNAL's virtual registers `r0`–`r15` and the library's
@@ -321,7 +328,11 @@ the one the community tools and Prog8 write. Loading restores the palette
 contiguous load and a smaller one is a stamp that leaves its surroundings
 alone. Saving mirrors it exactly; note the saved palette comes from VRAM's
 host-write shadow, so it is only meaningful for entries this program set
-itself. Compressed BMX files are refused with `BMX_ERR_PACKED`.
+itself. Compressed BMX files are refused with `BMX_ERR_PACKED`. Loading
+moves the palette and pixel data with `MACPTR` block reads streamed
+straight into the VERA data port (the input-carry-set fixed-destination
+mode), falling back to a `CHRIN` byte loop on devices that cannot — a
+full-screen load is KERNAL-block-copy fast, not byte-banging fast.
 
 The `dos_*` routines finally answer *why* a file operation failed: every
 command sent to channel 15 is answered with a status line (`dos_msg`), and
