@@ -88,26 +88,37 @@ Two ways in, pick per project:
 
 ### Native sources (full `X16_USE_*` gating)
 
-`src_ca65/` + `test_ca65/` is a **native ca65 port** of the whole library —
-same file layout, same module gates, same macros, same routine contracts as
-the ACME tree. It is not a reimplementation: `src_acme/` remains the
-reference, `tools/acme2ca65.py` converts the mechanical 90% (three files are
-maintained by hand: `x16.asm`, `core/macros.asm`, and `util/math.asm` whose
-trig tables ACME computes but ca65 cannot), and the port is held to the
-hardest possible bar — **its test runner assembles to a byte-identical PRG**
-(same SHA-256) as the ACME build and passes the same 132-test suite on the
-emulator, headless and windowed.
+The library exists as **four native source trees** — ACME (`src_acme/`, the
+reference), ca65 (`src_ca65/`), 64tass (`src_64tass/`) and KickAssembler
+(`src_kick/`) — same file layout, same module gates, same macros, same
+routine contracts. The three ports are not reimplementations: converters in
+`tools/` (`acme2ca65.py`, `acme2tass.py`, `acme2kick.py`) produce them from
+the ACME tree, a few dialect-specific files are maintained by hand (each
+tree's README lists them), and every port is held to the hardest possible
+bar — **its test runner assembles to a byte-identical PRG** (same SHA-256)
+as the ACME build and passes the same 132-test suite (134 windowed) on the
+emulator.
 
 ```
 ca65 --cpu 65C02 -I src_ca65 -o prog.o prog.s
-ld65 -C test_ca65\runner.cfg -o PROG.PRG prog.o     (or your own cfg)
-.\build_ca65.ps1 -Test                              the suite, via ca65
+ld65 -C test_ca65\runner.cfg -o PROG.PRG prog.o        (or your own cfg)
+
+64tass -C -a --cbm-prg -I src_64tass -o PROG.PRG prog.asm
+
+java -jar kickass\KickAss.jar prog.asm -libdir src_kick -o PROG.PRG
+
+.\build_ca65.ps1 -Test      the suite through each port's toolchain
+.\build_64tass.ps1 -Test    (64tass.exe and KickAss.jar ship in the repo,
+.\build_kick.ps1 -Test       under 64tass\ and kickass\; ca65 is expected
+                             on the PATH; KickAssembler needs Java)
 ```
 
 A ca65 program is the ACME skeleton with `.include` in place of `!source`
 and no `+` on macro calls; `.ifdef`-based `X16_USE_*` gating works
-identically. Native 64tass (`src_64tass/`) and KickAssembler (`src_kick/`)
-trees follow next, on the same convert-and-prove pattern.
+identically. 64tass keeps ACME's `X16_USE_VERA = 1` spelling (gates default
+to 0 via `.weak`). KickAssembler selects modules with `#define X16_USE_*`
+before the `#import "x16_code.asm"` — see `src_kick/README.md` for the
+one ordering rule (zero-page overrides go before the `x16.asm` import).
 
 ### Prebuilt binary + bindings (no gating, any assembler)
 
@@ -635,17 +646,22 @@ src_acme/    THE REFERENCE IMPLEMENTATION
   storage/       bank, bankalloc, mem, load, dos, bmx
   util/          fixed, collide, bits, number, int16, int32, float,
                  math, clip, buffers, zx0, tscrunch
-src_ca65/    the native ca65 port (generated + 3 hand files; see
-             tools/acme2ca65.py -- byte-identical output, same suite)
-src_64tass/  native 64tass port: next
-src_kick/    native KickAssembler port: next
+src_ca65/    native ca65 port        } generated + a few hand files;
+src_64tass/  native 64tass port      } byte-identical output, same
+src_kick/    native KickAssembler    } suite -- see each tree's README
 examples/    hello.asm, bounce.asm, numbers.asm
 test_acme/   runner.asm, testlib.asm, blobsmoke.asm (132 tests)
 test_ca65/   the converted runner + runner.cfg (same 132 tests)
-tools/       acme2ca65.py -- the dialect converter
+test_64tass/ the converted runner (same 132 tests)
+test_kick/   the converted runner (same 132 tests)
+tools/       acme2ca65.py, acme2tass.py, acme2kick.py -- the converters
 dist/        the prebuilt-binary + bindings pipeline (dist.ps1)
+64tass/      64tass V1.60 (repo-local, .gitignored)
+kickass/     KickAssembler 5.25 (repo-local, .gitignored; needs Java)
 build_acme.ps1
 build_ca65.ps1
+build_64tass.ps1
+build_kick.ps1
 ```
 
 ROM entry points in `core/const_rom.asm` carry a `rom_` prefix (`rom_ym_init`,

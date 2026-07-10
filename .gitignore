@@ -46,3 +46,9 @@ desktop.ini
 # ca65 build products
 *.o
 
+
+# Bundled third-party assemblers -- not ours to redistribute (see README)
+64tass/
+kickass/
+
+tools/__pycache__/
