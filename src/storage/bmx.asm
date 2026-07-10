@@ -71,6 +71,21 @@ bmx_load
     cpx #16
     bne @get_hdr
 
+    ; OPEN and CHKIN both succeed for a file that does not exist: CBM DOS
+    ; reports "62,FILE NOT FOUND" on the command channel, and the KERNAL
+    ; only surfaces it in ST once a read has been attempted. Without this
+    ; check the 16 CHRINs above return junk, the magic test below fails,
+    ; and a missing file is reported as BMX_ERR_FORMAT -- "this is not a
+    ; BMX" rather than "this is not there". ST is likewise nonzero for a
+    ; header shorter than 16 bytes, which is an I/O error too. A real BMX
+    ; has palette and pixels after byte 16, so EOF cannot legitimately be
+    ; set at this point.
+    jsr READST
+    beq @validate
+    lda #BMX_ERR_IO
+    bra @close_err
+
+@validate
     lda bmx_hdr                 ; validate
     cmp #'B'
     bne @bad_fmt

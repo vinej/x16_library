@@ -33,7 +33,8 @@
 ;                     gfx_circle, gfx_disc, gfx_char, gfx_text,
 ;                     gfx_flood
 ;   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off, fx_line,
-;                     fx_triangle, fx_copy, fx_transp_on/off
+;                     fx_triangle, fx_copy, fx_transp_on/off,
+;                     fx_affine_on/ray/span (rotozoom sampling)
 ;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait,
 ;                     irq_line_install/remove, irq_sprcol_install/
 ;                     remove, sprite_collisions
@@ -65,6 +66,7 @@
 ;   X16_USE_BUFFERS   rb_init/put/get/count, stk_init/push/pop/depth
 ;   X16_USE_ADPCM     adpcm_init, adpcm_nibble, adpcm_block (IMA 4:1)
 ;   X16_USE_ZX0       zx0_decompress (tighter than the ROM's LZSA2)
+;   X16_USE_TSC       tsc_decompress (TSCrunch: faster unpack)
 ;   X16_USE_FIXED     umul16, mul88
 ;   X16_USE_COLLIDE   collide8, collide16
 ;   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
@@ -108,6 +110,7 @@
     !ifndef X16_USE_BUFFERS { X16_USE_BUFFERS = 1 }
     !ifndef X16_USE_ADPCM   { X16_USE_ADPCM   = 1 }
     !ifndef X16_USE_ZX0     { X16_USE_ZX0     = 1 }
+    !ifndef X16_USE_TSC     { X16_USE_TSC     = 1 }
     !ifndef X16_USE_FIXED   { X16_USE_FIXED   = 1 }
     !ifndef X16_USE_COLLIDE { X16_USE_COLLIDE = 1 }
     !ifndef X16_USE_BITS    { X16_USE_BITS    = 1 }
@@ -157,6 +160,7 @@
 !ifdef X16_USE_BUFFERS { !source "util/buffers.asm" }
 !ifdef X16_USE_ADPCM   { !source "audio/adpcm.asm" }
 !ifdef X16_USE_ZX0     { !source "util/zx0.asm" }
+!ifdef X16_USE_TSC     { !source "util/tscrunch.asm" }
 !ifdef X16_USE_FIXED   { !source "util/fixed.asm" }
 !ifdef X16_USE_COLLIDE { !source "util/collide.asm" }
 !ifdef X16_USE_BITS    { !source "util/bits.asm" }

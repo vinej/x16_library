@@ -176,7 +176,7 @@ treated as caller-save scratch.
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
 | `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_circle`, `gfx_disc`, `gfx_char`, `gfx_text`, `gfx_flood` |
-| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off`, `fx_line` (hardware Bresenham), `fx_triangle` (polygon-filler triangles), `fx_copy` (cached VRAM→VRAM), `fx_transp_on`/`off` |
+| `X16_USE_VERAFX` | `fx_mult` (signed 16×16→32 in hardware), `fx_fill`, `fx_clear`, `fx_off`, `fx_line` (hardware Bresenham), `fx_triangle` (polygon-filler triangles), `fx_copy` (cached VRAM→VRAM), `fx_transp_on`/`off`, `fx_affine_on`/`ray`/`span` (the rotozoom/mode-7 sampler) |
 | `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions`, `irq_save_regs`/`irq_restore_regs` |
 | `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off`, `psg_env_start`/`release`/`stop`/`tick` (per-voice ASR envelopes) |
 | `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_note_bas`, `ym_release_note`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_get_pan`, `ym_get_vol` |
@@ -194,6 +194,7 @@ treated as caller-save scratch.
 | `X16_USE_BUFFERS` | `rb_init`/`put`/`get`/`count` (ring buffer), `stk_init`/`push`/`pop`/`depth` |
 | `X16_USE_ADPCM` | `adpcm_init`, `adpcm_nibble`, `adpcm_block` — IMA ADPCM, 4:1 compressed PCM |
 | `X16_USE_ZX0` | `zx0_decompress` — ZX0 v2 (salvador/zx0 output); packs tighter than the ROM's LZSA2 |
+| `X16_USE_TSC` | `tsc_decompress` — TSCrunch; unpacks faster than either, packs a little looser |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
@@ -295,11 +296,23 @@ pending spans): carry set on return means the stack overflowed and the
 fill is incomplete — pathological shapes only; a game's closed regions
 never get near it. Re-filling a region with its own colour is a no-op.
 
-`zx0_decompress` unpacks the modern ZX0 v2 stream (`salvador in out`, or
-`zx0` — not their `-classic` mode). Where the ROM's LZSA2 is free and
-fast, ZX0 trades a slower unpack for a tighter pack; RAM to RAM only,
-since the match copier reads the output back. TSCrunch remains out: its
-selling point is unpack speed, which LZSA2 already covers here.
+The compression picture, complete: the ROM's LZSA2 (`mem_decompress`) is
+free and can stream into VRAM; `zx0_decompress` (the modern ZX0 v2 that
+`salvador`/`zx0` emit — not their `-classic` mode) packs tightest;
+`tsc_decompress` (TSCrunch) unpacks fastest. On the shared 96-byte test
+phrase they pack to 31, 30 and 33 bytes respectively. The TSCrunch port
+replaces the reference decruncher's NMOS undocumented opcodes (`LAX`,
+`ALR`) with legal 65C02 pairs — the original leans on them, and the X16's
+CPU treats them as NOPs. Both are RAM-to-RAM (their match copiers read
+the output back), and neither decompresses in place.
+
+`fx_affine_on`/`fx_affine_ray`/`fx_affine_span` drive the last FX mode:
+VERA samples an 8×8-tile texture map along a fixed-point ray, one texel
+per `DATA1` read. A rotated, zoomed scanline — the mode-7 floor, the
+rotozoom — is `fx_affine_ray` (start position, dx/dy from `sin8`/`cos8`)
+followed by `fx_affine_span` into the framebuffer. The map wraps by
+default or clips to tile 0 (`fx_affine_on`'s flag); increments use the
+same 1/512-texel encoding as the line and polygon helpers.
 
 `bmx_load`/`bmx_save` speak BMX version 1 — the platform's image format,
 the one the community tools and Prog8 write. Loading restores the palette

@@ -158,8 +158,11 @@ main
     jsr test_adpcm
     jsr test_dos
     jsr test_bmx
+    jsr test_bmx_missing
     jsr test_zx0
     jsr test_gfx_flood
+    jsr test_tsc
+    jsr test_fx_affine
 
     jsr t_summary
     rts
@@ -6511,6 +6514,47 @@ test_bmx
 @name   !text "BMX", $00
 
 ; =====================================================================
+; A file that is not there is an I/O error, not a format error.
+;
+; This is the case OPEN does not report. CBM DOS answers "62,FILE NOT
+; FOUND" on the command channel; the KERNAL leaves carry clear on both
+; OPEN and CHKIN and only sets ST once a read has been attempted. So a
+; reader that trusts carry alone pulls 16 bytes of junk, fails its magic
+; check, and blames the file's contents for the file's absence.
+;
+; BMX_ERR_FORMAT here would be a passing-looking wrong answer, which is
+; why this test insists on the exact code rather than merely on failure.
+; =====================================================================
+test_bmx_missing
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4                  ; VRAM bank 0
+    +cset16 X16_P5, TESTVRAM
+    jsr bmx_load
+    bcc @fail                   ; it "loaded" a file that does not exist
+    cmp #BMX_ERR_IO
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+
+@fname     !text "NOSUCH.BMX"
+@fname_len = 10
+@name      !text "BMX_MISSING", $00
+
+; =====================================================================
 ; ZX0: these 30 bytes are the same 96-byte phrase the LZSA2 test uses,
 ; packed by salvador 1.4.2 (the modern v2 stream). The decompressor
 ; must reproduce every byte, return the exact end address, and leave
@@ -6671,6 +6715,321 @@ test_gfx_flood
     ldy #>@name
     jmp t_result
 @name !text "GFX_FLOOD", $00
+
+; =====================================================================
+; TSCrunch, against the reference Go encoder's output: the standard
+; 96-byte phrase (literals + matches), and an RLE-heavy sample that
+; exercises the run, zero-run and long-match token paths.
+; =====================================================================
+test_tsc
+    lda #$77
+    sta @out+96                 ; guard
+
+    lda #<@packed
+    sta X16_P0
+    lda #>@packed
+    sta X16_P1
+    lda #<@out
+    sta X16_P2
+    lda #>@out
+    sta X16_P3
+    jsr tsc_decompress
+    cmp #<(@out+96)
+    bne @fail_far
+    cpx #>(@out+96)
+    bne @fail_far
+    lda @out+96
+    cmp #$77
+    bne @fail_far
+
+    lda #<@out                  ; the payload phrase, four times
+    sta T_ZP
+    lda #>@out
+    sta T_ZP+1
+    ldx #4
+@rep
+    ldy #0
+@cmp
+    lda (T_ZP),y
+    cmp @expect,y
+    bne @fail_far
+    iny
+    cpy #24
+    bne @cmp
+    clc
+    lda T_ZP
+    adc #24
+    sta T_ZP
+    bcc @next
+    inc T_ZP+1
+@next
+    dex
+    bne @rep
+    bra @rle
+
+@fail_far
+    jmp @fail
+
+@rle
+    ; the 196-byte RLE torture: zeros, text, a $55 run, zeros, text
+    lda #<@rpacked
+    sta X16_P0
+    lda #>@rpacked
+    sta X16_P1
+    lda #<@rout
+    sta X16_P2
+    lda #>@rout
+    sta X16_P3
+    jsr tsc_decompress
+    cmp #<(@rout+196)
+    bne @fail
+    cpx #>(@rout+196)
+    bne @fail
+
+    ldx #0                      ; 40 zeros
+@z1
+    lda @rout,x
+    bne @fail
+    inx
+    cpx #40
+    bne @z1
+    ldy #0                      ; "RLE-EDGE"
+@t1
+    lda @rout+40,y
+    cmp @redge,y
+    bne @fail
+    iny
+    cpy #8
+    bne @t1
+    ldx #0                      ; 90 x $55
+@fives
+    lda @rout+48,x
+    cmp #$55
+    bne @fail
+    inx
+    cpx #90
+    bne @fives
+    ldx #0                      ; 50 zeros
+@z2
+    lda @rout+138,x
+    bne @fail
+    inx
+    cpx #50
+    bne @z2
+    ldy #0                      ; "RLE-EDGE" again (a far match)
+@t2
+    lda @rout+188,y
+    cmp @redge,y
+    bne @fail
+    iny
+    cpy #8
+    bne @t2
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@expect !text "X16LIB-DECOMPRESS-TEST!!"
+@redge  !text "RLE-EDGE"
+@packed                         ; tscrunch payload.bin payload.tsc
+    !byte $3f, $19, $58, $31, $36, $4c, $49, $42, $2d, $44, $45, $43
+    !byte $4f, $4d, $50, $52, $45, $53, $53, $2d, $54, $45, $53, $54
+    !byte $21, $21, $58, $fe, $18, $cc, $e8, $7f, $20
+@rpacked                        ; tscrunch rle.bin rle.tsc
+    !byte $31, $cf, $00, $08, $52, $4c, $45, $2d, $45, $44, $47, $45
+    !byte $ff, $55, $b3, $55, $81, $9e, $94, $20
+@out    !fill 97, 0
+@rout   !fill 196, 0
+@name   !text "TSC", $00
+
+; =====================================================================
+; The FX affine sampler: a 2x2-tile map of two 8bpp tiles, sampled by
+; a horizontal ray (crossing a tile boundary and wrapping), a vertical
+; ray, fx_affine_span into VRAM, and clip mode returning tile 0.
+; =====================================================================
+test_fx_affine
+    jsr vera_has_fx
+    bcs @go
+    lda #<@name
+    ldx #>@name
+    jmp t_skip
+@go
+    ; tile data at $04800: tile 0 = $40+i, tile 1 = $80+i (i = 0..63)
+    +vera_addr 0, TESTVRAM + $800, VERA_INC_1
+    ldx #0
+@tile0
+    txa
+    ora #$40
+    sta VERA_DATA0
+    inx
+    cpx #64
+    bne @tile0
+    ldx #0
+@tile1
+    txa
+    ora #$80
+    sta VERA_DATA0
+    inx
+    cpx #64
+    bne @tile1
+
+    ; map at $05000, 2x2: [0,1 / 1,0]
+    +vera_addr 0, TESTVRAM + $1000, VERA_INC_1
+    stz VERA_DATA0
+    lda #1
+    sta VERA_DATA0
+    sta VERA_DATA0
+    stz VERA_DATA0
+
+    lda #<(TESTVRAM + $800)     ; describe the texture (wrap mode)
+    sta X16_P0
+    lda #>(TESTVRAM + $800)
+    sta X16_P1
+    lda #^(TESTVRAM + $800)
+    sta X16_P2
+    lda #<(TESTVRAM + $1000)
+    sta X16_P3
+    lda #>(TESTVRAM + $1000)
+    sta X16_P4
+    lda #^(TESTVRAM + $1000)
+    sta X16_P5
+    stz X16_P6                  ; 2x2 tiles
+    stz X16_P7                  ; wrap
+    jsr fx_affine_on
+
+    ; ray A: from (0,0), one texel right per read
+    stz X16_P0
+    stz X16_P1
+    stz X16_P2
+    stz X16_P3
+    +cset16 X16_P4, 512
+    +cset16 X16_P6, 0
+    jsr fx_affine_ray
+
+    stz chk_err
+    ldx #0                      ; x 0..7: tile 0 row 0 = $40+x
+@rowa0
+    txa
+    ora #$40
+    cmp VERA_DATA1
+    bne @afail
+    inx
+    cpx #8
+    bne @rowa0
+    ldx #0                      ; x 8..15: tile 1 row 0 = $80+x
+@rowa1
+    txa
+    ora #$80
+    cmp VERA_DATA1
+    bne @afail
+    inx
+    cpx #8
+    bne @rowa1
+    lda VERA_DATA1              ; x 16 wraps back to tile 0's $40
+    cmp #$40
+    bne @afail
+    bra @ray_b
+@afail
+    jmp @fail
+
+@ray_b
+    ; ray B: from (2,0), one texel DOWN per read
+    +cset16 X16_P0, 2
+    stz X16_P2
+    stz X16_P3
+    +cset16 X16_P4, 0
+    +cset16 X16_P6, 512
+    jsr fx_affine_ray
+    ldx #0                      ; y 0..7: tile 0 column 2 = $40+y*8+2
+@colb0
+    txa
+    asl
+    asl
+    asl
+    ora #$42
+    cmp VERA_DATA1
+    bne @afail
+    inx
+    cpx #8
+    bne @colb0
+    ldx #0                      ; y 8..15: map(0,1) = tile 1
+@colb1
+    txa
+    asl
+    asl
+    asl
+    ora #$82
+    cmp VERA_DATA1
+    bne @afail
+    inx
+    cpx #8
+    bne @colb1
+
+    ; fx_affine_span: rerun ray A into VRAM and verify the copy
+    stz X16_P0
+    stz X16_P1
+    stz X16_P2
+    stz X16_P3
+    +cset16 X16_P4, 512
+    +cset16 X16_P6, 0
+    jsr fx_affine_ray
+    +vera_addr 0, TESTVRAM + $D00, VERA_INC_1
+    +cset16 X16_P0, 16
+    jsr fx_affine_span
+    jsr fx_off
+
+    +vera_addr 1, TESTVRAM + $D00, VERA_INC_1
+    +chkv $40
+    +chkv $41
+    +vera_addr 1, TESTVRAM + $D00 + 8, VERA_INC_1
+    +chkv $80
+    +vera_addr 1, TESTVRAM + $D00 + 15, VERA_INC_1
+    +chkv $87
+    lda chk_err
+    bne @fail
+
+    ; clip mode: sampling outside the map answers from tile 0
+    lda #<(TESTVRAM + $800)
+    sta X16_P0
+    lda #>(TESTVRAM + $800)
+    sta X16_P1
+    lda #^(TESTVRAM + $800)
+    sta X16_P2
+    lda #<(TESTVRAM + $1000)
+    sta X16_P3
+    lda #>(TESTVRAM + $1000)
+    sta X16_P4
+    lda #^(TESTVRAM + $1000)
+    sta X16_P5
+    stz X16_P6
+    lda #1                      ; clip on
+    sta X16_P7
+    jsr fx_affine_on
+
+    +cset16 X16_P0, 20          ; (20,3): tile x=2, outside a 2x2 map
+    +cset16 X16_P2, 3
+    +cset16 X16_P4, 512
+    +cset16 X16_P6, 0
+    jsr fx_affine_ray
+    lda VERA_DATA1              ; tile 0 at (20&7, 3) = $40+3*8+4 = $5C
+    cmp #$5C
+    bne @fail
+    jsr fx_off
+
+    lda #0
+    bra @report
+@fail
+    jsr fx_off
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "FX_AFFINE", $00
 
 ; ---------------------------------------------------------------------
 !source "test/testlib.asm"
