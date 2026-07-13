@@ -21,6 +21,7 @@ only there:
 | `cc65\ca65.exe` + `ld65.exe` | ca65/ld65 V2.19 (from the cc65 suite) | <https://cc65.github.io/> — copy the two exes out of its `bin\` |
 | `64tass\64tass.exe` | 64tass V1.60 | <https://sourceforge.net/projects/tass64/> |
 | `kickass\KickAss.jar` | KickAssembler 5.25 (needs Java) | <http://theweb.dk/KickAssembler/> |
+| `dasm\dasm.exe` | dasm v2.20.17 release (binary reports 2.20.16) | <https://github.com/dasm-assembler/dasm/releases> |
 | `emulator\x16emu.exe` + `rom.bin` | X16 emulator r49 | <https://github.com/X16Community/x16-emulator>, ROM from <https://github.com/X16Community/x16-rom> |
 
 Only `acme\` and `emulator\` are required to build the reference tree and run
@@ -91,22 +92,22 @@ machine code to sit, and must be sourced exactly once. ACME has no linker, so
 unused routines cannot be stripped automatically — that is what the `X16_USE_*`
 gates are for.
 
-## Other assemblers: ca65, 64tass, KickAssembler
+## Other assemblers: ca65, 64tass, KickAssembler, dasm
 
 Two ways in, pick per project:
 
 ### Native sources (full `X16_USE_*` gating)
 
-The library exists as **four native source trees** — ACME (`src_acme/`, the
-reference), ca65 (`src_ca65/`), 64tass (`src_64tass/`) and KickAssembler
-(`src_kick/`) — same file layout, same module gates, same macros, same
-routine contracts. The three ports are not reimplementations: converters in
-`tools/` (`acme2ca65.py`, `acme2tass.py`, `acme2kick.py`) produce them from
-the ACME tree, a few dialect-specific files are maintained by hand (each
-tree's README lists them), and every port is held to the hardest possible
-bar — **its test runner assembles to a byte-identical PRG** (same SHA-256)
-as the ACME build and passes the same 132-test suite (134 windowed) on the
-emulator.
+The library exists as **five native source trees** — ACME (`src_acme/`, the
+reference), ca65 (`src_ca65/`), 64tass (`src_64tass/`), KickAssembler
+(`src_kick/`) and dasm (`src_dasm/`) — same file layout, same module gates,
+same macros, same routine contracts. The four ports are not
+reimplementations: converters in `tools/` (`acme2ca65.py`, `acme2tass.py`,
+`acme2kick.py`, `acme2dasm.py`) produce them from the ACME tree, a few
+dialect-specific files are maintained by hand (each tree's README lists
+them), and every port is held to the hardest possible bar — **its test
+runner assembles to a byte-identical PRG** (same SHA-256) as the ACME build
+and passes the same 132-test suite (134 windowed) on the emulator.
 
 Each port pairs a source tree with its repo-local toolchain folder:
 
@@ -117,6 +118,7 @@ ACME            src_acme\     acme\acme.exe            build_acme.ps1
 ca65            src_ca65\     cc65\ca65.exe + ld65.exe build_ca65.ps1
 64tass          src_64tass\   64tass\64tass.exe        build_64tass.ps1
 KickAssembler   src_kick\     kickass\KickAss.jar      build_kick.ps1
+dasm            src_dasm\     dasm\dasm.exe            build_dasm.ps1
 ```
 
 ```
@@ -127,10 +129,12 @@ cc65\ld65 -C test_ca65\runner.cfg -o PROG.PRG prog.o   (or your own cfg)
 
 java -jar kickass\KickAss.jar prog.asm -libdir src_kick -o PROG.PRG
 
+dasm\dasm prog.asm -I src_dasm -f1 -o PROG.PRG
+
 .\build_ca65.ps1 -Test      the suite through each port's toolchain
 .\build_64tass.ps1 -Test    (each uses its repo-local folder above;
 .\build_kick.ps1 -Test       see Prerequisites for where to get them.
-                             -Ca65 overrides the cc65\ default.)
+.\build_dasm.ps1 -Test       -Ca65 overrides the cc65\ default.)
 ```
 
 A ca65 program is the ACME skeleton with `.include` in place of `!source`
@@ -139,6 +143,11 @@ identically. 64tass keeps ACME's `X16_USE_VERA = 1` spelling (gates default
 to 0 via `.weak`). KickAssembler selects modules with `#define X16_USE_*`
 before the `#import "x16_code.asm"` — see `src_kick/README.md` for the
 one ordering rule (zero-page overrides go before the `x16.asm` import).
+A dasm program is the ACME skeleton with `processor 65c02`, `include` in
+place of `!source`, `IFCONST X16_USE_*` gating, and no `+` on macro calls;
+because dasm has no cheap-local tier the converter emits a `SUBROUTINE`
+before each label so `.name` locals scope as ACME's `@name` did. dasm has
+**no linker** — like ACME and 64tass it writes the `.prg` directly (`-f1`).
 
 ### Prebuilt binary + bindings (no gating, any assembler)
 

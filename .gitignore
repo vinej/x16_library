@@ -54,5 +54,6 @@ desktop.ini
 /cc65/
 /64tass/
 /kickass/
+/dasm/
 
 tools/__pycache__/
