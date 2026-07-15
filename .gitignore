@@ -56,5 +56,6 @@ desktop.ini
 /kickass/
 /dasm/
 /mads/
+/vasm/
 
 tools/__pycache__/

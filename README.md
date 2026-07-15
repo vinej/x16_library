@@ -23,10 +23,11 @@ only there:
 | `kickass\KickAss.jar` | KickAssembler 5.25 (needs Java) | <http://theweb.dk/KickAssembler/> |
 | `dasm\dasm.exe` | dasm v2.20.17 release (binary reports 2.20.16) | <https://github.com/dasm-assembler/dasm/releases> |
 | `mads\mads.exe` | MADS 2.1.7 (Mad Assembler) | <https://github.com/tebe6502/Mad-Assembler> — `bin\windows_x86_64\mads.exe` |
+| `vasm\vasm6502_oldstyle.exe` | vasm 2.0f, 6502 CPU + oldstyle syntax | <http://sun.hasenbraten.de/vasm/> — binary releases, `vasm6502_oldstyle_Win64.zip` |
 | `emulator\x16emu.exe` + `rom.bin` | X16 emulator r49 | <https://github.com/X16Community/x16-emulator>, ROM from <https://github.com/X16Community/x16-rom> |
 
 Only `acme\` and `emulator\` are required to build the reference tree and run
-the tests; the other four folders are needed only to recompile their
+the tests; the other six folders are needed only to recompile their
 respective ports.
 
 Use the **r49** emulator and ROM: the constants in `src_acme/core/` are transcribed
@@ -93,23 +94,23 @@ machine code to sit, and must be sourced exactly once. ACME has no linker, so
 unused routines cannot be stripped automatically — that is what the `X16_USE_*`
 gates are for.
 
-## Other assemblers: ca65, 64tass, KickAssembler, dasm
+## Other assemblers: ca65, 64tass, KickAssembler, dasm, MADS, vasm
 
 Two ways in, pick per project:
 
 ### Native sources (full `X16_USE_*` gating)
 
-The library exists as **six native source trees** — ACME (`src_acme/`, the
+The library exists as **seven native source trees** — ACME (`src_acme/`, the
 reference), ca65 (`src_ca65/`), 64tass (`src_64tass/`), KickAssembler
-(`src_kick/`), dasm (`src_dasm/`) and MADS (`src_mads/`) — same file layout,
-same module gates, same macros, same routine contracts. The five ports are
-not reimplementations: converters in `tools/` (`acme2ca65.py`,
-`acme2tass.py`, `acme2kick.py`, `acme2dasm.py`, `acme2mads.py`) produce them
-from the ACME tree, a few dialect-specific files are maintained by hand
-(each tree's README lists them), and every port is held to the hardest
-possible bar — **its test runner assembles to a byte-identical PRG** (same
-SHA-256) as the ACME build and passes the same 132-test suite (134 windowed)
-on the emulator.
+(`src_kick/`), dasm (`src_dasm/`), MADS (`src_mads/`) and vasm
+(`src_vasm/`) — same file layout, same module gates, same macros, same
+routine contracts. The six ports are not reimplementations: converters in
+`tools/` (`acme2ca65.py`, `acme2tass.py`, `acme2kick.py`, `acme2dasm.py`,
+`acme2mads.py`, `acme2vasm.py`) produce them from the ACME tree, a few
+dialect-specific files are maintained by hand (each tree's README lists
+them), and every port is held to the hardest possible bar — **its test
+runner assembles to a byte-identical PRG** (same SHA-256) as the ACME build
+and passes the same 132-test suite (134 windowed) on the emulator.
 
 Each port pairs a source tree with its repo-local toolchain folder:
 
@@ -122,6 +123,7 @@ ca65            src_ca65\     cc65\ca65.exe + ld65.exe build_ca65.ps1
 KickAssembler   src_kick\     kickass\KickAss.jar      build_kick.ps1
 dasm            src_dasm\     dasm\dasm.exe            build_dasm.ps1
 MADS            src_mads\     mads\mads.exe            build_mads.ps1
+vasm            src_vasm\     vasm\vasm6502_oldstyle.exe  build_vasm.ps1
 ```
 
 ```
@@ -137,11 +139,14 @@ dasm\dasm prog.asm -I src_dasm -f1 -o PROG.PRG
 mads\mads prog.asm -c -i:src_mads -o:PROG.bin   (flat image; prepend the
                                                  two-byte $0801 load addr)
 
+vasm\vasm6502_oldstyle -c02 -Fbin -cbm-prg -I src_vasm -o PROG.PRG prog.asm
+
 .\build_ca65.ps1 -Test      the suite through each port's toolchain
 .\build_64tass.ps1 -Test    (each uses its repo-local folder above;
 .\build_kick.ps1 -Test       see Prerequisites for where to get them.
 .\build_dasm.ps1 -Test       -Ca65 overrides the cc65\ default.)
 .\build_mads.ps1 -Test
+.\build_vasm.ps1 -Test
 ```
 
 A ca65 program is the ACME skeleton with `.include` in place of `!source`
@@ -163,6 +168,14 @@ global instead. MADS also has **no linker** and emits a flat image (x16.asm
 sets `opt h-`), so `build_mads.ps1` prepends the two-byte $0801 load
 address — the same PRG the others produce. Macro arguments must be
 space-free (MADS splits them on whitespace), which the converter handles.
+A vasm program is the ACME skeleton with `include` in place of `!source`,
+`org` for `*=`, `ifdef X16_USE_*` gating, no `+` on macro calls, and 65C02
+mode selected by `-c02` on the command line rather than in the source.
+vasm is the friendliest port: its `.name` locals are scoped between two
+global labels — exactly ACME's `@name` cheap-local tier — so the converter
+maps them one for one with no scaffolding (zone-locals are promoted to
+globals, as in the ca65/dasm ports). Like ACME, vasm has **no linker**;
+`-Fbin -cbm-prg` writes the `.prg` (load address + image) directly.
 
 ### Prebuilt binary + bindings (no gating, any assembler)
 
@@ -685,6 +698,7 @@ cc65/        ca65.exe + ld65.exe V2.19    (repo-local, .gitignored)
 kickass/     KickAssembler 5.25           (repo-local, .gitignored; needs Java)
 dasm/        dasm v2.20.17                (repo-local, .gitignored)
 mads/        MADS 2.1.7                   (repo-local, .gitignored)
+vasm/        vasm 2.0f (6502/oldstyle)    (repo-local, .gitignored)
 emulator/    x16emu r49 + rom.bin         (repo-local, .gitignored)
 doc/         ForthX16 help pages + official X16/VERA references
 src_acme/    THE REFERENCE IMPLEMENTATION
@@ -705,15 +719,18 @@ src_64tass/  native 64tass port      } byte-identical output, same
 src_kick/    native KickAssembler    } suite -- see each tree's README
 src_dasm/    native dasm port        }
 src_mads/    native MADS port        }
-examples/    hello.asm, bounce.asm, numbers.asm, hello-mads.asm
+src_vasm/    native vasm port        }
+examples/    hello.asm, bounce.asm, numbers.asm, hello-mads.asm,
+             hello-vasm.asm
 test_acme/   runner.asm, testlib.asm, blobsmoke.asm (132 tests)
 test_ca65/   the converted runner + runner.cfg (same 132 tests)
 test_64tass/ the converted runner (same 132 tests)
 test_kick/   the converted runner (same 132 tests)
 test_dasm/   the converted runner (same 132 tests)
 test_mads/   the converted runner (same 132 tests)
+test_vasm/   the converted runner (same 132 tests)
 tools/       acme2ca65.py, acme2tass.py, acme2kick.py, acme2dasm.py,
-             acme2mads.py -- the converters
+             acme2mads.py, acme2vasm.py -- the converters
 dist/        the prebuilt-binary + bindings pipeline (dist.ps1)
 build_acme.ps1
 build_ca65.ps1
@@ -721,6 +738,7 @@ build_64tass.ps1
 build_kick.ps1
 build_dasm.ps1
 build_mads.ps1
+build_vasm.ps1
 ```
 
 ROM entry points in `core/const_rom.asm` carry a `rom_` prefix (`rom_ym_init`,
