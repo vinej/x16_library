@@ -24,6 +24,13 @@ X16_USE_SPRITE     = 0
 X16_USE_BITMAP     = 0
 X16_USE_BITMAP2    = 0
 X16_USE_VERAFX     = 0
+X16_USE_VERAFX_MULT   = 0
+X16_USE_VERAFX_FILL   = 0
+X16_USE_VERAFX_COPY   = 0
+X16_USE_VERAFX_TRANSP = 0
+X16_USE_VERAFX_AFFINE = 0
+X16_USE_VERAFX_LINE   = 0
+X16_USE_VERAFX_TRI    = 0
 X16_USE_IRQ        = 0
 X16_USE_PSG        = 0
 X16_USE_YM         = 0
@@ -66,7 +73,18 @@ xuse_pcm        = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
 xuse_irq        = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
 xuse_palette    = xuse_all || X16_USE_PALETTE != 0
 xuse_tile       = xuse_all || X16_USE_TILE != 0
-xuse_verafx     = xuse_all || X16_USE_VERAFX != 0 || xuse_bitmap2
+; VERAFX's parts. X16_USE_VERAFX still means all of them, so nothing
+; that exists breaks; bitmap2 asks for the fill alone and is 2,162 bytes
+; lighter for it. Every part leaves FX through fx_off, so _any carries it.
+xuse_verafx     = xuse_all || X16_USE_VERAFX != 0
+xuse_verafx_mult   = xuse_verafx || X16_USE_VERAFX_MULT != 0
+xuse_verafx_fill   = xuse_verafx || X16_USE_VERAFX_FILL != 0 || xuse_bitmap2
+xuse_verafx_copy   = xuse_verafx || X16_USE_VERAFX_COPY != 0
+xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
+xuse_verafx_affine = xuse_verafx || X16_USE_VERAFX_AFFINE != 0
+xuse_verafx_line   = xuse_verafx || X16_USE_VERAFX_LINE != 0
+xuse_verafx_tri    = xuse_verafx || X16_USE_VERAFX_TRI != 0
+xuse_verafx_any    = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
 xuse_ym         = xuse_all || X16_USE_YM != 0
 xuse_input      = xuse_all || X16_USE_INPUT != 0
 xuse_bank       = xuse_all || X16_USE_BANK != 0
@@ -109,7 +127,7 @@ xuse_tsc        = xuse_all || X16_USE_TSC != 0
 .if xuse_bitmap2
 .include "gfx/bitmap2.asm"
 .endif
-.if xuse_verafx
+.if xuse_verafx_any
 .include "gfx/verafx.asm"
 .endif
 .if xuse_irq

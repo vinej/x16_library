@@ -37,9 +37,19 @@
 ;                     gfx2_frame, gfx2_line, gfx2_pattern_set,
 ;                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
 ;                     (640x480@2bpp; pulls in VERA and VERAFX)
-;   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off, fx_line,
-;                     fx_triangle, fx_copy, fx_transp_on/off,
-;                     fx_affine_on/ray/span (rotozoom sampling)
+;   X16_USE_VERAFX    all of the below, as it always has been
+;     _MULT           fx_mult
+;     _FILL           fx_fill, fx_clear
+;     _COPY           fx_copy
+;     _TRANSP         fx_transp_on/off
+;     _AFFINE         fx_affine_on/ray/span (rotozoom sampling)
+;     _LINE           fx_line
+;     _TRI            fx_triangle
+;                     fx_off comes with any of them. The parts exist
+;                     because the whole is 2.5 KB and a program that
+;                     wants one fast fill should not carry a rotozoom
+;                     sampler to get it: BITMAP2 asks for _FILL alone
+;                     and is 2,162 bytes lighter for it.
 ;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait,
 ;                     irq_line_install/remove, irq_sprcol_install/
 ;                     remove, sprite_collisions
@@ -221,10 +231,74 @@ X16_USE_SCREEN = 1
     ENDIF
     IFCONST X16_USE_BITMAP2
     IFNCONST X16_USE_VERA
-X16_USE_VERA   = 1
+X16_USE_VERA        = 1
     ENDIF
-    IFNCONST X16_USE_VERAFX
-X16_USE_VERAFX = 1
+    IFNCONST X16_USE_VERAFX_FILL
+X16_USE_VERAFX_FILL = 1
+    ENDIF
+    ENDIF
+
+; --- VERAFX's parts --------------------------------------------------
+; X16_USE_VERAFX still means all of it, so nothing that exists breaks.
+; The sub-gates are for programs that want one part and not 2.5 KB of
+; the others: gfx2 asks for FILL alone and saves 2,162 bytes by it.
+; Every part leaves FX through fx_off, so _ANY carries it.
+    IFCONST X16_USE_VERAFX
+    IFNCONST X16_USE_VERAFX_MULT
+X16_USE_VERAFX_MULT   = 1
+    ENDIF
+    IFNCONST X16_USE_VERAFX_FILL
+X16_USE_VERAFX_FILL   = 1
+    ENDIF
+    IFNCONST X16_USE_VERAFX_COPY
+X16_USE_VERAFX_COPY   = 1
+    ENDIF
+    IFNCONST X16_USE_VERAFX_TRANSP
+X16_USE_VERAFX_TRANSP = 1
+    ENDIF
+    IFNCONST X16_USE_VERAFX_AFFINE
+X16_USE_VERAFX_AFFINE = 1
+    ENDIF
+    IFNCONST X16_USE_VERAFX_LINE
+X16_USE_VERAFX_LINE   = 1
+    ENDIF
+    IFNCONST X16_USE_VERAFX_TRI
+X16_USE_VERAFX_TRI    = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_MULT
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_FILL
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_COPY
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_TRANSP
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_AFFINE
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_LINE
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERAFX_TRI
+    IFNCONST X16_USE_VERAFX_ANY
+X16_USE_VERAFX_ANY = 1
     ENDIF
     ENDIF
     IFCONST X16_USE_PCM_STREAM
@@ -258,7 +332,7 @@ X16_USE_IRQ = 1
     IFCONST X16_USE_BITMAP2
     include "gfx/bitmap2.asm"
     ENDIF
-    IFCONST X16_USE_VERAFX
+    IFCONST X16_USE_VERAFX_ANY
     include "gfx/verafx.asm"
     ENDIF
     IFCONST X16_USE_IRQ

@@ -37,9 +37,19 @@
 //                     gfx2_frame, gfx2_line, gfx2_pattern_set,
 //                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
 //                     (640x480@2bpp; pulls in VERA and VERAFX)
-//   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off, fx_line,
-//                     fx_triangle, fx_copy, fx_transp_on/off,
-//                     fx_affine_on/ray/span (rotozoom sampling)
+//   X16_USE_VERAFX    all of the below, as it always has been
+//     _MULT           fx_mult
+//     _FILL           fx_fill, fx_clear
+//     _COPY           fx_copy
+//     _TRANSP         fx_transp_on/off
+//     _AFFINE         fx_affine_on/ray/span (rotozoom sampling)
+//     _LINE           fx_line
+//     _TRI            fx_triangle
+//                     fx_off comes with any of them. The parts exist
+//                     because the whole is 2.5 KB and a program that
+//                     wants one fast fill should not carry a rotozoom
+//                     sampler to get it: BITMAP2 asks for _FILL alone
+//                     and is 2,162 bytes lighter for it.
 //   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait,
 //                     irq_line_install/remove, irq_sprcol_install/
 //                     remove, sprite_collisions
@@ -223,9 +233,73 @@
     #if !X16_USE_VERA
     #define X16_USE_VERA
     #endif
-    #if !X16_USE_VERAFX
-    #define X16_USE_VERAFX
+    #if !X16_USE_VERAFX_FILL
+    #define X16_USE_VERAFX_FILL
     #endif
+#endif
+
+// --- VERAFX's parts --------------------------------------------------
+// X16_USE_VERAFX still means all of it, so nothing that exists breaks.
+// The sub-gates are for programs that want one part and not 2.5 KB of
+// the others: gfx2 asks for FILL alone and saves 2,162 bytes by it.
+// Every part leaves FX through fx_off, so _ANY carries it.
+#if X16_USE_VERAFX
+    #if !X16_USE_VERAFX_MULT
+    #define X16_USE_VERAFX_MULT
+    #endif
+    #if !X16_USE_VERAFX_FILL
+    #define X16_USE_VERAFX_FILL
+    #endif
+    #if !X16_USE_VERAFX_COPY
+    #define X16_USE_VERAFX_COPY
+    #endif
+    #if !X16_USE_VERAFX_TRANSP
+    #define X16_USE_VERAFX_TRANSP
+    #endif
+    #if !X16_USE_VERAFX_AFFINE
+    #define X16_USE_VERAFX_AFFINE
+    #endif
+    #if !X16_USE_VERAFX_LINE
+    #define X16_USE_VERAFX_LINE
+    #endif
+    #if !X16_USE_VERAFX_TRI
+    #define X16_USE_VERAFX_TRI
+    #endif
+#endif
+#if X16_USE_VERAFX_MULT
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
+#endif
+#if X16_USE_VERAFX_FILL
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
+#endif
+#if X16_USE_VERAFX_COPY
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
+#endif
+#if X16_USE_VERAFX_TRANSP
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
+#endif
+#if X16_USE_VERAFX_AFFINE
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
+#endif
+#if X16_USE_VERAFX_LINE
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
+#endif
+#if X16_USE_VERAFX_TRI
+#if !X16_USE_VERAFX_ANY
+#define X16_USE_VERAFX_ANY
+#endif
 #endif
 #if X16_USE_PCM_STREAM
     #if !X16_USE_PCM
@@ -258,7 +332,7 @@
 #if X16_USE_BITMAP2
 #import "gfx/bitmap2.asm"
 #endif
-#if X16_USE_VERAFX
+#if X16_USE_VERAFX_ANY
 #import "gfx/verafx.asm"
 #endif
 #if X16_USE_IRQ
