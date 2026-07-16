@@ -49,23 +49,25 @@ foreach ($tool in @($emu, $rom)) {
 }
 if (-not (Test-Path $build)) { New-Item -ItemType Directory -Path $build | Out-Null }
 
-$name = [IO.Path]::GetFileNameWithoutExtension($Source).ToUpper()
-$obj  = Join-Path $build "$name-ca65.o"
-$out  = Join-Path $build "$name-CA65.PRG"
+function Build-Prg([string]$sourcePath, [string]$configPath) {
+    $name = [IO.Path]::GetFileNameWithoutExtension($sourcePath).ToUpper()
+    $obj  = Join-Path $build "$name-ca65.o"
+    $out  = Join-Path $build "$name-CA65.PRG"
 
-Write-Host "ca65  $Source -> $out"
-& $ca65Path --cpu 65C02 -I $src -o $obj $Source
-if ($LASTEXITCODE -ne 0) { Fail "ca65 assembly failed" }
-& $ld65 -C (Join-Path $root $Config) -o $out $obj
-if ($LASTEXITCODE -ne 0) { Fail "ld65 link failed" }
+    Write-Host "ca65  $sourcePath -> $out"
+    & $ca65Path --cpu 65C02 -I $src -o $obj $sourcePath
+    if ($LASTEXITCODE -ne 0) { Fail "ca65 assembly failed" }
+    & $ld65 -C (Join-Path $root $configPath) -o $out $obj
+    if ($LASTEXITCODE -ne 0) { Fail "ld65 link failed" }
 
-$size = (Get-Item $out).Length
-Write-Host "      $size bytes"
+    $size = (Get-Item $out).Length
+    Write-Host "      $size bytes"
+    if ($size -gt 38399) { Fail "$out is $size bytes: past the `$9EFF load ceiling" }
+    return $out
+}
 
 # --- test (identical harness to build_acme.ps1) ------------------------
-if ($Test) {
-    Write-Host "x16emu (headless testbench)"
-
+function Invoke-TestPrg([string]$out) {
     $stdin  = Join-Path $env:TEMP "x16lib-empty.in"
     $stdout = Join-Path $build "test-ca65-output.txt"
     [IO.File]::WriteAllText($stdin, "")
@@ -117,12 +119,34 @@ if ($Test) {
     if ($fails.Count -gt 0 -or $reportedPass -ne $reportedTotal) {
         Fail "$($reportedTotal - $reportedPass) of $reportedTotal tests failed"
     }
+    return @($reportedPass, $reportedTotal, $skips.Count)
+}
 
-    $summary = "      $reportedPass/$reportedTotal tests passed"
-    if ($skips.Count -gt 0) { $summary += ", $($skips.Count) skipped (not runnable headless)" }
+if ($Test) {
+    # The suite spans several PRGs (one grew past the load ceiling). An
+    # explicit -Source still runs alone, for harness mutation checks.
+    $sources = @("test_ca65\runner.asm", "test_ca65\runner2.asm")
+    if ($PSBoundParameters.ContainsKey('Source')) { $sources = @($Source) }
+
+    $sumPass = 0
+    $sumTotal = 0
+    $sumSkip = 0
+    foreach ($s in $sources) {
+        $out = Build-Prg $s $Config
+        Write-Host "x16emu (headless testbench)"
+        $r = Invoke-TestPrg $out
+        $sumPass  += $r[0]
+        $sumTotal += $r[1]
+        $sumSkip  += $r[2]
+    }
+
+    $summary = "      $sumPass/$sumTotal tests passed"
+    if ($sumSkip -gt 0) { $summary += ", $sumSkip skipped (not runnable headless)" }
     Write-Host $summary -ForegroundColor Green
     exit 0
 }
+
+$out = Build-Prg $Source $Config
 
 if ($Run) {
     Write-Host "x16emu $out"

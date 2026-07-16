@@ -32,6 +32,11 @@
 ;                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
 ;                     gfx_circle, gfx_disc, gfx_char, gfx_text,
 ;                     gfx_flood
+;   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
+;                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
+;                     gfx2_frame, gfx2_line, gfx2_pattern_set,
+;                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
+;                     (640x480@2bpp; pulls in VERA and VERAFX)
 ;   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off, fx_line,
 ;                     fx_triangle, fx_copy, fx_transp_on/off,
 ;                     fx_affine_on/ray/span (rotozoom sampling)
@@ -92,6 +97,7 @@
     !ifndef X16_USE_TILE    { X16_USE_TILE    = 1 }
     !ifndef X16_USE_SPRITE  { X16_USE_SPRITE  = 1 }
     !ifndef X16_USE_BITMAP  { X16_USE_BITMAP  = 1 }
+    !ifndef X16_USE_BITMAP2 { X16_USE_BITMAP2 = 1 }
     !ifndef X16_USE_VERAFX  { X16_USE_VERAFX  = 1 }
     !ifndef X16_USE_IRQ     { X16_USE_IRQ     = 1 }
     !ifndef X16_USE_PSG     { X16_USE_PSG     = 1 }
@@ -131,6 +137,10 @@
     !ifndef X16_USE_VERA   { X16_USE_VERA   = 1 }
     !ifndef X16_USE_SCREEN { X16_USE_SCREEN = 1 }
 }
+!ifdef X16_USE_BITMAP2 {
+    !ifndef X16_USE_VERA   { X16_USE_VERA   = 1 }
+    !ifndef X16_USE_VERAFX { X16_USE_VERAFX = 1 }
+}
 !ifdef X16_USE_PCM_STREAM {
     !ifndef X16_USE_PCM { X16_USE_PCM = 1 }
     !ifndef X16_USE_IRQ { X16_USE_IRQ = 1 }
@@ -143,6 +153,7 @@
 !ifdef X16_USE_TILE    { !source "video/tile.asm" }
 !ifdef X16_USE_SPRITE  { !source "sprite/sprite.asm" }
 !ifdef X16_USE_BITMAP  { !source "gfx/bitmap.asm" }
+!ifdef X16_USE_BITMAP2 { !source "gfx/bitmap2.asm" }
 !ifdef X16_USE_VERAFX  { !source "gfx/verafx.asm" }
 !ifdef X16_USE_IRQ     { !source "system/irq.asm" }
 !ifdef X16_USE_PSG     { !source "audio/psg.asm" }

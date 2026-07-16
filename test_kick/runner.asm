@@ -13,7 +13,42 @@
 .label T_ZP = $70
 #import "x16.asm"
 
-#define X16_USE_ALL
+// Not X16_USE_ALL: with every module the code alone would push this PRG
+// past the $9EFF load ceiling. The modules tested HERE are gated
+// explicitly; newer modules (bitmap2, ...) live in runner2.asm, and
+// .\build.ps1 -Test runs every runner.
+#define X16_USE_VERA
+#define X16_USE_SCREEN
+#define X16_USE_PALETTE
+#define X16_USE_TILE
+#define X16_USE_SPRITE
+#define X16_USE_BITMAP
+#define X16_USE_VERAFX
+#define X16_USE_IRQ
+#define X16_USE_PSG
+#define X16_USE_YM
+#define X16_USE_PCM
+#define X16_USE_PCM_STREAM
+#define X16_USE_INPUT
+#define X16_USE_BANK
+#define X16_USE_BANKALLOC
+#define X16_USE_MEM
+#define X16_USE_LOAD
+#define X16_USE_DOS
+#define X16_USE_BMX
+#define X16_USE_MATH
+#define X16_USE_CLIP
+#define X16_USE_BUFFERS
+#define X16_USE_ADPCM
+#define X16_USE_ZX0
+#define X16_USE_TSC
+#define X16_USE_FIXED
+#define X16_USE_COLLIDE
+#define X16_USE_BITS
+#define X16_USE_NUMBER
+#define X16_USE_INT16
+#define X16_USE_INT32
+#define X16_USE_FLOAT
 
 // Scratch VRAM well clear of the text screen ($1B000) and of VERA's own
 // registers ($1F9C0+).

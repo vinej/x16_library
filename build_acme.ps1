@@ -36,29 +36,27 @@ foreach ($tool in @($acme, $emu, $rom)) {
 }
 if (-not (Test-Path $build)) { New-Item -ItemType Directory -Path $build | Out-Null }
 
-# -Test defaults to the suite, but an explicit -Source still wins (handy
-# for running a mutated runner to prove the harness can actually fail).
-if ($Test -and -not $PSBoundParameters.ContainsKey('Source')) {
-    $Source = "test_acme\runner.asm"
-}
-
-$name = [IO.Path]::GetFileNameWithoutExtension($Source).ToUpper()
-$out  = Join-Path $build "$name.PRG"
-
 # --- assemble --------------------------------------------------------
 # ACME resolves !source against the CWD, so -I puts src/ on the path and
 # lets every module include its siblings by a stable relative name.
-Write-Host "acme  $Source -> $out"
-& $acme -I $src -f cbm -o $out $Source
-if ($LASTEXITCODE -ne 0) { Fail "assembly failed" }
-
-$size = (Get-Item $out).Length
-Write-Host "      $size bytes"
+function Build-Prg([string]$sourcePath) {
+    $name = [IO.Path]::GetFileNameWithoutExtension($sourcePath).ToUpper()
+    $out  = Join-Path $build "$name.PRG"
+    Write-Host "acme  $sourcePath -> $out"
+    & $acme -I $src -f cbm -o $out $sourcePath
+    if ($LASTEXITCODE -ne 0) { Fail "assembly failed" }
+    $size = (Get-Item $out).Length
+    Write-Host "      $size bytes"
+    # A PRG larger than $0801-$9EFF spills into I/O space when it loads
+    # and crashes in ways that look nothing like the real cause. That is
+    # why the test suite is split across runner PRGs.
+    if ($size -gt 38399) { Fail "$out is $size bytes: past the `$9EFF load ceiling" }
+    return $out
+}
 
 # --- test ------------------------------------------------------------
-if ($Test) {
-    Write-Host "x16emu (headless testbench)"
-
+# One emulator pass over one PRG: returns @(passes, total, skips).
+function Invoke-TestPrg([string]$out) {
     # x16emu -testbench only exits at stdin EOF, and it only reads stdin
     # once it has printed its own "RDY" prompt -- which it never does if
     # the guest program leaves BASIC in an odd state. So don't wait on the
@@ -121,16 +119,39 @@ if ($Test) {
     if ($fails.Count -gt 0 -or $reportedPass -ne $reportedTotal) {
         Fail "$($reportedTotal - $reportedPass) of $reportedTotal tests failed"
     }
+    return @($reportedPass, $reportedTotal, $skips.Count)
+}
 
-    $summary = "      $reportedPass/$reportedTotal tests passed"
-    if ($skips.Count -gt 0) {
+if ($Test) {
+    # The suite spans several PRGs (one grew past the load ceiling). An
+    # explicit -Source still runs alone -- handy for running a mutated
+    # runner to prove the harness can actually fail.
+    $sources = @("test_acme\runner.asm", "test_acme\runner2.asm")
+    if ($PSBoundParameters.ContainsKey('Source')) { $sources = @($Source) }
+
+    $sumPass = 0
+    $sumTotal = 0
+    $sumSkip = 0
+    foreach ($s in $sources) {
+        $out = Build-Prg $s
+        Write-Host "x16emu (headless testbench)"
+        $r = Invoke-TestPrg $out
+        $sumPass  += $r[0]
+        $sumTotal += $r[1]
+        $sumSkip  += $r[2]
+    }
+
+    $summary = "      $sumPass/$sumTotal tests passed"
+    if ($sumSkip -gt 0) {
         # Skips are excluded from the pass/total, so they can never be
         # mistaken for passes. Surface them so they are not forgotten.
-        $summary += ", $($skips.Count) skipped (not runnable headless)"
+        $summary += ", $sumSkip skipped (not runnable headless)"
     }
     Write-Host $summary -ForegroundColor Green
     exit 0
 }
+
+$out = Build-Prg $Source
 
 # --- run -------------------------------------------------------------
 if ($Run) {

@@ -21,6 +21,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# The suite spans several PRGs (runner.asm grew to the $9EFF load
+# ceiling; newer modules test in runner2.asm). A bare -Test runs every
+# runner by re-invoking this script with an explicit -Source; an
+# explicit -Source still runs alone (harness mutation checks).
+if ($Test -and -not $PSBoundParameters.ContainsKey('Source')) {
+    foreach ($s in @("test_kick\runner.asm", "test_kick\runner2.asm")) {
+        & $PSCommandPath -Source $s -Test
+        if ($LASTEXITCODE -ne 0) { exit 1 }
+    }
+    exit 0
+}
+
 function Fail([string]$message) {
     Write-Host $message -ForegroundColor Red
     exit 1

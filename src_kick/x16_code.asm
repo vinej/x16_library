@@ -32,6 +32,11 @@
 //                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
 //                     gfx_circle, gfx_disc, gfx_char, gfx_text,
 //                     gfx_flood
+//   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
+//                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
+//                     gfx2_frame, gfx2_line, gfx2_pattern_set,
+//                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
+//                     (640x480@2bpp; pulls in VERA and VERAFX)
 //   X16_USE_VERAFX    fx_mult, fx_fill, fx_clear, fx_off, fx_line,
 //                     fx_triangle, fx_copy, fx_transp_on/off,
 //                     fx_affine_on/ray/span (rotozoom sampling)
@@ -103,6 +108,9 @@
     #endif
     #if !X16_USE_BITMAP
     #define X16_USE_BITMAP
+    #endif
+    #if !X16_USE_BITMAP2
+    #define X16_USE_BITMAP2
     #endif
     #if !X16_USE_VERAFX
     #define X16_USE_VERAFX
@@ -211,6 +219,14 @@
     #define X16_USE_SCREEN
     #endif
 #endif
+#if X16_USE_BITMAP2
+    #if !X16_USE_VERA
+    #define X16_USE_VERA
+    #endif
+    #if !X16_USE_VERAFX
+    #define X16_USE_VERAFX
+    #endif
+#endif
 #if X16_USE_PCM_STREAM
     #if !X16_USE_PCM
     #define X16_USE_PCM
@@ -238,6 +254,9 @@
 #endif
 #if X16_USE_BITMAP
 #import "gfx/bitmap.asm"
+#endif
+#if X16_USE_BITMAP2
+#import "gfx/bitmap2.asm"
 #endif
 #if X16_USE_VERAFX
 #import "gfx/verafx.asm"

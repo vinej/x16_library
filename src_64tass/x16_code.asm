@@ -22,6 +22,7 @@ X16_USE_PALETTE    = 0
 X16_USE_TILE       = 0
 X16_USE_SPRITE     = 0
 X16_USE_BITMAP     = 0
+X16_USE_BITMAP2    = 0
 X16_USE_VERAFX     = 0
 X16_USE_IRQ        = 0
 X16_USE_PSG        = 0
@@ -54,9 +55,10 @@ X16_USE_TSC        = 0
 xuse_all        = X16_USE_ALL != 0
 xuse_pcm_stream = xuse_all || X16_USE_PCM_STREAM != 0
 xuse_bitmap     = xuse_all || X16_USE_BITMAP != 0
+xuse_bitmap2    = xuse_all || X16_USE_BITMAP2 != 0
 xuse_sprite     = xuse_all || X16_USE_SPRITE != 0
 xuse_psg        = xuse_all || X16_USE_PSG != 0
-xuse_vera       = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap
+xuse_vera       = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
 xuse_screen     = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
 xuse_int16      = xuse_all || X16_USE_INT16 != 0
 xuse_number     = xuse_all || X16_USE_NUMBER != 0 || xuse_int16
@@ -64,7 +66,7 @@ xuse_pcm        = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
 xuse_irq        = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
 xuse_palette    = xuse_all || X16_USE_PALETTE != 0
 xuse_tile       = xuse_all || X16_USE_TILE != 0
-xuse_verafx     = xuse_all || X16_USE_VERAFX != 0
+xuse_verafx     = xuse_all || X16_USE_VERAFX != 0 || xuse_bitmap2
 xuse_ym         = xuse_all || X16_USE_YM != 0
 xuse_input      = xuse_all || X16_USE_INPUT != 0
 xuse_bank       = xuse_all || X16_USE_BANK != 0
@@ -103,6 +105,9 @@ xuse_tsc        = xuse_all || X16_USE_TSC != 0
 .endif
 .if xuse_bitmap
 .include "gfx/bitmap.asm"
+.endif
+.if xuse_bitmap2
+.include "gfx/bitmap2.asm"
 .endif
 .if xuse_verafx
 .include "gfx/verafx.asm"

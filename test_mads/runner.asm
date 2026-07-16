@@ -11,7 +11,42 @@
 
     icl "x16.asm"
 
-X16_USE_ALL = 1
+; Not X16_USE_ALL: with every module the code alone would push this PRG
+; past the $9EFF load ceiling. The modules tested HERE are gated
+; explicitly; newer modules (bitmap2, ...) live in runner2.asm, and
+; .\build.ps1 -Test runs every runner.
+X16_USE_VERA       = 1
+X16_USE_SCREEN     = 1
+X16_USE_PALETTE    = 1
+X16_USE_TILE       = 1
+X16_USE_SPRITE     = 1
+X16_USE_BITMAP     = 1
+X16_USE_VERAFX     = 1
+X16_USE_IRQ        = 1
+X16_USE_PSG        = 1
+X16_USE_YM         = 1
+X16_USE_PCM        = 1
+X16_USE_PCM_STREAM = 1
+X16_USE_INPUT      = 1
+X16_USE_BANK       = 1
+X16_USE_BANKALLOC  = 1
+X16_USE_MEM        = 1
+X16_USE_LOAD       = 1
+X16_USE_DOS        = 1
+X16_USE_BMX        = 1
+X16_USE_MATH       = 1
+X16_USE_CLIP       = 1
+X16_USE_BUFFERS    = 1
+X16_USE_ADPCM      = 1
+X16_USE_ZX0        = 1
+X16_USE_TSC        = 1
+X16_USE_FIXED      = 1
+X16_USE_COLLIDE    = 1
+X16_USE_BITS       = 1
+X16_USE_NUMBER     = 1
+X16_USE_INT16      = 1
+X16_USE_INT32      = 1
+X16_USE_FLOAT      = 1
 
 ; Scratch VRAM well clear of the text screen ($1B000) and of VERA's own
 ; registers ($1F9C0+).
