@@ -206,9 +206,10 @@ is only for regenerating them after a library change (there's also a
 `dist\acme\x16lib.inc` for using the blob from ACME itself).
 
 Your program owns `$0801` up to the library's org (the generated includes
-export it as `X16LIB_ORG`, currently `$6000`); the library claims zero page
-`$22`–`$31`, exactly as under ACME. Include the binding file, embed
-`x16lib.bin` at `$8000` (each example shows the dialect's way), and call the
+export it as `X16LIB_ORG`, `$5800` since 0.4.0 — it was `$6000` through
+0.3.0, and gfx2 no longer fits under `$9EFF` from there); the library claims
+zero page `$22`–`$31`, exactly as under ACME. Include the binding file, embed
+`x16lib.bin` at `X16LIB_ORG` (each example shows the dialect's way), and call the
 same routines with the same registers — `screen_puts`, `u16_to_dec`,
 `i16_divmod`, the data-port contract, everything in this README applies
 unchanged. The macro layer (`vera_addr`, `jsrfar`, `basic_stub`, …) is ported
@@ -245,7 +246,7 @@ generated bindings), and the three examples assemble with ca65 V2.19,
 to `dist.ps1` to re-run that check yourself.
 
 What the bindings do **not** give you: `X16_USE_*` module gating (the blob
-always contains everything — currently ~14.7 KB) and a movable `X16_ZP`. If
+always contains everything — currently ~17.1 KB) and a movable `X16_ZP`. If
 you need either, or you want the routines inlined into your own PRG, use
 the ACME sources directly.
 

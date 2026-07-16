@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) { Fail "blob assembly failed" }
 if ($LASTEXITCODE -ne 0) { Fail "blob PRG assembly failed" }
 
 $blobSize = (Get-Item $bin).Length
-$org = 0x6000
+$org = 0x5800
 Write-Host ('      {0} bytes, ${1:X4}-${2:X4}' -f $blobSize, $org, ($org + $blobSize - 1))
 
 # --- 2. parse the symbol list -----------------------------------------
