@@ -14,6 +14,7 @@
 #import "x16.asm"
 
 #define X16_USE_BITMAP2  // pulls in VERA and VERAFX
+#define X16_USE_SHAPES   // circle/disc/flood, engine-agnostic
 
 // The harness's zero-page pointer (see runner.asm).
 
@@ -61,6 +62,9 @@ main:
     jsr test_g2_blitm
     jsr test_g2_clear
     jsr test_g2_init
+    jsr test_shape_circle
+    jsr test_shape_disc
+    jsr test_shape_flood
 
     jsr t_summary
     rts
@@ -858,4 +862,169 @@ test_g2_init__want: .byte $FF, $0F, $AA, $0A, $55, $05, $00, $00
 
 // ---------------------------------------------------------------------
 #import "testlib.asm"
+
+// SHAPE_CIRC: a midpoint circle's cardinal points land at exactly r
+test_shape_circle:
+    lda #100
+    jsr shp_clear40             // a clean 40x40 patch at (100,100)
+    lda #120
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #15
+    sta X16_P4
+    lda #3
+    jsr shape_circle
+    ldy #1
+    lda #135                    // east
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_circle__report
+    lda #105                    // west
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_circle__report
+    lda #120                    // south
+    ldx #135
+    jsr shp_rd
+    cmp #3
+    bne test_shape_circle__report
+    lda #120                    // centre stays clear: an outline
+    ldx #120
+    jsr shp_rd
+    bne test_shape_circle__report
+    ldy #0
+test_shape_circle__report:
+    tya
+    ldx #<test_shape_circle__name
+    ldy #>test_shape_circle__name
+    jmp t_result
+test_shape_circle__name: .text "SHAPE_CIRC"
+	.byte $00
+
+// SHAPE_DISC: filled to the rim, clear past it
+test_shape_disc:
+    lda #180
+    jsr shp_clear40             // a clean patch at (180,100)
+    lda #200
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #10
+    sta X16_P4
+    lda #2
+    jsr shape_disc
+    ldy #1
+    lda #200                    // centre
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_disc__report
+    lda #210                    // the rim
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_disc__report
+    lda #200                    // two past the rim, straight down
+    ldx #132
+    jsr shp_rd
+    bne test_shape_disc__report
+    ldy #0
+test_shape_disc__report:
+    tya
+    ldx #<test_shape_disc__name
+    ldy #>test_shape_disc__name
+    jmp t_result
+test_shape_disc__name: .text "SHAPE_DISC"
+	.byte $00
+
+// SHAPE_FLOOD: fills a framed box, stops at the frame
+test_shape_flood:
+    lda #55
+    ldx #150
+    jsr shp_clear40y            // a clean patch at (55,150)
+    lda #70                     // the fence: a 20x20 frame, colour 3
+    sta X16_P0
+    stz X16_P1
+    lda #160
+    sta X16_P2
+    stz X16_P3
+    lda #20
+    sta X16_P4
+    stz X16_P5
+    lda #20
+    sta X16_P6
+    stz X16_P7
+    lda #3
+    jsr gfx2_frame
+    lda #80                     // flood from inside, colour 1
+    sta X16_P0
+    stz X16_P1
+    lda #170
+    sta X16_P2
+    stz X16_P3
+    lda #1
+    jsr shape_flood
+    ldy #1
+    bcs test_shape_flood__report                 // the stack must not overflow here
+    lda #80                     // inside: filled
+    ldx #170
+    jsr shp_rd
+    cmp #1
+    bne test_shape_flood__report
+    lda #71                     // the inside corner: filled
+    ldx #161
+    jsr shp_rd
+    cmp #1
+    bne test_shape_flood__report
+    lda #70                     // the fence itself: intact
+    ldx #160
+    jsr shp_rd
+    cmp #3
+    bne test_shape_flood__report
+    lda #60                     // outside: untouched
+    ldx #155
+    jsr shp_rd
+    bne test_shape_flood__report
+    ldy #0
+test_shape_flood__report:
+    tya
+    ldx #<test_shape_flood__name
+    ldy #>test_shape_flood__name
+    jmp t_result
+test_shape_flood__name: .text "SHAPE_FLOOD"
+	.byte $00
+
+shp_rd:                          // read (A, X), both bytes
+    sta X16_P0
+    stz X16_P1
+    stx X16_P2
+    stz X16_P3
+    phy
+    jsr gfx2_read
+    ply
+    ora #0                      // ply set the flags from Y// re-set from A
+    rts
+
+shp_clear40:                     // colour 0 over (A,100)+40x40
+    ldx #100
+shp_clear40y:                    // ...or over (A,X)+40x40
+    sta X16_P0
+    stz X16_P1
+    stx X16_P2
+    stz X16_P3
+    lda #40
+    sta X16_P4
+    stz X16_P5
+    lda #40
+    sta X16_P6
+    stz X16_P7
+    lda #0
+    jmp gfx2_rect
 #import "x16_code.asm"

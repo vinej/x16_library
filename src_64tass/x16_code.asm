@@ -23,6 +23,7 @@ X16_USE_TILE       = 0
 X16_USE_SPRITE     = 0
 X16_USE_BITMAP     = 0
 X16_USE_BITMAP2    = 0
+X16_USE_SHAPES     = 0
 X16_USE_VERAFX     = 0
 X16_USE_VERAFX_MULT   = 0
 X16_USE_VERAFX_FILL   = 0
@@ -62,7 +63,8 @@ X16_USE_TSC        = 0
 xuse_all        = X16_USE_ALL != 0
 xuse_pcm_stream = xuse_all || X16_USE_PCM_STREAM != 0
 xuse_bitmap     = xuse_all || X16_USE_BITMAP != 0
-xuse_bitmap2    = xuse_all || X16_USE_BITMAP2 != 0
+xuse_shapes     = xuse_all || X16_USE_SHAPES != 0
+xuse_bitmap2    = xuse_all || X16_USE_BITMAP2 != 0 || xuse_shapes
 xuse_sprite     = xuse_all || X16_USE_SPRITE != 0
 xuse_psg        = xuse_all || X16_USE_PSG != 0
 xuse_vera       = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
@@ -126,6 +128,9 @@ xuse_tsc        = xuse_all || X16_USE_TSC != 0
 .endif
 .if xuse_bitmap2
 .include "gfx/bitmap2.asm"
+.endif
+.if xuse_shapes
+.include "gfx/shapes.asm"
 .endif
 .if xuse_verafx_any
 .include "gfx/verafx.asm"

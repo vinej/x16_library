@@ -30,7 +30,7 @@
 ;                     sprite_init_all
 ;   X16_USE_BITMAP    gfx_init, gfx_clear, gfx_pset, gfx_hline,
 ;                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
-;                     gfx_circle, gfx_disc, gfx_char, gfx_text,
+;                     gfx_char, gfx_text (circle/disc/flood are in
 ;                     gfx_flood
 ;   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
 ;                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
@@ -121,6 +121,9 @@ X16_USE_BITMAP  = 1
     ENDIF
     IFNCONST X16_USE_BITMAP2
 X16_USE_BITMAP2 = 1
+    ENDIF
+    IFNCONST X16_USE_SHAPES
+X16_USE_SHAPES = 1
     ENDIF
     IFNCONST X16_USE_VERAFX
 X16_USE_VERAFX  = 1
@@ -229,6 +232,11 @@ X16_USE_VERA   = 1
 X16_USE_SCREEN = 1
     ENDIF
     ENDIF
+    IFCONST X16_USE_SHAPES
+    IFNCONST X16_USE_BITMAP2
+X16_USE_BITMAP2 = 1
+    ENDIF
+    ENDIF
     IFCONST X16_USE_BITMAP2
     IFNCONST X16_USE_VERA
 X16_USE_VERA        = 1
@@ -331,6 +339,9 @@ X16_USE_IRQ = 1
     ENDIF
     IFCONST X16_USE_BITMAP2
     include "gfx/bitmap2.asm"
+    ENDIF
+    IFCONST X16_USE_SHAPES
+    include "gfx/shapes.asm"
     ENDIF
     IFCONST X16_USE_VERAFX_ANY
     include "gfx/verafx.asm"

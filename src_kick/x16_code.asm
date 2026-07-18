@@ -30,7 +30,7 @@
 //                     sprite_init_all
 //   X16_USE_BITMAP    gfx_init, gfx_clear, gfx_pset, gfx_hline,
 //                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
-//                     gfx_circle, gfx_disc, gfx_char, gfx_text,
+//                     gfx_char, gfx_text (circle/disc/flood are in
 //                     gfx_flood
 //   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
 //                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
@@ -121,6 +121,9 @@
     #endif
     #if !X16_USE_BITMAP2
     #define X16_USE_BITMAP2
+    #endif
+    #if !X16_USE_SHAPES
+    #define X16_USE_SHAPES
     #endif
     #if !X16_USE_VERAFX
     #define X16_USE_VERAFX
@@ -229,6 +232,11 @@
     #define X16_USE_SCREEN
     #endif
 #endif
+#if X16_USE_SHAPES
+    #if !X16_USE_BITMAP2
+    #define X16_USE_BITMAP2
+    #endif
+#endif
 #if X16_USE_BITMAP2
     #if !X16_USE_VERA
     #define X16_USE_VERA
@@ -331,6 +339,9 @@
 #endif
 #if X16_USE_BITMAP2
 #import "gfx/bitmap2.asm"
+#endif
+#if X16_USE_SHAPES
+#import "gfx/shapes.asm"
 #endif
 #if X16_USE_VERAFX_ANY
 #import "gfx/verafx.asm"

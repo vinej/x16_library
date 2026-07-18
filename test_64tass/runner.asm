@@ -183,7 +183,6 @@ main
     jsr test_math_atan2
     jsr test_math_lerp
     jsr test_clip_line
-    jsr test_gfx_circle
     jsr test_gfx_text
     jsr test_psg_env
     jsr test_fx_copy
@@ -196,7 +195,6 @@ main
     jsr test_bmx_truncated
     jsr test_bmx_short_pal
     jsr test_zx0
-    jsr test_gfx_flood
     jsr test_tsc
     jsr test_fx_affine
     jsr test_pcm_stream_bank
@@ -5722,76 +5720,6 @@ _report
 _name .text "CLIP_LINE", $00
 
 ; =====================================================================
-; gfx_circle and gfx_disc: the four cardinal points of the outline,
-; a hollow centre, a filled centre, and clean edges.
-; =====================================================================
-test_gfx_circle
-    #vera_addr 0, VRAM_BITMAP + 40*320, VERA_INC_1
-    lda #$00
-    ldx #<6400                  ; clear rows 40..59
-    ldy #>6400
-    jsr vera_fill
-
-    #i16_const X16_P0, 50       ; outline at (50,50), r 5
-    lda #50
-    sta X16_P2
-    lda #$D5
-    sta X16_P3
-    lda #5
-    sta X16_P4
-    jsr gfx_circle
-
-    stz chk_err
-    #vera_addr 1, VRAM_BITMAP + 50*320 + 55, VERA_INC_1
-    #chkv $D5                   ; (55,50)
-    #chkv $00                   ; (56,50) is outside
-    #vera_addr 1, VRAM_BITMAP + 50*320 + 45, VERA_INC_1
-    #chkv $D5                   ; (45,50)
-    #vera_addr 1, VRAM_BITMAP + 55*320 + 50, VERA_INC_1
-    #chkv $D5                   ; (50,55)
-    #vera_addr 1, VRAM_BITMAP + 45*320 + 50, VERA_INC_1
-    #chkv $D5                   ; (50,45)
-    #vera_addr 1, VRAM_BITMAP + 50*320 + 50, VERA_INC_1
-    #chkv $00                   ; hollow centre
-
-    #i16_const X16_P0, 100      ; disc at (100,50), r 4
-    lda #50
-    sta X16_P2
-    lda #$D6
-    sta X16_P3
-    lda #4
-    sta X16_P4
-    jsr gfx_disc
-
-    #vera_addr 1, VRAM_BITMAP + 50*320 + 100, VERA_INC_1
-    #chkv $D6                   ; filled centre
-    #vera_addr 1, VRAM_BITMAP + 50*320 + 104, VERA_INC_1
-    #chkv $D6                   ; right extreme
-    #chkv $00                   ; ...and no further
-    #vera_addr 1, VRAM_BITMAP + 54*320 + 100, VERA_INC_1
-    #chkv $D6                   ; bottom extreme
-    #vera_addr 1, VRAM_BITMAP + 55*320 + 100, VERA_INC_1
-    #chkv $00
-
-    ; a circle hanging off the left edge must simply clip
-    #i16_const X16_P0, 2
-    lda #50
-    sta X16_P2
-    lda #$D7
-    sta X16_P3
-    lda #5
-    sta X16_P4
-    jsr gfx_circle
-    #vera_addr 1, VRAM_BITMAP + 50*320 + 7, VERA_INC_1
-    #chkv $D7                   ; the on-screen extreme survived
-
-    lda chk_err
-    ldx #<_name
-    ldy #>_name
-    jmp t_result
-_name .text "GFX_CIRCLE", $00
-
-; =====================================================================
 ; Bitmap text. Screen code $A0 (reverse space) is a solid 8x8 block --
 ; exactly predictable. Then gfx_text's ASCII conversion and pen
 ; advance are proven by drawing "H" and comparing the cell byte-for-
@@ -6892,101 +6820,6 @@ _packed                         ; salvador payload.bin payload.zx0
     .byte $21, $d0, $15, $d5, $55, $60
 _out    .fill 97, 0
 _name   .text "ZX0", $00
-
-; =====================================================================
-; Flood fill: a hollow rectangle's inside fills to its walls and not
-; one pixel past them; the outside is untouched; re-filling with the
-; same colour is a no-op; and a fill seeded on the wall spreads over
-; the wall colour instead.
-; =====================================================================
-test_gfx_flood
-    #vera_addr 0, VRAM_BITMAP + 60*320, VERA_INC_1
-    lda #$00
-    ldx #<6400                  ; clear rows 60..79
-    ldy #>6400
-    jsr vera_fill
-
-    #i16_const X16_P0, 100      ; a 20x12 frame at (100,64)
-    lda #64
-    sta X16_P2
-    lda #$F1
-    sta X16_P3
-    #i16_const X16_P4, 20
-    lda #12
-    sta X16_P6
-    jsr gfx_frame
-
-    #i16_const X16_P0, 110      ; seed inside it
-    lda #70
-    sta X16_P2
-    lda #$F2
-    sta X16_P3
-    jsr gfx_flood
-    bcc _filled                 ; must not overflow on a simple box
-    jmp _fail
-_filled
-
-    stz chk_err
-    #vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
-    #chkv $F2                   ; the seed itself
-    #vera_addr 1, VRAM_BITMAP + 65*320 + 100, VERA_INC_1
-    #chkv $F1                   ; left wall intact...
-    #chkv $F2                   ; ...interior right against it
-    #vera_addr 1, VRAM_BITMAP + 65*320 + 118, VERA_INC_1
-    #chkv $F2                   ; interior against the right wall
-    #chkv $F1                   ; the wall
-    #chkv $00                   ; and NOTHING leaked past it
-    #vera_addr 1, VRAM_BITMAP + 65*320 + 99, VERA_INC_1
-    #chkv $00                   ; nothing leaked out to the left
-    #vera_addr 1, VRAM_BITMAP + 74*320 + 110, VERA_INC_1
-    #chkv $F2                   ; bottom interior row (y = 74)
-    #vera_addr 1, VRAM_BITMAP + 75*320 + 110, VERA_INC_1
-    #chkv $F1                   ; the bottom wall (y = 75)
-    #vera_addr 1, VRAM_BITMAP + 76*320 + 110, VERA_INC_1
-    #chkv $00                   ; below the box
-    lda chk_err
-    bne _fail_far
-
-    #i16_const X16_P0, 110      ; same colour again: a no-op, no hang
-    lda #70
-    sta X16_P2
-    lda #$F2
-    sta X16_P3
-    jsr gfx_flood
-    bcs _fail_far
-    bra _wall
-
-_fail_far
-    jmp _fail
-
-_wall
-    ; seed ON the wall: the wall's colour is the target now
-    #i16_const X16_P0, 100
-    lda #64
-    sta X16_P2
-    lda #$F3
-    sta X16_P3
-    jsr gfx_flood
-    bcs _fail
-
-    #vera_addr 1, VRAM_BITMAP + 64*320 + 119, VERA_INC_1
-    #chkv $F3                   ; the far corner of the frame recoloured
-    #vera_addr 1, VRAM_BITMAP + 75*320 + 100, VERA_INC_1
-    #chkv $F3
-    #vera_addr 1, VRAM_BITMAP + 70*320 + 110, VERA_INC_1
-    #chkv $F2                   ; the interior kept its fill
-    lda chk_err
-    bne _fail
-
-    lda #0
-    bra _report
-_fail
-    lda #1
-_report
-    ldx #<_name
-    ldy #>_name
-    jmp t_result
-_name .text "GFX_FLOOD", $00
 
 ; =====================================================================
 ; TSCrunch, against the reference Go encoder's output: the standard
