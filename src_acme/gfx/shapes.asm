@@ -29,6 +29,12 @@
 ;                 SHP_PSET -- so it clips wherever pset clips.
 ;   shape_disc    same arguments, filled with spans. SHP_HLINE does not
 ;                 clip (the module policy), so keep a disc on screen.
+;   shape_ellipse in: P0/P1 = cx, P2/P3 = cy, P4 = rx, P5 = ry (each
+;                 0-255), A = colour. An axis-aligned outline by the
+;                 midpoint walk, plotted with SHP_PSET -- so it clips
+;                 wherever pset clips.
+;   shape_fellipse same arguments, filled with spans. Like shape_disc
+;                 it draws with SHP_HLINE, so keep it on screen.
 ;   shape_flood   in: P0/P1 = x, P2/P3 = y, A = colour. Scanline seed
 ;                 fill of the region containing (x,y). Bounds-checked
 ;                 against SHP_W/SHP_H, so it never reads off canvas.
@@ -92,7 +98,7 @@ shape_disc
 .ddone
 	rts
 
-; --- shared circle/disc machinery -------------------------------------
+; --- shared circle/disc/ellipse machinery -------------------------------
 .take_cxy                       ; P -> locals; x = r, y = 0, err = 1 - r
 	lda X16_P0
 	sta .cx
@@ -251,6 +257,264 @@ shape_disc
 	inc X16_P5
 +	lda .col
 	jmp SHP_HLINE
+
+; ---------------------------------------------------------------------
+; shape_ellipse / shape_fellipse
+; ---------------------------------------------------------------------
+; One walk serves both: the error-form midpoint ellipse (Zingl),
+; quadrant II from (-rx, 0) up to (0, ry), mirrored 4 ways by the
+; circle's own .pair4 / .span2. The decision terms reach 2*rx*ry^2
+; (about 33M at 255/255), so the arithmetic is 32-bit; the one setup
+; product rx * 2ry^2 is a repeated subtract, a few thousand cycles at
+; the very worst -- noise against the drawing itself.
+;   dx = ry^2 - rx*2ry^2, dy = rx^2, err = dx + dy
+;   each step: e2 = 2*err;
+;     e2 >= dx ?  x++, err += dx += 2ry^2
+;     e2 <= dy ?  y++, err += dy += 2rx^2
+;   while x <= 0; then a centre column finishes the flat tips (small
+;   rx). A row's widest span always lands before its narrower echoes,
+;   so the fill's overdraw is harmless, same as the disc's.
+; ---------------------------------------------------------------------
+shape_ellipse
+	sta .col
+	stz .efl
+	bra .etake
+shape_fellipse
+	sta .col
+	lda #1
+	sta .efl
+.etake
+	lda X16_P0                  ; centre out of the P block
+	sta .cx
+	lda X16_P1
+	sta .cx+1
+	lda X16_P2
+	sta .cy
+	lda X16_P3
+	sta .cy+1
+	lda X16_P4
+	sta .ew
+	lda X16_P5
+	sta .eh
+
+	lda .eh                     ; .sq = ry^2
+	jsr .sq16
+	lda .sq                     ; dx = ry^2 (the rx*2ry^2 comes off below)
+	sta .edx
+	lda .sq+1
+	sta .edx+1
+	stz .edx+2
+	stz .edx+3
+	lda .sq                     ; .e2b = 2ry^2
+	sta .e2b
+	lda .sq+1
+	sta .e2b+1
+	stz .e2b+2
+	stz .e2b+3
+	asl .e2b
+	rol .e2b+1
+	rol .e2b+2
+	ldx .ew                     ; dx -= rx * 2ry^2, one 2ry^2 at a time
+	beq .exset
+.emul
+	sec
+	lda .edx
+	sbc .e2b
+	sta .edx
+	lda .edx+1
+	sbc .e2b+1
+	sta .edx+1
+	lda .edx+2
+	sbc .e2b+2
+	sta .edx+2
+	lda .edx+3
+	sbc .e2b+3
+	sta .edx+3
+	dex
+	bne .emul
+.exset
+	lda .ew                     ; .sq = rx^2
+	jsr .sq16
+	lda .sq                     ; dy = rx^2
+	sta .edy
+	lda .sq+1
+	sta .edy+1
+	stz .edy+2
+	stz .edy+3
+	lda .sq                     ; .e2a = 2rx^2
+	sta .e2a
+	lda .sq+1
+	sta .e2a+1
+	stz .e2a+2
+	stz .e2a+3
+	asl .e2a
+	rol .e2a+1
+	rol .e2a+2
+	clc                         ; err = dx + dy
+	lda .edx
+	adc .edy
+	sta .eerr
+	lda .edx+1
+	adc .edy+1
+	sta .eerr+1
+	lda .edx+2
+	adc .edy+2
+	sta .eerr+2
+	lda .edx+3
+	adc .edy+3
+	sta .eerr+3
+	sec                         ; x = -rx (16-bit signed), y = 0
+	lda #0
+	sbc .ew
+	sta .ex
+	lda #0
+	sbc #0
+	sta .ex+1
+	stz .ey
+
+.eloop
+	sec                         ; this step's quadrant point: (|x|, y)
+	lda #0
+	sbc .ex
+	sta .a
+	lda .ey
+	sta .b
+	jsr .eplot
+	lda .eerr                   ; e2 = 2*err
+	sta .ee2
+	lda .eerr+1
+	sta .ee2+1
+	lda .eerr+2
+	sta .ee2+2
+	lda .eerr+3
+	sta .ee2+3
+	asl .ee2
+	rol .ee2+1
+	rol .ee2+2
+	rol .ee2+3
+	sec                         ; e2 >= dx?  sign of e2 - dx decides
+	lda .ee2
+	sbc .edx
+	lda .ee2+1
+	sbc .edx+1
+	lda .ee2+2
+	sbc .edx+2
+	lda .ee2+3
+	sbc .edx+3
+	bmi .noxstep
+	inc .ex                     ; x++
+	bne .exdx
+	inc .ex+1
+.exdx
+	clc                         ; err += dx += 2ry^2
+	lda .edx
+	adc .e2b
+	sta .edx
+	lda .edx+1
+	adc .e2b+1
+	sta .edx+1
+	lda .edx+2
+	adc .e2b+2
+	sta .edx+2
+	lda .edx+3
+	adc .e2b+3
+	sta .edx+3
+	clc
+	lda .eerr
+	adc .edx
+	sta .eerr
+	lda .eerr+1
+	adc .edx+1
+	sta .eerr+1
+	lda .eerr+2
+	adc .edx+2
+	sta .eerr+2
+	lda .eerr+3
+	adc .edx+3
+	sta .eerr+3
+.noxstep
+	sec                         ; e2 <= dy?  sign of dy - e2 decides
+	lda .edy
+	sbc .ee2
+	lda .edy+1
+	sbc .ee2+1
+	lda .edy+2
+	sbc .ee2+2
+	lda .edy+3
+	sbc .ee2+3
+	bmi .noystep
+	inc .ey                     ; y++
+	clc                         ; err += dy += 2rx^2
+	lda .edy
+	adc .e2a
+	sta .edy
+	lda .edy+1
+	adc .e2a+1
+	sta .edy+1
+	lda .edy+2
+	adc .e2a+2
+	sta .edy+2
+	lda .edy+3
+	adc .e2a+3
+	sta .edy+3
+	clc
+	lda .eerr
+	adc .edy
+	sta .eerr
+	lda .eerr+1
+	adc .edy+1
+	sta .eerr+1
+	lda .eerr+2
+	adc .edy+2
+	sta .eerr+2
+	lda .eerr+3
+	adc .edy+3
+	sta .eerr+3
+.noystep
+	lda .ex+1                   ; while x <= 0
+	bmi .econt
+	ora .ex
+	bne .etip
+.econt
+	jmp .eloop
+.etip
+	lda .ey                     ; flat tip: the centre column on to ry
+	cmp .eh
+	bcs .edone
+	inc .ey
+	stz .a
+	lda .ey
+	sta .b
+	jsr .eplot
+	bra .etip
+.edone
+	rts
+
+.eplot                          ; the 4-way points, or the two spans
+	lda .efl
+	beq .eout
+	jmp .span2
+.eout
+	jmp .pair4
+
+.sq16                           ; A * A -> .sq (16-bit), by repetition
+	sta .sm
+	stz .sq
+	stz .sq+1
+	tax
+	beq .sqdone
+.sqlp
+	clc
+	lda .sq
+	adc .sm
+	sta .sq
+	bcc .sqnc
+	inc .sq+1
+.sqnc
+	dex
+	bne .sqlp
+.sqdone
+	rts
 
 ; ---------------------------------------------------------------------
 ; shape_flood
@@ -516,6 +780,20 @@ shape_flood
 .sy  !byte 0
 .err !word 0
 .t   !word 0
+
+.efl !byte 0
+.ew  !byte 0
+.eh  !byte 0
+.ex  !word 0
+.ey  !byte 0
+.sm  !byte 0
+.sq  !word 0
+.edx !fill 4, 0
+.edy !fill 4, 0
+.eerr !fill 4, 0
+.ee2 !fill 4, 0
+.e2a !fill 4, 0
+.e2b !fill 4, 0
 
 .tgt !byte 0
 .ovf !byte 0
