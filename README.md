@@ -275,8 +275,9 @@ treated as caller-save scratch.
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
-| `X16_USE_BITMAP` | `gfx_init`, `gfx_clear`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_circle`, `gfx_disc`, `gfx_char`, `gfx_text`, `gfx_flood` |
+| `X16_USE_BITMAP` | 320×240 @ 8bpp (256 colours): `gfx_init`, `gfx_clear`, `gfx_read`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_pattern_set`/`gfx_pattern_rect`, `gfx_blit`, `gfx_blitm` (colour-key), `gfx_char`, `gfx_text` |
 | `X16_USE_BITMAP2` | 640×480 @ 2bpp (4 colours, 160-byte rows, MSB-first pixels): `gfx2_init`, `gfx2_clear` (FX cache fill), `gfx2_setptr`, `gfx2_pset`, `gfx2_read`, `gfx2_hline`, `gfx2_vline`, `gfx2_rect`, `gfx2_frame`, `gfx2_line`, `gfx2_pattern_set`/`gfx2_pattern_rect` (screen-anchored 8×8 patterns), `gfx2_blit` (byte-aligned raster ops copy/OR/AND/XOR), `gfx2_blitm` (masked pre-shifted column blit — proportional-text speed). Pulls in VERA and VERAFX. Spans clip like the 8bpp module: `gfx2_pset`/`gfx2_read` clip, the rest assume on-screen arguments |
+| `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_flood` — engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`), so ONE copy serves both bitmap modules: the default binds them to `gfx2` (2bpp); bind `SHP_*` to `gfx_*` for 8bpp. Pulls in `X16_USE_BITMAP2` by default. (mads/kick: set `SHP_CUSTOM` to override the default binding.) |
 | `X16_USE_VERAFX` | All of the parts below, as it always has been. The parts exist because the whole is 2.5 KB and a program that wants one fast fill should not carry a rotozoom sampler to get it — `X16_USE_BITMAP2` asks for `_FILL` alone and is 2,162 bytes lighter for it. `fx_off` comes with any part. |
 |   `X16_USE_VERAFX_MULT` | `fx_mult` (signed 16×16→32 in hardware) |
 |   `X16_USE_VERAFX_FILL` | `fx_fill`, `fx_clear` |
@@ -390,9 +391,9 @@ with each voice's pan bits preserved.
 `clip_line` (Cohen–Sutherland) removes the drawers' documented "does not
 clip" sharp edge: give it a segment in 16-bit signed coordinates (±4095)
 and it rejects it (carry set) or loads the visible part straight into
-`gfx_line`/`fx_line`'s parameter block. `gfx_circle`/`gfx_disc` clip on
-their own; `gfx_char`/`gfx_text` draw the VRAM charset's glyphs into the
-bitmap, transparent background, ASCII conversion included.
+`gfx_line`/`fx_line`'s parameter block. `gfx_char`/`gfx_text` draw the
+VRAM charset's glyphs into the bitmap, transparent background, ASCII
+conversion included.
 
 `util/math.asm` is the game-math kit: a 16-bit xorshift PRNG, 256-entry
 sine/cosine tables computed by the assembler, an octant-reduced `atan2`
@@ -406,10 +407,14 @@ low nibble first as in WAV blocks. Four-to-one compression is what makes
 it, decode the next. `adpcm_pred`/`adpcm_index` are exposed because WAV
 block headers carry the initial decoder state.
 
-`gfx_flood` is a scanline flood fill over a bounded span stack (170
-pending spans): carry set on return means the stack overflowed and the
-fill is incomplete — pathological shapes only; a game's closed regions
-never get near it. Re-filling a region with its own colour is a no-op.
+`gfx/shapes.asm` (`X16_USE_SHAPES`) holds the drawing that is not
+engine-specific: `shape_circle` (midpoint outline), `shape_disc` (filled
+spans) and `shape_flood` (a scanline flood fill over a bounded 170-span
+stack — carry set means the stack overflowed and the fill is incomplete,
+pathological shapes only). They plot through `SHP_PSET`/`SHP_HLINE` and
+read through `SHP_READ`, all overridable, so one copy serves the 2bpp
+`gfx2` and 8bpp `gfx` modules alike (rather than a hand-written circle in
+each). Left alone they bind to `gfx2`.
 
 The compression picture, complete: the ROM's LZSA2 (`mem_decompress`) is
 free and can stream into VRAM; `zx0_decompress` (the modern ZX0 v2 that
