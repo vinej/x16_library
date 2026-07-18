@@ -32,8 +32,8 @@
 ;                     gfx_pattern_set, gfx_pattern_rect, gfx_blit,
 ;                     gfx_blitm (colour-key), gfx_hline,
 ;                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
-;                     gfx_circle, gfx_disc, gfx_char, gfx_text,
-;                     gfx_flood
+;                     gfx_char, gfx_text (circle/disc/flood are in
+;                     X16_USE_SHAPES now, shared with gfx2)
 ;   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
 ;                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
 ;                     gfx2_frame, gfx2_line, gfx2_pattern_set,

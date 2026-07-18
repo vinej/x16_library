@@ -5,12 +5,16 @@
 ; This file EMITS CODE. Source it exactly once (x16_code.asm does,
 ; under X16_USE_SHAPES).
 ;
-; The shapes are ENGINE-AGNOSTIC: they draw through three entry symbols
-; and read the canvas bounds through two, all overridable BEFORE this
-; file is sourced. Left alone, they bind to the 2bpp module -- which is
-; how bitmap2 gains the circle/disc/flood that bitmap (8bpp) has native
-; -- but any engine with the same three call shapes can sit behind them
-; (CXGEOS points them at its graphics port and gets every mode at once):
+; The shapes are ENGINE-AGNOSTIC and live here ONCE, not per engine:
+; they draw through three entry symbols and read the canvas bounds
+; through two, all overridable BEFORE this file is sourced. Left alone
+; they bind to the 2bpp module (bitmap2). Any engine with the same call
+; shapes can sit behind them:
+;   - bitmap2 (2bpp): the default, no work.
+;   - bitmap (8bpp): predefine SHP_PSET / SHP_HLINE to small shims that
+;     move the colour from A into X16_P3 (where gfx_pset wants it), then
+;     jmp gfx_pset / gfx_hline; SHP_READ = gfx_read; SHP_W/H = 320/240.
+;   - CXGEOS points them at its graphics port and gets every mode at once.
 ;
 ;   SHP_PSET   pset:  P0/P1 = x, P2/P3 = y, A = colour (must clip)
 ;   SHP_READ   read:  P0/P1 = x, P2/P3 = y -> A = the pixel
