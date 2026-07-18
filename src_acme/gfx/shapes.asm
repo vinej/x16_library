@@ -368,9 +368,14 @@ shape_flood
 +	lda .col
 	jsr SHP_HLINE
 
-	lda .qy                     ; the row above...
-	sta .ry
+	lda .qy                     ; .scanrow clobbers .qy, so keep the filled
+	sta .row                    ; row here for BOTH neighbour scans
 	lda .qy+1
+	sta .row+1
+
+	lda .row                    ; the row above...
+	sta .ry
+	lda .row+1
 	sta .ry+1
 	lda .ry
 	ora .ry+1
@@ -385,10 +390,10 @@ shape_flood
 	jsr .scanrow
 .below
 	clc                         ; ...and the row below
-	lda .qy
+	lda .row
 	adc #1
 	sta .ry
-	lda .qy+1
+	lda .row+1
 	adc #0
 	sta .ry+1
 	lda .ry                     ; ry == H? off the bottom
@@ -520,6 +525,7 @@ shape_flood
 .xl  !word 0
 .xr  !word 0
 .ry  !word 0
+.row !word 0
 .tx  !word 0
 .run !byte 0
 .stk !fill FLOOD_MAX * 4, 0

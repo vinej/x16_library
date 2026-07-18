@@ -367,9 +367,14 @@ shp_wrdone
 :	lda shp_col
 	jsr SHP_HLINE
 
-	lda shp_qy                     ; the row above...
-	sta shp_ry
+	lda shp_qy                     ; shp_scanrow clobbers shp_qy, so keep the
+	sta shp_row                    ; filled row here for BOTH neighbour scans
 	lda shp_qy+1
+	sta shp_row+1
+
+	lda shp_row                    ; the row above...
+	sta shp_ry
+	lda shp_row+1
 	sta shp_ry+1
 	lda shp_ry
 	ora shp_ry+1
@@ -384,10 +389,10 @@ shp_wrdone
 	jsr shp_scanrow
 shp_below
 	clc                         ; ..shp_and the row below
-	lda shp_qy
+	lda shp_row
 	adc #1
 	sta shp_ry
-	lda shp_qy+1
+	lda shp_row+1
 	adc #0
 	sta shp_ry+1
 	lda shp_ry                     ; ry == H? off the bottom
@@ -519,6 +524,7 @@ shp_qy  .word 0
 shp_xl  .word 0
 shp_xr  .word 0
 shp_ry  .word 0
+shp_row  .word 0
 shp_tx  .word 0
 shp_run .byte 0
 shp_stk .res FLOOD_MAX * 4, 0

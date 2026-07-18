@@ -961,8 +961,13 @@ test_shape_flood
     jsr shp_rd
     cmp #1
     bne _report
-    lda #71                     ; the inside corner: filled
+    lda #71                     ; the top-left inside corner: filled
     ldx #161
+    jsr shp_rd
+    cmp #1
+    bne _report
+    lda #88                     ; the bottom-right corner: filled (the fill
+    ldx #178                    ; must reach DOWN from the seed, not just up)
     jsr shp_rd
     cmp #1
     bne _report

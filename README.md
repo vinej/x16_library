@@ -409,7 +409,7 @@ block headers carry the initial decoder state.
 
 `gfx/shapes.asm` (`X16_USE_SHAPES`) holds the drawing that is not
 engine-specific: `shape_circle` (midpoint outline), `shape_disc` (filled
-spans) and `shape_flood` (a scanline flood fill over a bounded 170-span
+spans) and `shape_flood` (a scanline flood fill over a bounded 96-seed
 stack — carry set means the stack overflowed and the fill is incomplete,
 pathological shapes only). They plot through `SHP_PSET`/`SHP_HLINE` and
 read through `SHP_READ`, all overridable, so one copy serves the 2bpp
