@@ -34,6 +34,29 @@ SKIP = {
 
 DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 
+# ACME's only anonymous-label form in this tree: a single forward '+',
+# defined as "+<tab><insn>" and referenced by one branch above it. ca65
+# has a native equivalent -- the unnamed ':' label, referenced ':+' --
+# which, unlike a named label, does not end the @cheap scope around it.
+ANON_DEF = re.compile(r'^\+[ \t]+(.*)$')
+ANON_REF = re.compile(
+    r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)\+[ \t]*$')
+
+def anon_labels(text):
+    out = []
+    for ln in text.split("\n"):
+        d = ANON_DEF.match(ln)
+        if d:
+            out.append(":\t" + d.group(1))
+            continue
+        r = ANON_REF.match(ln)
+        if r:
+            out.append(r.group(1) + ":+")
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
 
 def split_statements(line):
     """Split ACME's ' : ' statement separator outside quotes/comments."""
@@ -73,6 +96,7 @@ def fix_negative_bytes(s):
 
 
 def convert(text, stem, include_map):
+    text = anon_labels(text)
     lines = text.split("\n")
     out = []
     guard = None
@@ -114,6 +138,18 @@ def convert(text, stem, include_map):
         m = re.match(r'(\s*)!addr\s+(\w+\s*=.*)$', line)
         if m:
             out.append(m.group(1) + m.group(2))
+            continue
+
+        # ---- test/example skeleton lines ----------------------------------
+        # !cpu: the root include sets it. * = addr: ca65 places code by
+        # linker segment (see runner.cfg), the load address is data.
+        if re.match(r'\s*!cpu\b', line):
+            continue
+        m = re.match(r'\s*\*\s*=\s*(\$?\w+)\s*(;.*)?$', line)
+        if m:
+            out.append('.segment "LOADADDR"')
+            out.append(f"    .word {m.group(1)}")
+            out.append('.segment "CODE"')
             continue
 
         # ---- zone-local label DEFINITIONS ---------------------------------
@@ -250,7 +286,9 @@ def main():
     dst = Path(sys.argv[2])
 
     def include_map(name):
-        return name.replace("test_acme/", "test_ca65/")
+        # ca65 resolves .include relative to the including file (not the
+        # cwd), so the runner reaches its testlib.asm by bare name.
+        return name.replace("test_acme/", "")
 
     for f in sorted(src.rglob("*.asm")):
         rel = f.relative_to(src).as_posix()

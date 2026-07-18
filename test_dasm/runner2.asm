@@ -12,8 +12,8 @@
     processor 65c02
     include "x16.asm"
 
-X16_USE_BITMAP2 = 1             ; pulls in VERA and VERAFX
-X16_USE_SHAPES  = 1             ; circle/disc/flood, engine-agnostic
+X16_USE_BITMAP2 = 1
+X16_USE_SHAPES  = 1             ; pulls in VERA and VERAFX
 
 ; The harness's zero-page pointer (see runner.asm).
 T_ZP = $70
@@ -61,11 +61,13 @@ main
     jsr test_g2_pattern_phase
     jsr test_g2_blit
     jsr test_g2_blitm
-    jsr test_g2_clear
-    jsr test_g2_init
     jsr test_shape_circle
     jsr test_shape_disc
+    jsr test_shape_ellipse
+    jsr test_shape_fellipse
     jsr test_shape_flood
+    jsr test_g2_clear
+    jsr test_g2_init
 
     jsr t_summary
     rts
@@ -865,7 +867,7 @@ test_g2_init
     include "test_dasm/testlib.asm"
 
 ; SHAPE_CIRC: a midpoint circle's cardinal points land at exactly r
-	SUBROUTINE
+    SUBROUTINE
 test_shape_circle
     lda #100
     jsr shp_clear40             ; a clean 40x40 patch at (100,100)
@@ -908,7 +910,7 @@ test_shape_circle
 .name dc.b "SHAPE_CIRC", 0
 
 ; SHAPE_DISC: filled to the rim, clear past it
-	SUBROUTINE
+    SUBROUTINE
 test_shape_disc
     lda #180
     jsr shp_clear40             ; a clean patch at (180,100)
@@ -945,8 +947,106 @@ test_shape_disc
     jmp t_result
 .name dc.b "SHAPE_DISC", 0
 
+; SHAPE_ELLIP: the outline's cardinal points land at exactly rx / ry
+    SUBROUTINE
+test_shape_ellipse
+    lda #100
+    jsr shp_clear40             ; a clean 40x40 patch at (100,100)
+    lda #120
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #15                     ; rx = 15, ry = 8
+    sta X16_P4
+    lda #8
+    sta X16_P5
+    lda #3
+    jsr shape_ellipse
+    ldy #1
+    lda #135                    ; east
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne .report
+    lda #105                    ; west
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne .report
+    lda #120                    ; south
+    ldx #128
+    jsr shp_rd
+    cmp #3
+    bne .report
+    lda #120                    ; one past the south pole: clear
+    ldx #129
+    jsr shp_rd
+    bne .report
+    lda #120                    ; centre stays clear: an outline
+    ldx #120
+    jsr shp_rd
+    bne .report
+    ldy #0
+.report
+    tya
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name dc.b "SHAPE_ELLIP", 0
+
+; SHAPE_FELLIP: filled to both rims, clear past them
+    SUBROUTINE
+test_shape_fellipse
+    lda #180
+    jsr shp_clear40             ; a clean patch at (180,100)
+    lda #200
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #12                     ; rx = 12, ry = 9
+    sta X16_P4
+    lda #9
+    sta X16_P5
+    lda #2
+    jsr shape_fellipse
+    ldy #1
+    lda #200                    ; centre
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne .report
+    lda #212                    ; the east rim
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne .report
+    lda #213                    ; one past it
+    ldx #120
+    jsr shp_rd
+    bne .report
+    lda #200                    ; the north rim
+    ldx #111
+    jsr shp_rd
+    cmp #2
+    bne .report
+    lda #200                    ; one past it
+    ldx #110
+    jsr shp_rd
+    bne .report
+    ldy #0
+.report
+    tya
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name dc.b "SHAPE_FELLIP", 0
+
 ; SHAPE_FLOOD: fills a framed box, stops at the frame
-	SUBROUTINE
+    SUBROUTINE
 test_shape_flood
     lda #55
     ldx #150
@@ -1007,7 +1107,7 @@ test_shape_flood
     jmp t_result
 .name dc.b "SHAPE_FLOOD", 0
 
-	SUBROUTINE
+    SUBROUTINE
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0
     stz X16_P1
@@ -1019,8 +1119,10 @@ shp_rd                          ; read (A, X), both bytes
     ora #0                      ; ply set the flags from Y; re-set from A
     rts
 
+    SUBROUTINE
 shp_clear40                     ; colour 0 over (A,100)+40x40
     ldx #100
+    SUBROUTINE
 shp_clear40y                    ; ...or over (A,X)+40x40
     sta X16_P0
     stz X16_P1
@@ -1034,4 +1136,5 @@ shp_clear40y                    ; ...or over (A,X)+40x40
     stz X16_P7
     lda #0
     jmp gfx2_rect
+
     include "x16_code.asm"

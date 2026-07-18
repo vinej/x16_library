@@ -50,6 +50,38 @@ SKIP = {
 
 DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 
+# ACME's only anonymous-label form in this tree: a single forward '+',
+# defined as "+<tab><insn>" and referenced by one branch above it. This
+# dialect has no equivalent tier that survives the conversion, so the
+# pre-pass turns each into a zone-local .k<N>; the normal zone-local
+# promotion then makes it a unique per-file global, as the ports always
+# spelled it (shp_k1 and friends).
+ANON_DEF = re.compile(r'^\+[ \t]+(.*)$')
+ANON_REF = re.compile(
+    r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)\+[ \t]*$')
+
+def anon_labels(text):
+    lines = text.split("\n")
+    defs = [i for i, ln in enumerate(lines) if ANON_DEF.match(ln)]
+    names = {i: ".k%d" % (n + 1) for n, i in enumerate(defs)}
+    out = []
+    for i, ln in enumerate(lines):
+        d = ANON_DEF.match(ln)
+        if d:
+            out.append(names[i])
+            out.append("\t" + d.group(1))
+            continue
+        r = ANON_REF.match(ln)
+        if r:
+            nxt = next((j for j in defs if j > i), None)
+            if nxt is None:
+                raise SystemExit("anon '+' reference without a '+' label")
+            out.append(r.group(1) + names[nxt])
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
 
 def split_statements(line):
     """Split ACME's ' : ' statement separator outside quotes/comments."""
@@ -76,6 +108,7 @@ def split_statements(line):
 
 
 def convert(text, stem, include_map):
+    text = anon_labels(text)
     lines = text.split("\n")
     out = []
     guard = None

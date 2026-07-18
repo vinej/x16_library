@@ -94,6 +94,9 @@ main
     jsr test_gfx_clip
     jsr test_gfx_vline
     jsr test_gfx_line
+    jsr test_gfx_read8
+    jsr test_gfx_pat8
+    jsr test_gfx_blit8
     jsr test_psg_regs
     jsr test_pcm_rate_clamp
     jsr test_ym_write
@@ -7275,4 +7278,153 @@ _name .text "PCM_STREAM_LOOP", $00
 
 ; ---------------------------------------------------------------------
 .include "testlib.asm"
+
+; GFX_READ8: what pset wrote comes back
+test_gfx_read8
+    lda #50
+    sta X16_P0
+    stz X16_P1
+    lda #60
+    sta X16_P2
+    lda #7
+    sta X16_P3
+    jsr gfx_pset
+    lda #50
+    sta X16_P0
+    stz X16_P1
+    lda #60
+    sta X16_P2
+    jsr gfx_read
+    ldy #1
+    cmp #7
+    bne _report
+    ldy #0
+_report
+    tya
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "GFX_READ8", 0
+
+; GFX_PAT8: an $F0-row pattern paints fg left, bg right of each cell
+test_gfx_pat8
+    lda #<_pat
+    ldx #>_pat
+    sta X16_P0                  ; (pattern_set wants A/X = the pattern)
+    lda #1
+    sta X16_P4                  ; bg
+    lda #2
+    sta X16_P5                  ; fg
+    lda #<_pat
+    ldx #>_pat
+    jsr gfx_pattern_set
+    lda #64
+    sta X16_P0
+    stz X16_P1
+    lda #100
+    sta X16_P2
+    lda #16
+    sta X16_P4
+    stz X16_P5
+    lda #2
+    sta X16_P6
+    jsr gfx_pattern_rect
+    ldy #1
+    lda #64                     ; column 64&7 = 0: bit 7 of $F0 = fg
+    ldx #100
+    jsr rd8
+    cmp #2
+    bne _report
+    lda #68                     ; column 68&7 = 4: bit 3 of $F0 = bg
+    ldx #100
+    jsr rd8
+    cmp #1
+    bne _report
+    lda #79                     ; column 79&7 = 7 on row 101: bg again
+    ldx #101
+    jsr rd8
+    cmp #1
+    bne _report
+    ldy #0
+_report
+    tya
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "GFX_PAT8", 0
+_pat .byte $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
+
+; GFX_BLIT8: copy lands, and a masked zero leaves the screen alone
+test_gfx_blit8
+    lda #82                     ; a witness where the source has a hole
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    lda #9
+    sta X16_P3
+    jsr gfx_pset
+    lda #80
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    lda #4
+    sta X16_P4
+    lda #1
+    sta X16_P5
+    lda #<_src
+    sta X16_P6
+    lda #>_src
+    sta X16_P7
+    jsr gfx_blitm               ; masked: the $00 must skip the witness
+    ldy #1
+    lda #80
+    ldx #120
+    jsr rd8
+    cmp #5
+    bne _report
+    lda #82                     ; the hole: the witness survives
+    ldx #120
+    jsr rd8
+    cmp #9
+    bne _report
+    lda #80                     ; now a plain copy overwrites everything
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    lda #4
+    sta X16_P4
+    lda #1
+    sta X16_P5
+    lda #<_src
+    sta X16_P6
+    lda #>_src
+    sta X16_P7
+    lda #0
+    jsr gfx_blit
+    lda #82
+    ldx #120
+    jsr rd8
+    bne _report                 ; the $00 copies over the witness now
+    ldy #0
+_report
+    tya
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "GFX_BLIT8", 0
+_src .byte 5, 6, 0, 8
+
+rd8                             ; read (A, X) at 8bpp
+    sta X16_P0
+    stz X16_P1
+    stx X16_P2
+    phy
+    jsr gfx_read
+    ply
+    ora #0                      ; ply set the flags from Y; re-set from A
+    rts
+
 .include "x16_code.asm"

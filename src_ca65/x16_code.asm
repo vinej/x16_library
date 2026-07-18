@@ -39,7 +39,8 @@
 ;                     gfx2_frame, gfx2_line, gfx2_pattern_set,
 ;                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
 ;                     (640x480@2bpp; pulls in VERA and VERAFX)
-;   X16_USE_SHAPES    shape_circle, shape_disc, shape_flood -- engine-
+;   X16_USE_SHAPES    shape_circle, shape_disc, shape_ellipse,
+;                     shape_fellipse, shape_flood -- engine-
 ;                     agnostic: they draw through SHP_PSET/SHP_READ/
 ;                     SHP_HLINE (+ SHP_W/SHP_H bounds), which default to
 ;                     the 2bpp module; predefine them to bind any engine
@@ -237,10 +238,10 @@ X16_USE_NUMBER = 1
 .endif
 .ifdef X16_USE_SHAPES
     .ifndef SHP_PSET
-    .ifndef X16_USE_BITMAP2
-    X16_USE_BITMAP2 = 1
-    .endif
-    .endif
+        .ifndef X16_USE_BITMAP2
+        X16_USE_BITMAP2 = 1
+.endif
+.endif
 .endif
 .ifdef X16_USE_BITMAP2
     .ifndef X16_USE_VERA

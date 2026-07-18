@@ -110,7 +110,7 @@ routine contracts. The six ports are not reimplementations: converters in
 dialect-specific files are maintained by hand (each tree's README lists
 them), and every port is held to the hardest possible bar — **its test
 runner assembles to a byte-identical PRG** (same SHA-256) as the ACME build
-and passes the same 132-test suite (134 windowed) on the emulator.
+and passes the same 152-test suite (154 windowed) on the emulator.
 
 Each port pairs a source tree with its repo-local toolchain folder:
 
@@ -277,7 +277,7 @@ treated as caller-save scratch.
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
 | `X16_USE_BITMAP` | 320×240 @ 8bpp (256 colours): `gfx_init`, `gfx_clear`, `gfx_read`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_pattern_set`/`gfx_pattern_rect`, `gfx_blit`, `gfx_blitm` (colour-key), `gfx_char`, `gfx_text` |
 | `X16_USE_BITMAP2` | 640×480 @ 2bpp (4 colours, 160-byte rows, MSB-first pixels): `gfx2_init`, `gfx2_clear` (FX cache fill), `gfx2_setptr`, `gfx2_pset`, `gfx2_read`, `gfx2_hline`, `gfx2_vline`, `gfx2_rect`, `gfx2_frame`, `gfx2_line`, `gfx2_pattern_set`/`gfx2_pattern_rect` (screen-anchored 8×8 patterns), `gfx2_blit` (byte-aligned raster ops copy/OR/AND/XOR), `gfx2_blitm` (masked pre-shifted column blit — proportional-text speed). Pulls in VERA and VERAFX. Spans clip like the 8bpp module: `gfx2_pset`/`gfx2_read` clip, the rest assume on-screen arguments |
-| `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_flood` — engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`), so ONE copy serves both bitmap modules: the default binds them to `gfx2` (2bpp); bind `SHP_*` to `gfx_*` for 8bpp. Pulls in `X16_USE_BITMAP2` by default. (mads/kick: set `SHP_CUSTOM` to override the default binding.) |
+| `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_ellipse`, `shape_fellipse`, `shape_flood` — engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`), so ONE copy serves both bitmap modules: the default binds them to `gfx2` (2bpp); bind `SHP_*` to `gfx_*` for 8bpp. Pulls in `X16_USE_BITMAP2` by default. (kick/mads can't test definedness of an already-referenced symbol, so overriding a binding there sets a sentinel alongside it: `SHP_PSET_SET = 1` next to your `SHP_PSET`, and likewise per symbol.) |
 | `X16_USE_VERAFX` | All of the parts below, as it always has been. The parts exist because the whole is 2.5 KB and a program that wants one fast fill should not carry a rotozoom sampler to get it — `X16_USE_BITMAP2` asks for `_FILL` alone and is 2,162 bytes lighter for it. `fx_off` comes with any part. |
 |   `X16_USE_VERAFX_MULT` | `fx_mult` (signed 16×16→32 in hardware) |
 |   `X16_USE_VERAFX_FILL` | `fx_fill`, `fx_clear` |
@@ -409,7 +409,9 @@ block headers carry the initial decoder state.
 
 `gfx/shapes.asm` (`X16_USE_SHAPES`) holds the drawing that is not
 engine-specific: `shape_circle` (midpoint outline), `shape_disc` (filled
-spans) and `shape_flood` (a scanline flood fill over a bounded 96-seed
+spans), `shape_ellipse`/`shape_fellipse` (axis-aligned outline and fill,
+radii 0–255 each way, by the error-form midpoint walk) and `shape_flood`
+(a scanline flood fill over a bounded 96-seed
 stack — carry set means the stack overflowed and the fill is incomplete,
 pathological shapes only). They plot through `SHP_PSET`/`SHP_HLINE` and
 read through `SHP_READ`, all overridable, so one copy serves the 2bpp

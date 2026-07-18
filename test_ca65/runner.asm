@@ -14,7 +14,7 @@
 ; Not X16_USE_ALL: with every module the code alone would push this PRG
 ; past the $9EFF load ceiling. The modules tested HERE are gated
 ; explicitly; newer modules (bitmap2, ...) live in runner2.asm, and
-; .uild_ca65.ps1 -Test runs every runner.
+; .\build.ps1 -Test runs every runner.
 X16_USE_VERA       = 1
 X16_USE_SCREEN     = 1
 X16_USE_PALETTE    = 1

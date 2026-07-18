@@ -13,8 +13,8 @@
 .label T_ZP = $70
 #import "x16.asm"
 
-#define X16_USE_BITMAP2  // pulls in VERA and VERAFX
-#define X16_USE_SHAPES   // circle/disc/flood, engine-agnostic
+#define X16_USE_BITMAP2
+#define X16_USE_SHAPES  // pulls in VERA and VERAFX
 
 // The harness's zero-page pointer (see runner.asm).
 
@@ -60,11 +60,13 @@ main:
     jsr test_g2_pattern_phase
     jsr test_g2_blit
     jsr test_g2_blitm
-    jsr test_g2_clear
-    jsr test_g2_init
     jsr test_shape_circle
     jsr test_shape_disc
+    jsr test_shape_ellipse
+    jsr test_shape_fellipse
     jsr test_shape_flood
+    jsr test_g2_clear
+    jsr test_g2_init
 
     jsr t_summary
     rts
@@ -904,7 +906,7 @@ test_shape_circle__report:
     ldy #>test_shape_circle__name
     jmp t_result
 test_shape_circle__name: .text "SHAPE_CIRC"
-	.byte $00
+    .byte 0
 
 // SHAPE_DISC: filled to the rim, clear past it
 test_shape_disc:
@@ -942,7 +944,105 @@ test_shape_disc__report:
     ldy #>test_shape_disc__name
     jmp t_result
 test_shape_disc__name: .text "SHAPE_DISC"
-	.byte $00
+    .byte 0
+
+// SHAPE_ELLIP: the outline's cardinal points land at exactly rx / ry
+test_shape_ellipse:
+    lda #100
+    jsr shp_clear40             // a clean 40x40 patch at (100,100)
+    lda #120
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #15                     // rx = 15, ry = 8
+    sta X16_P4
+    lda #8
+    sta X16_P5
+    lda #3
+    jsr shape_ellipse
+    ldy #1
+    lda #135                    // east
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_ellipse__report
+    lda #105                    // west
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_ellipse__report
+    lda #120                    // south
+    ldx #128
+    jsr shp_rd
+    cmp #3
+    bne test_shape_ellipse__report
+    lda #120                    // one past the south pole: clear
+    ldx #129
+    jsr shp_rd
+    bne test_shape_ellipse__report
+    lda #120                    // centre stays clear: an outline
+    ldx #120
+    jsr shp_rd
+    bne test_shape_ellipse__report
+    ldy #0
+test_shape_ellipse__report:
+    tya
+    ldx #<test_shape_ellipse__name
+    ldy #>test_shape_ellipse__name
+    jmp t_result
+test_shape_ellipse__name: .text "SHAPE_ELLIP"
+    .byte 0
+
+// SHAPE_FELLIP: filled to both rims, clear past them
+test_shape_fellipse:
+    lda #180
+    jsr shp_clear40             // a clean patch at (180,100)
+    lda #200
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #12                     // rx = 12, ry = 9
+    sta X16_P4
+    lda #9
+    sta X16_P5
+    lda #2
+    jsr shape_fellipse
+    ldy #1
+    lda #200                    // centre
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_fellipse__report
+    lda #212                    // the east rim
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_fellipse__report
+    lda #213                    // one past it
+    ldx #120
+    jsr shp_rd
+    bne test_shape_fellipse__report
+    lda #200                    // the north rim
+    ldx #111
+    jsr shp_rd
+    cmp #2
+    bne test_shape_fellipse__report
+    lda #200                    // one past it
+    ldx #110
+    jsr shp_rd
+    bne test_shape_fellipse__report
+    ldy #0
+test_shape_fellipse__report:
+    tya
+    ldx #<test_shape_fellipse__name
+    ldy #>test_shape_fellipse__name
+    jmp t_result
+test_shape_fellipse__name: .text "SHAPE_FELLIP"
+    .byte 0
 
 // SHAPE_FLOOD: fills a framed box, stops at the frame
 test_shape_flood:
@@ -1004,9 +1104,9 @@ test_shape_flood__report:
     ldy #>test_shape_flood__name
     jmp t_result
 test_shape_flood__name: .text "SHAPE_FLOOD"
-	.byte $00
+    .byte 0
 
-shp_rd:                          // read (A, X), both bytes
+shp_rd: // read (A, X), both bytes
     sta X16_P0
     stz X16_P1
     stx X16_P2
@@ -1014,12 +1114,12 @@ shp_rd:                          // read (A, X), both bytes
     phy
     jsr gfx2_read
     ply
-    ora #0                      // ply set the flags from Y// re-set from A
+    ora #0                      // ply set the flags from Y; re-set from A
     rts
 
-shp_clear40:                     // colour 0 over (A,100)+40x40
+shp_clear40: // colour 0 over (A,100)+40x40
     ldx #100
-shp_clear40y:                    // ...or over (A,X)+40x40
+shp_clear40y: // ...or over (A,X)+40x40
     sta X16_P0
     stz X16_P1
     stx X16_P2
@@ -1032,4 +1132,5 @@ shp_clear40y:                    // ...or over (A,X)+40x40
     stz X16_P7
     lda #0
     jmp gfx2_rect
+
 #import "x16_code.asm"

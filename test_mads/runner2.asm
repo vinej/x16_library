@@ -11,8 +11,8 @@
 
     icl "x16.asm"
 
-X16_USE_BITMAP2 = 1             ; pulls in VERA and VERAFX
-X16_USE_SHAPES  = 1             ; circle/disc/flood, engine-agnostic
+X16_USE_BITMAP2 = 1
+X16_USE_SHAPES  = 1             ; pulls in VERA and VERAFX
 
 ; The harness's zero-page pointer (see runner.asm).
 T_ZP = $70
@@ -59,11 +59,13 @@ main
     jsr test_g2_pattern_phase
     jsr test_g2_blit
     jsr test_g2_blitm
-    jsr test_g2_clear
-    jsr test_g2_init
     jsr test_shape_circle
     jsr test_shape_disc
+    jsr test_shape_ellipse
+    jsr test_shape_fellipse
     jsr test_shape_flood
+    jsr test_g2_clear
+    jsr test_g2_init
 
     jsr t_summary
     rts
@@ -867,28 +869,28 @@ test_shape_circle
     ldx #120
     jsr shp_rd
     cmp #3
-    bne tsc_report
+    bne test_shape_circle__report
     lda #105                    ; west
     ldx #120
     jsr shp_rd
     cmp #3
-    bne tsc_report
+    bne test_shape_circle__report
     lda #120                    ; south
     ldx #135
     jsr shp_rd
     cmp #3
-    bne tsc_report
+    bne test_shape_circle__report
     lda #120                    ; centre stays clear: an outline
     ldx #120
     jsr shp_rd
-    bne tsc_report
+    bne test_shape_circle__report
     ldy #0
-tsc_report
+test_shape_circle__report
     tya
-    ldx #<tsc_name
-    ldy #>tsc_name
+    ldx #<test_shape_circle__name
+    ldy #>test_shape_circle__name
     jmp t_result
-tsc_name dta c'SHAPE_CIRC', $00
+test_shape_circle__name dta c'SHAPE_CIRC', 0
 
 ; SHAPE_DISC: filled to the rim, clear past it
 test_shape_disc
@@ -909,23 +911,119 @@ test_shape_disc
     ldx #120
     jsr shp_rd
     cmp #2
-    bne tsd_report
+    bne test_shape_disc__report
     lda #210                    ; the rim
     ldx #120
     jsr shp_rd
     cmp #2
-    bne tsd_report
+    bne test_shape_disc__report
     lda #200                    ; two past the rim, straight down
     ldx #132
     jsr shp_rd
-    bne tsd_report
+    bne test_shape_disc__report
     ldy #0
-tsd_report
+test_shape_disc__report
     tya
-    ldx #<tsd_name
-    ldy #>tsd_name
+    ldx #<test_shape_disc__name
+    ldy #>test_shape_disc__name
     jmp t_result
-tsd_name dta c'SHAPE_DISC', $00
+test_shape_disc__name dta c'SHAPE_DISC', 0
+
+; SHAPE_ELLIP: the outline's cardinal points land at exactly rx / ry
+test_shape_ellipse
+    lda #100
+    jsr shp_clear40             ; a clean 40x40 patch at (100,100)
+    lda #120
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #15                     ; rx = 15, ry = 8
+    sta X16_P4
+    lda #8
+    sta X16_P5
+    lda #3
+    jsr shape_ellipse
+    ldy #1
+    lda #135                    ; east
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_ellipse__report
+    lda #105                    ; west
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_ellipse__report
+    lda #120                    ; south
+    ldx #128
+    jsr shp_rd
+    cmp #3
+    bne test_shape_ellipse__report
+    lda #120                    ; one past the south pole: clear
+    ldx #129
+    jsr shp_rd
+    bne test_shape_ellipse__report
+    lda #120                    ; centre stays clear: an outline
+    ldx #120
+    jsr shp_rd
+    bne test_shape_ellipse__report
+    ldy #0
+test_shape_ellipse__report
+    tya
+    ldx #<test_shape_ellipse__name
+    ldy #>test_shape_ellipse__name
+    jmp t_result
+test_shape_ellipse__name dta c'SHAPE_ELLIP', 0
+
+; SHAPE_FELLIP: filled to both rims, clear past them
+test_shape_fellipse
+    lda #180
+    jsr shp_clear40             ; a clean patch at (180,100)
+    lda #200
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #12                     ; rx = 12, ry = 9
+    sta X16_P4
+    lda #9
+    sta X16_P5
+    lda #2
+    jsr shape_fellipse
+    ldy #1
+    lda #200                    ; centre
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_fellipse__report
+    lda #212                    ; the east rim
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_fellipse__report
+    lda #213                    ; one past it
+    ldx #120
+    jsr shp_rd
+    bne test_shape_fellipse__report
+    lda #200                    ; the north rim
+    ldx #111
+    jsr shp_rd
+    cmp #2
+    bne test_shape_fellipse__report
+    lda #200                    ; one past it
+    ldx #110
+    jsr shp_rd
+    bne test_shape_fellipse__report
+    ldy #0
+test_shape_fellipse__report
+    tya
+    ldx #<test_shape_fellipse__name
+    ldy #>test_shape_fellipse__name
+    jmp t_result
+test_shape_fellipse__name dta c'SHAPE_FELLIP', 0
 
 ; SHAPE_FLOOD: fills a framed box, stops at the frame
 test_shape_flood
@@ -955,38 +1053,38 @@ test_shape_flood
     lda #1
     jsr shape_flood
     ldy #1
-    bcs tsf_report                 ; the stack must not overflow here
+    bcs test_shape_flood__report                 ; the stack must not overflow here
     lda #80                     ; inside: filled
     ldx #170
     jsr shp_rd
     cmp #1
-    bne tsf_report
+    bne test_shape_flood__report
     lda #71                     ; the top-left inside corner: filled
     ldx #161
     jsr shp_rd
     cmp #1
-    bne tsf_report
+    bne test_shape_flood__report
     lda #88                     ; the bottom-right corner: filled (the fill
     ldx #178                    ; must reach DOWN from the seed, not just up)
     jsr shp_rd
     cmp #1
-    bne tsf_report
+    bne test_shape_flood__report
     lda #70                     ; the fence itself: intact
     ldx #160
     jsr shp_rd
     cmp #3
-    bne tsf_report
+    bne test_shape_flood__report
     lda #60                     ; outside: untouched
     ldx #155
     jsr shp_rd
-    bne tsf_report
+    bne test_shape_flood__report
     ldy #0
-tsf_report
+test_shape_flood__report
     tya
-    ldx #<tsf_name
-    ldy #>tsf_name
+    ldx #<test_shape_flood__name
+    ldy #>test_shape_flood__name
     jmp t_result
-tsf_name dta c'SHAPE_FLOOD', $00
+test_shape_flood__name dta c'SHAPE_FLOOD', 0
 
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0
@@ -1014,4 +1112,5 @@ shp_clear40y                    ; ...or over (A,X)+40x40
     stz X16_P7
     lda #0
     jmp gfx2_rect
+
     icl "x16_code.asm"

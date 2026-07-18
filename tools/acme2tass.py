@@ -258,7 +258,9 @@ def main():
     dst = Path(sys.argv[2])
 
     def include_map(name):
-        return name.replace("test_acme/", "test_64tass/")
+        # 64tass resolves .include relative to the including file, so the
+        # runner reaches its testlib.asm by bare name, not tree path.
+        return name.replace("test_acme/", "")
 
     for f in sorted(src.rglob("*.asm")):
         rel = f.relative_to(src).as_posix()
