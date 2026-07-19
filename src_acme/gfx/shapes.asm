@@ -45,10 +45,19 @@
 !zone x16_shapes {
 
 ; ---------------------------------------------------------------------
-; shape_circle
+; shape_circle / shape_disc -- one walk for both, like the ellipse:
+; .efl routes each plot through .eplot to the octant points (outline)
+; or the spans (fill).
 ; ---------------------------------------------------------------------
 shape_circle
 	sta .col
+	stz .efl                    ; outline: the octant point pairs
+	bra .cgo
+shape_disc
+	sta .col
+	lda #1                      ; filled: spans at cy +/- b instead
+	sta .efl
+.cgo
 	jsr .take_cxy               ; cx/cy out of the P block, x=r, y=0
 .cloop
 	lda .y                      ; while y <= x
@@ -60,42 +69,15 @@ shape_circle
 	sta .a
 	lda .y
 	sta .b
-	jsr .pair4
+	jsr .eplot
 	lda .y                      ; ...and the (y,x) pair
 	sta .a
 	lda .x
 	sta .b
-	jsr .pair4
+	jsr .eplot
 	jsr .step                   ; the midpoint error walk
 	bra .cloop
 .cdone
-	rts
-
-; ---------------------------------------------------------------------
-; shape_disc
-; ---------------------------------------------------------------------
-shape_disc
-	sta .col
-	jsr .take_cxy
-.dloop
-	lda .y
-	cmp .x
-	beq .dspan
-	bcs .ddone
-.dspan
-	lda .x                      ; spans at cy +/- y, half-width x...
-	sta .a
-	lda .y
-	sta .b
-	jsr .span2
-	lda .y                      ; ...and at cy +/- x, half-width y
-	sta .a
-	lda .x
-	sta .b
-	jsr .span2
-	jsr .step
-	bra .dloop
-.ddone
 	rts
 
 ; --- shared circle/disc/ellipse machinery -------------------------------
@@ -182,33 +164,9 @@ shape_disc
 	sta X16_P1
 	bra .e1y
 .e1xm
-	sec                         ; x = cx - a
-	lda .cx
-	sbc .a
-	sta X16_P0
-	lda .cx+1
-	sbc #0
-	sta X16_P1
+	jsr .subx                   ; x = cx - a
 .e1y
-	lda .sy
-	bne .e1ym
-	clc
-	lda .cy
-	adc .b
-	sta X16_P2
-	lda .cy+1
-	adc #0
-	sta X16_P3
-	bra .e1go
-.e1ym
-	sec
-	lda .cy
-	sbc .b
-	sta X16_P2
-	lda .cy+1
-	sbc #0
-	sta X16_P3
-.e1go
+	jsr .sety
 	lda .col
 	jmp SHP_PSET
 
@@ -220,32 +178,8 @@ shape_disc
 	sta .sy
 	; fall through
 .espan
-	sec                         ; x = cx - a
-	lda .cx
-	sbc .a
-	sta X16_P0
-	lda .cx+1
-	sbc #0
-	sta X16_P1
-	lda .sy
-	bne .esym
-	clc
-	lda .cy
-	adc .b
-	sta X16_P2
-	lda .cy+1
-	adc #0
-	sta X16_P3
-	bra .esgo
-.esym
-	sec
-	lda .cy
-	sbc .b
-	sta X16_P2
-	lda .cy+1
-	sbc #0
-	sta X16_P3
-.esgo
+	jsr .subx                   ; x = cx - a
+	jsr .sety
 	lda .a                      ; len = 2a + 1
 	sta X16_P4
 	lda #0
@@ -257,6 +191,37 @@ shape_disc
 	inc X16_P5
 +	lda .col
 	jmp SHP_HLINE
+
+.subx                           ; P0/P1 = cx - a
+	sec
+	lda .cx
+	sbc .a
+	sta X16_P0
+	lda .cx+1
+	sbc #0
+	sta X16_P1
+	rts
+
+.sety                           ; P2/P3 = cy + b, or cy - b when .sy
+	lda .sy
+	bne .sym
+	clc
+	lda .cy
+	adc .b
+	sta X16_P2
+	lda .cy+1
+	adc #0
+	sta X16_P3
+	rts
+.sym
+	sec
+	lda .cy
+	sbc .b
+	sta X16_P2
+	lda .cy+1
+	sbc #0
+	sta X16_P3
+	rts
 
 ; ---------------------------------------------------------------------
 ; shape_ellipse / shape_fellipse
@@ -380,18 +345,18 @@ shape_fellipse
 	lda .ey
 	sta .b
 	jsr .eplot
-	lda .eerr                   ; e2 = 2*err
+	lda .eerr                   ; e2 = 2*err, copied with the shift
+	asl
 	sta .ee2
 	lda .eerr+1
+	rol
 	sta .ee2+1
 	lda .eerr+2
+	rol
 	sta .ee2+2
 	lda .eerr+3
+	rol
 	sta .ee2+3
-	asl .ee2
-	rol .ee2+1
-	rol .ee2+2
-	rol .ee2+3
 	sec                         ; e2 >= dx?  sign of e2 - dx decides
 	lda .ee2
 	sbc .edx
@@ -531,7 +496,8 @@ shape_flood
 	lda #0
 	sta .ovf
 	sta .sp
-	jsr .rd_p                   ; the target = the seed's own colour
+	jsr SHP_READ                ; the target = the seed's own colour
+	                            ; (read at the CALLER's P block)
 	sta .tgt
 	cmp .col                    ; filling with itself never ends: done
 	bne .fseed
@@ -581,10 +547,8 @@ shape_flood
 	sta .xl+1
 	bra .wleft
 .wldone
-	lda .qy                     ; widen right: xr = rightmost target
-	sta .qy                     ; (qy already holds the row)
-	lda .xl
-	sta .xr
+	lda .xl                     ; widen right: xr = rightmost target
+	sta .xr                     ; (qy already holds the row)
 	lda .xl+1
 	sta .xr+1
 .wright
@@ -718,17 +682,13 @@ shape_flood
 .srdone
 	rts
 
-.rd_p                           ; read at the CALLER's P block (entry)
-	jmp SHP_READ
-.rd_q                           ; read at (.qx, .qy)
-	lda .qx
-	sta X16_P0
-	lda .qx+1
-	sta X16_P1
-	lda .qy
-	sta X16_P2
-	lda .qy+1
-	sta X16_P3
+.rd_q                           ; read at (.qx, .qy), laid out as P0..P3
+	ldx #3
+.rq_l
+	lda .qx,x
+	sta X16_P0,x
+	dex
+	bpl .rq_l
 	jmp SHP_READ
 
 .push                           ; (.qx,.qy) onto the stack, or drop + ovf

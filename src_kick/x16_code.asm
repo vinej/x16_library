@@ -315,6 +315,18 @@
 #define X16_USE_VERAFX_ANY
 #endif
 #endif
+// LINE and TRI share verafx.asm's x16_code_udiv24 / x16_code_pix_addr helpers; either
+// one carries them (internal gate, not meant to be set by programs).
+#if X16_USE_VERAFX_LINE
+#if !X16_USE_VERAFX_LINETRI
+#define X16_USE_VERAFX_LINETRI
+#endif
+#endif
+#if X16_USE_VERAFX_TRI
+#if !X16_USE_VERAFX_LINETRI
+#define X16_USE_VERAFX_LINETRI
+#endif
+#endif
 #if X16_USE_PCM_STREAM
     #if !X16_USE_PCM
     #define X16_USE_PCM

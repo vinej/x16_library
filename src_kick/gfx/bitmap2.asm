@@ -224,52 +224,12 @@ gfx2_hline__hgo:
     bcs gfx2_hline__middle
 
 gfx2_hline__head:
-    // q = last pixel of the head byte = min(3, p + n - 1)
-    lda g2_n+1
-    bne gfx2_hline__qmax                   // a long span always reaches pixel 3
-    clc
-    lda g2_p
-    adc g2_n
-    bcs gfx2_hline__qmax                   // p + n carried: certainly past pixel 3
-    dec
-    cmp #4
-    bcc gfx2_hline__qgot
-gfx2_hline__qmax:
-    lda #3
-gfx2_hline__qgot:
-    tay                         // Y = q
-    sec                         // head pixel count = q - p + 1
-    iny
-    tya
-    sbc g2_p
-    sta g2_t
-    // mask = from[p] AND upto[q]
-    ldx g2_p
-    lda bitmap2_from,x
-    dey
-    and bitmap2_upto,y
+    jsr bitmap2_headmask               // mask -> A, head pixel count -> g2_t
     jsr bitmap2_rmw                    // ink = colour byte through this mask
-
-    sec                         // n -= head pixels
-    lda g2_n
-    sbc g2_t
-    sta g2_n
-    lda g2_n+1
-    sbc #0
-    sta g2_n+1
-    jsr bitmap2_a_inc                  // step to the first whole byte
+    jsr bitmap2_headadv                // n -= head pixels, on to the whole bytes
 
 gfx2_hline__middle:
-    // m = n >> 2 whole bytes
-    lda g2_n+1
-    sta g2_m+1
-    lda g2_n
-    lsr g2_m+1
-    ror
-    lsr g2_m+1
-    ror
-    sta g2_m
-    ora g2_m+1
+    jsr bitmap2_quadcount              // m = n >> 2 whole bytes
     beq gfx2_hline__tail
 
     lda #VERA_INC_1
@@ -278,25 +238,11 @@ gfx2_hline__middle:
     ldx g2_m
     ldy g2_m+1
     jsr vera_fill               // clobbers X16_T0..T2, not g2_*
-
-    clc                         // addr += m
-    lda g2_a0
-    adc g2_m
-    sta g2_a0
-    lda g2_a1
-    adc g2_m+1
-    sta g2_a1
-    lda g2_a2
-    adc #0
-    sta g2_a2
+    jsr bitmap2_a_addm                 // addr += m
 
 gfx2_hline__tail:
-    lda g2_n
-    and #3
+    jsr bitmap2_tailmask
     beq gfx2_hline__hdone
-    tay
-    dey                         // tail covers pixels 0..n-1
-    lda bitmap2_upto,y
     jsr bitmap2_rmw
 gfx2_hline__hdone:
     rts
@@ -399,22 +345,12 @@ gfx2_rect__rdone:
 // ---------------------------------------------------------------------
 gfx2_frame:
     sta g2_rc
-    lda X16_P0                  // private copies: the edges reuse the
-    sta g2_fx                   // parameter block as they go
-    lda X16_P1
-    sta g2_fx+1
-    lda X16_P2
-    sta g2_fy
-    lda X16_P3
-    sta g2_fy+1
-    lda X16_P4
-    sta g2_rw
-    lda X16_P5
-    sta g2_rw+1
-    lda X16_P6
-    sta g2_rh
-    lda X16_P7
-    sta g2_rh+1
+    ldx #7                      // private copies: the edges reuse the
+gfx2_frame__take: // parameter block as they go; g2_fx..
+    lda X16_P0,x                // g2_rh are laid out in P0..P7 order
+    sta g2_fx,x
+    dex
+    bpl gfx2_frame__take
 
     jsr bitmap2_f_span                 // top edge
     jsr gfx2_hline
@@ -456,31 +392,23 @@ gfx2_frame__f_nb2:
 
 // x, y, width in the block, colour in A -- arguments for gfx2_hline
 bitmap2_f_span:
-    lda g2_fx
-    sta X16_P0
-    lda g2_fx+1
-    sta X16_P1
-    lda g2_fy
-    sta X16_P2
-    lda g2_fy+1
-    sta X16_P3
-    lda g2_rw
-    sta X16_P4
-    lda g2_rw+1
-    sta X16_P5
+    ldx #5
+bitmap2_fsp_l:
+    lda g2_fx,x
+    sta X16_P0,x
+    dex
+    bpl bitmap2_fsp_l
     lda g2_rc
     rts
 
 // x, y, height in the block, colour in A -- arguments for gfx2_vline
 bitmap2_f_col:
-    lda g2_fx
-    sta X16_P0
-    lda g2_fx+1
-    sta X16_P1
-    lda g2_fy
-    sta X16_P2
-    lda g2_fy+1
-    sta X16_P3
+    ldx #3
+bitmap2_fcl_l:
+    lda g2_fx,x
+    sta X16_P0,x
+    dex
+    bpl bitmap2_fcl_l
     lda g2_rh
     sta X16_P4
     lda g2_rh+1
@@ -497,22 +425,12 @@ bitmap2_f_col:
 // ---------------------------------------------------------------------
 gfx2_line:
     sta g2_lc
-    lda X16_P0
-    sta g2_lx0
-    lda X16_P1
-    sta g2_lx0+1
-    lda X16_P2
-    sta g2_ly0
-    lda X16_P3
-    sta g2_ly0+1
-    lda X16_P4
-    sta g2_lx1
-    lda X16_P5
-    sta g2_lx1+1
-    lda X16_P6
-    sta g2_ly1
-    lda X16_P7
-    sta g2_ly1+1
+    ldx #7                      // P0..P7 -> g2_lx0..g2_ly1, which are
+gfx2_line__take: // laid out in the same order
+    lda X16_P0,x
+    sta g2_lx0,x
+    dex
+    bpl gfx2_line__take
 
     // dx = |x1 - x0|, sx = sign
     sec
@@ -813,55 +731,18 @@ gfx2_pattern_rect__parity_done:
     bcs gfx2_pattern_rect__pmiddle
 
 gfx2_pattern_rect__phead:
-    lda g2_n+1
-    bne gfx2_pattern_rect__pqmax
-    clc
-    lda g2_p
-    adc g2_n
-    bcs gfx2_pattern_rect__pqmax                  // p + n carried: certainly past pixel 3
-    dec
-    cmp #4
-    bcc gfx2_pattern_rect__pqgot
-gfx2_pattern_rect__pqmax:
-    lda #3
-gfx2_pattern_rect__pqgot:
-    tay
-    sec
-    iny
-    tya
-    sbc g2_p
-    sta g2_t
-    ldx g2_p
-    lda bitmap2_from,x
-    dey
-    and bitmap2_upto,y
+    jsr bitmap2_headmask               // mask -> A, head pixel count -> g2_t
     tax                         // mask in X for bitmap2_rmwp
     lda g2_pb0
     jsr bitmap2_rmwp
-
-    sec
-    lda g2_n
-    sbc g2_t
-    sta g2_n
-    lda g2_n+1
-    sbc #0
-    sta g2_n+1
-    jsr bitmap2_a_inc
+    jsr bitmap2_headadv
     lda g2_pb0                  // next byte has the other parity
     ldx g2_pb1
     sta g2_pb1
     stx g2_pb0
 
 gfx2_pattern_rect__pmiddle:
-    lda g2_n+1
-    sta g2_m+1
-    lda g2_n
-    lsr g2_m+1
-    ror
-    lsr g2_m+1
-    ror
-    sta g2_m
-    ora g2_m+1
+    jsr bitmap2_quadcount
     beq gfx2_pattern_rect__ptail
 
     lda #VERA_INC_1
@@ -885,25 +766,11 @@ gfx2_pattern_rect__ploop:
     bne gfx2_pattern_rect__ploop
     dey
     bne gfx2_pattern_rect__ploop
-
-    clc                         // addr += m
-    lda g2_a0
-    adc g2_m
-    sta g2_a0
-    lda g2_a1
-    adc g2_m+1
-    sta g2_a1
-    lda g2_a2
-    adc #0
-    sta g2_a2
+    jsr bitmap2_a_addm                 // addr += m
 
 gfx2_pattern_rect__ptail:
-    lda g2_n
-    and #3
+    jsr bitmap2_tailmask
     beq gfx2_pattern_rect__prdone
-    tay
-    dey
-    lda bitmap2_upto,y
     tax
     lda g2_pb0
     jsr bitmap2_rmwp
@@ -920,65 +787,54 @@ gfx2_pattern_rect__prdone:
 // The source pointer is X16_PTR3 -- P6/P7 double as real zero page, so
 // (PTR3),y addressing costs nothing extra. No clipping.
 // ---------------------------------------------------------------------
+// The three RMW ops share one loop whose opcode at bitmap2_g2bo is patched
+// from bitmap2_g2optab (ora/and/eor (zp),y) -- the 8bpp module's gfx_blit
+// does the same.
 gfx2_blit:
     and #3
-    sta g2_op
-    jsr bitmap2_addr_calc
+    sta g2_op                   // copy (op 0) needs no opcode patch
+    beq bitmap2_k1
+    tax
+    lda bitmap2_g2optab-1,x
+    sta bitmap2_g2bo
+bitmap2_k1:
+	jsr bitmap2_addr_calc
     lda X16_P5
     sta g2_h
-gfx2_blit__brow:
+bitmap2_b2row:
     lda #VERA_INC_1
     jsr bitmap2_aim1                   // ops read through port 1...
     lda #VERA_INC_1
     jsr bitmap2_aim0                   // ...and everything writes port 0
     ldy #0
     lda g2_op
-    beq gfx2_blit__bcopy
-    cmp #1
-    beq gfx2_blit__bor
-    cmp #2
-    beq gfx2_blit__band
-gfx2_blit__bxor:
+    beq bitmap2_b2copy
+bitmap2_b2rmw:
     lda VERA_DATA1
-    eor (X16_PTR3),y
+bitmap2_g2bo:
+    ora (X16_PTR3),y            // opcode patched: op 1/2/3 = ora/and/eor
     sta VERA_DATA0
     iny
     cpy X16_P4
-    bne gfx2_blit__bxor
-    bra gfx2_blit__brow_done
-gfx2_blit__bcopy:
+    bne bitmap2_b2rmw
+    bra bitmap2_b2done
+bitmap2_b2copy:
     lda (X16_PTR3),y
     sta VERA_DATA0
     iny
     cpy X16_P4
-    bne gfx2_blit__bcopy
-    bra gfx2_blit__brow_done
-gfx2_blit__bor:
-    lda VERA_DATA1
-    ora (X16_PTR3),y
-    sta VERA_DATA0
-    iny
-    cpy X16_P4
-    bne gfx2_blit__bor
-    bra gfx2_blit__brow_done
-gfx2_blit__band:
-    lda VERA_DATA1
-    and (X16_PTR3),y
-    sta VERA_DATA0
-    iny
-    cpy X16_P4
-    bne gfx2_blit__band
-gfx2_blit__brow_done:
+    bne bitmap2_b2copy
+bitmap2_b2done:
     clc                         // src += width
     lda X16_PTR3
     adc X16_P4
     sta X16_PTR3
-    bcc gfx2_blit__bsrc_ok
+    bcc bitmap2_k2
     inc X16_PTR3+1
-gfx2_blit__bsrc_ok:
-    jsr bitmap2_a_row                  // dest += one row
+bitmap2_k2:
+	jsr bitmap2_a_row                  // dest += one row
     dec g2_h
-    bne gfx2_blit__brow
+    bne bitmap2_b2row
     rts
 
 // ---------------------------------------------------------------------
@@ -1124,15 +980,7 @@ bitmap2_aim0:
     sta g2_inc
     lda #VERA_CTRL_ADDRSEL
     trb VERA_CTRL
-    lda g2_a0
-    sta VERA_ADDR_L
-    lda g2_a1
-    sta VERA_ADDR_M
-    lda g2_a2
-    and #VERA_ADDR_H_BANK
-    ora g2_inc
-    sta VERA_ADDR_H
-    rts
+    bra bitmap2_aimgo
 
 // point port 1 (read side) at g2_a; A = increment index
 bitmap2_aim1:
@@ -1143,6 +991,7 @@ bitmap2_aim1:
     sta g2_inc
     lda #VERA_CTRL_ADDRSEL
     tsb VERA_CTRL
+bitmap2_aimgo:
     lda g2_a0
     sta VERA_ADDR_L
     lda g2_a1
@@ -1151,6 +1000,83 @@ bitmap2_aim1:
     and #VERA_ADDR_H_BANK
     ora g2_inc
     sta VERA_ADDR_H
+    rts
+
+// the three-phase span geometry, shared by gfx2_hline and bitmap2_p_row:
+//   bitmap2_headmask:  from phase g2_p and count g2_n, the head pixel count
+//               -> g2_t and the pixel mask (from[p] AND upto[q]) -> A
+//   bitmap2_headadv:   n -= the head pixels; step g2_a to the whole bytes
+//   bitmap2_quadcount: g2_m = n >> 2 whole bytes; Z set when there are none
+//   bitmap2_a_addm:    g2_a += m (skip what vera_fill / the pair loop wrote)
+//   bitmap2_tailmask:  the pixels 0..n-1 tail mask -> A; Z set when no tail
+bitmap2_headmask:
+    lda g2_n+1                  // q = last head pixel = min(3, p+n-1)
+    bne bitmap2_hmqmax                 // a long span always reaches pixel 3
+    clc
+    lda g2_p
+    adc g2_n
+    bcs bitmap2_hmqmax                 // p + n carried: certainly past pixel 3
+    dec
+    cmp #4
+    bcc bitmap2_hmqgot
+bitmap2_hmqmax:
+    lda #3
+bitmap2_hmqgot:
+    tay                         // Y = q
+    sec                         // head pixel count = q - p + 1
+    iny
+    tya
+    sbc g2_p
+    sta g2_t
+    ldx g2_p
+    lda bitmap2_from,x
+    dey
+    and bitmap2_upto,y
+    rts
+
+bitmap2_headadv:
+    sec                         // n -= head pixels
+    lda g2_n
+    sbc g2_t
+    sta g2_n
+    lda g2_n+1
+    sbc #0
+    sta g2_n+1
+    jmp bitmap2_a_inc                  // step to the first whole byte
+
+bitmap2_quadcount:
+    lda g2_n+1
+    sta g2_m+1
+    lda g2_n
+    lsr g2_m+1
+    ror
+    lsr g2_m+1
+    ror
+    sta g2_m
+    ora g2_m+1
+    rts
+
+bitmap2_a_addm:
+    clc
+    lda g2_a0
+    adc g2_m
+    sta g2_a0
+    lda g2_a1
+    adc g2_m+1
+    sta g2_a1
+    lda g2_a2
+    adc #0
+    sta g2_a2
+    rts
+
+bitmap2_tailmask:
+    lda g2_n
+    and #3
+    beq bitmap2_tmnone
+    tay
+    dey                         // tail covers pixels 0..n-1
+    lda bitmap2_upto,y                 // never zero, so Z stays clear
+bitmap2_tmnone:
     rts
 
 // read-modify-write the byte at g2_a through a pixel mask:
@@ -1220,11 +1146,13 @@ g2_op: .byte 0
 g2_h: .byte 0
 g2_w: .byte 0
 
-g2_rc: .byte 0
-g2_rw: .word 0
-g2_rh: .word 0
+// g2_fx..g2_rh are laid out in X16_P0..P7 order so gfx2_frame can take
+// and restore the block with a loop
 g2_fx: .word 0
 g2_fy: .word 0
+g2_rw: .word 0
+g2_rh: .word 0
+g2_rc: .byte 0
 
 g2_pfg: .byte 0
 g2_pbg: .byte 0
@@ -1256,5 +1184,7 @@ bitmap2_from:
     .byte $FF, $3F, $0F, $03   // pixels p..3
 bitmap2_upto:
     .byte $C0, $F0, $FC, $FF   // pixels 0..q
+bitmap2_g2optab:
+    .byte $11, $31, $51        // ora/and/eor (zp),y, for gfx2_blit
 
 // (end zone)

@@ -52,6 +52,7 @@ X16_USE_VERAFX_TRANSP = 0
 X16_USE_VERAFX_AFFINE = 0
 X16_USE_VERAFX_LINE = 0
 X16_USE_VERAFX_TRI = 0
+X16_USE_VERAFX_LINETRI = 0
 X16_USE_VERA_CORE = 0
 X16_USE_VERA_COPY = 0
 X16_USE_IRQ_CORE = 0
@@ -110,6 +111,7 @@ xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
 xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
 xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
 xuse_verafx_fill = xuse_bitmap2 || X16_USE_VERAFX_FILL != 0 || xuse_verafx
+xuse_verafx_linetri = xuse_verafx_line || X16_USE_VERAFX_LINETRI != 0 || xuse_verafx_tri
 xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
 xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
 xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0

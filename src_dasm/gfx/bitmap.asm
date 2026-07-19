@@ -191,21 +191,14 @@ gfx_rect
     SUBROUTINE
 gfx_frame
     ; Take a private copy of everything: gfx_vline reuses P4 as its
-    ; length, which is where the caller's width lives.
-    lda X16_P0
-    sta gb_x
-    lda X16_P1
-    sta gb_x+1
-    lda X16_P2
-    sta gb_y
-    lda X16_P3
-    sta gb_c
-    lda X16_P4
-    sta gb_w
-    lda X16_P5
-    sta gb_w+1
-    lda X16_P6
-    sta gb_h
+    ; length, which is where the caller's width lives. The gb block is
+    ; laid out in P0..P6 order, so one loop does it.
+    ldx #6
+.take
+    lda X16_P0,x
+    sta gb_x,x
+    dex
+    bpl .take
 
     jsr bitmap_restore_span           ; top edge
     jsr gfx_hline
@@ -239,34 +232,28 @@ gfx_frame
 
     rts
 
-; x, y, colour, width -- arguments for gfx_hline
+; x, y, colour, width -- arguments for gfx_hline (gb bytes 0-5)
     SUBROUTINE
 bitmap_restore_span
-    lda gb_x
-    sta X16_P0
-    lda gb_x+1
-    sta X16_P1
-    lda gb_y
-    sta X16_P2
-    lda gb_c
-    sta X16_P3
-    lda gb_w
-    sta X16_P4
-    lda gb_w+1
-    sta X16_P5
+    ldx #5
+    SUBROUTINE
+bitmap_rsp_l
+    lda gb_x,x
+    sta X16_P0,x
+    dex
+    bpl bitmap_rsp_l
     rts
 
 ; x, y, colour, height -- arguments for gfx_vline
     SUBROUTINE
 bitmap_restore_col
-    lda gb_x
-    sta X16_P0
-    lda gb_x+1
-    sta X16_P1
-    lda gb_y
-    sta X16_P2
-    lda gb_c
-    sta X16_P3
+    ldx #3
+    SUBROUTINE
+bitmap_rcl_l
+    lda gb_x,x
+    sta X16_P0,x
+    dex
+    bpl bitmap_rcl_l
     lda gb_h
     sta X16_P4
     rts
@@ -288,58 +275,23 @@ gfx_read
 ; pixel here, which makes every one of these simpler than its 2bpp
 ; sibling: no sub-byte phases, and a masked blit is a colour key.
 ;
-; bitmap_addr8 -- the 17-bit framebuffer address of (gb8_x, gb8_y) -> the
-; port named by bitmap_ld0/bitmap_ld1, with INC_1. y*320 = (y<<8) + (y<<6).
+; The rows walk the P block itself (x stays in P0/P1, y steps in P2)
+; and aim port 0 through gfx_setptr -- the same y*320+x math is not
+; repeated here. gfx_setptr leaves the address in T0..T2 and the
+; shifted increment in T5, which is all bitmap_ld1 needs to aim the read
+; port for the RMW ops.
 ; ---------------------------------------------------------------------
-    SUBROUTINE
-bitmap_addr8
-	lda gb8_y                   ; y << 6 into a word
-	sta gb8_t
-	lda #0
-	sta gb8_t+1
-	ldx #6
-    SUBROUTINE
-bitmap_a8sh
-	asl gb8_t
-	rol gb8_t+1
-	dex
-	bne bitmap_a8sh
-	clc                         ; + y << 8
-	lda gb8_t+1
-	adc gb8_y
-	sta gb8_t+1
-	lda #0
-	adc #0
-	sta gb8_t+2                 ; bit 16
-	clc                         ; + x
-	lda gb8_t
-	adc gb8_x
-	sta gb8_t
-	lda gb8_t+1
-	adc gb8_x+1
-	sta gb8_t+1
-	lda gb8_t+2
-	adc #0
-	sta gb8_t+2
-	rts
-
-    SUBROUTINE
-bitmap_ld0
-	lda #VERA_CTRL_ADDRSEL
-	trb VERA_CTRL
-	bra bitmap_ldgo
     SUBROUTINE
 bitmap_ld1
 	lda #VERA_CTRL_ADDRSEL
 	tsb VERA_CTRL
-    SUBROUTINE
-bitmap_ldgo
-	lda gb8_t
+	lda X16_T0
 	sta VERA_ADDR_L
-	lda gb8_t+1
+	lda X16_T1
 	sta VERA_ADDR_M
-	lda gb8_t+2
-	ora #(VERA_INC_1 << 4)
+	lda X16_T2
+	and #VERA_ADDR_H_BANK
+	ora X16_T5
 	sta VERA_ADDR_H
 	rts
 
@@ -372,32 +324,21 @@ bitmap_gpcp
 ; ---------------------------------------------------------------------
 ; gfx_pattern_rect -- fill a rectangle with the cached pattern
 ;   in:  X16_P0/P1 = x, X16_P2 = y, X16_P4/P5 = width, X16_P6 = height
+;   (P2 and P6 are consumed)
 ;
 ; Tiles from the screen origin, like the 2bpp module: the pattern cell
 ; under a pixel depends only on the pixel, not the rectangle.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx_pattern_rect
-	lda X16_P0
-	sta gb8_x
-	lda X16_P1
-	sta gb8_x+1
-	lda X16_P2
-	sta gb8_y
-	lda X16_P4
-	sta gp8_w
-	lda X16_P5
-	sta gp8_w+1
-	lda X16_P6
-	sta gp8_h
 	lda X16_P0                  ; the column phase: x & 7, fixed for
 	and #7                      ; every row
 	sta gp8_rot
     SUBROUTINE
 bitmap_gprow
-	jsr bitmap_addr8
-	jsr bitmap_ld0
-	lda gb8_y                   ; the pattern row: y & 7
+	lda #VERA_INC_1
+	jsr gfx_setptr
+	lda X16_P2                  ; the pattern row: y & 7
 	and #7
 	tay
 	lda gp8_pat,y
@@ -412,9 +353,9 @@ bitmap_gppre
     SUBROUTINE
 bitmap_gpgo
 	sta gp8_cur
-	lda gp8_w                   ; the width countdown, 16-bit
+	lda X16_P4                  ; the width countdown, 16-bit
 	sta gb8_t
-	lda gp8_w+1
+	lda X16_P5
 	sta gb8_t+1
     SUBROUTINE
 bitmap_gppx
@@ -441,8 +382,8 @@ bitmap_k1
 	lda gb8_t
 	ora gb8_t+1
 	bne bitmap_gppx
-	inc gb8_y                   ; the next row
-	dec gp8_h
+	inc X16_P2                  ; the next row
+	dec X16_P6
 	bne bitmap_gprow
 	rts
 
@@ -453,47 +394,34 @@ bitmap_k1
 ;        X16_P5 = height in rows, X16_P6/P7 = source (row-major)
 ;
 ; The source pointer is X16_PTR3 -- P6/P7 double as real zero page, the
-; 2bpp module's own trick. No clipping.
+; 2bpp module's own trick. No clipping. P2 and P5 are consumed.
+;
+; The three RMW ops share one loop: the opcode of the instruction at
+; bitmap_gbo is patched from bitmap_goptab (ora/and/eor abs), the gfx_text trick
+; one byte earlier.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx_blit
+	and #3
 	sta gb8_op
-	lda X16_P0
-	sta gb8_x
-	lda X16_P1
-	sta gb8_x+1
-	lda X16_P2
-	sta gb8_y
-	lda X16_P5
-	sta gb8_h
+	beq bitmap_gbrow                  ; copy: no opcode to patch
+	tax
+	lda bitmap_goptab-1,x
+	sta bitmap_gbo
     SUBROUTINE
 bitmap_gbrow
-	jsr bitmap_addr8
-	jsr bitmap_ld0
+	lda #VERA_INC_1
+	jsr gfx_setptr
 	lda gb8_op
 	beq bitmap_gbcopy
 	jsr bitmap_ld1                    ; the RMW ops read through port 1
 	ldy #0
     SUBROUTINE
 bitmap_gbop
-	lda gb8_op
-	cmp #2
-	beq bitmap_gband
-	bcs bitmap_gbxor
-	lda (X16_PTR3),y            ; OR
-	ora VERA_DATA1
-	bra bitmap_gbw
-    SUBROUTINE
-bitmap_gband
 	lda (X16_PTR3),y
-	and VERA_DATA1
-	bra bitmap_gbw
     SUBROUTINE
-bitmap_gbxor
-	lda (X16_PTR3),y
-	eor VERA_DATA1
-    SUBROUTINE
-bitmap_gbw
+bitmap_gbo
+	ora VERA_DATA1              ; opcode patched: op 1/2/3 = ora/and/eor
 	sta VERA_DATA0
 	iny
 	cpy X16_P4
@@ -519,10 +447,14 @@ bitmap_gbnext
 	inc X16_PTR3+1
     SUBROUTINE
 bitmap_k2
-	inc gb8_y
-	dec gb8_h
+	inc X16_P2
+	dec X16_P5
 	bne bitmap_gbrow
 	rts
+
+    SUBROUTINE
+bitmap_goptab
+    dc.b $0D, $2D, $4D     ; ora / and / eor absolute
 
 ; ---------------------------------------------------------------------
 ; gfx_blitm -- a masked blit: byte $00 is transparent
@@ -532,22 +464,14 @@ bitmap_k2
 ; At 8bpp the mask IS the data: colour 0 means "leave the screen
 ; alone" (a read still advances the port, which is the whole trick).
 ; The 2bpp module needs interleaved mask bytes; one byte per pixel
-; does not.
+; does not. P2 and P5 are consumed.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx_blitm
-	lda X16_P0
-	sta gb8_x
-	lda X16_P1
-	sta gb8_x+1
-	lda X16_P2
-	sta gb8_y
-	lda X16_P5
-	sta gb8_h
     SUBROUTINE
 bitmap_gmrow
-	jsr bitmap_addr8
-	jsr bitmap_ld0
+	lda #VERA_INC_1
+	jsr gfx_setptr
 	ldy #0
     SUBROUTINE
 bitmap_gmpx
@@ -571,8 +495,8 @@ bitmap_gmn
 	inc X16_PTR3+1
     SUBROUTINE
 bitmap_k3
-	inc gb8_y
-	dec gb8_h
+	inc X16_P2
+	dec X16_P5
 	bne bitmap_gmrow
 	rts
 
@@ -583,23 +507,13 @@ gp8_bg  dc.b 0
     SUBROUTINE
 gp8_fg  dc.b 0
     SUBROUTINE
-gp8_w   dc.w 0
-    SUBROUTINE
-gp8_h   dc.b 0
-    SUBROUTINE
 gp8_rot dc.b 0
     SUBROUTINE
 gp8_cur dc.b 0
     SUBROUTINE
-gb8_x   dc.w 0
-    SUBROUTINE
-gb8_y   dc.b 0
-    SUBROUTINE
-gb8_h   dc.b 0
-    SUBROUTINE
 gb8_op  dc.b 0
     SUBROUTINE
-gb8_t   ds 3, 0
+gb8_t   dc.w 0
 
 ; ---------------------------------------------------------------------
 ; gfx_line -- Bresenham, any direction
@@ -612,20 +526,12 @@ gb8_t   ds 3, 0
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx_line
-    lda X16_P0
-    sta gl_x0
-    lda X16_P1
-    sta gl_x0+1
-    lda X16_P2
-    sta gl_y0
-    lda X16_P3
-    sta gl_x1
-    lda X16_P4
-    sta gl_x1+1
-    lda X16_P5
-    sta gl_y1
-    lda X16_P6
-    sta gl_color
+    ldx #6                      ; P0..P6 -> gl_x0..gl_color, which are
+.take                           ; laid out in the same order
+    lda X16_P0,x
+    sta gl_x0,x
+    dex
+    bpl .take
 
     ; dx = |x1 - x0|, sx = sign
     sec
@@ -932,16 +838,18 @@ gt_bits  dc.b 0
 ; ---------------------------------------------------------------------
     ENDIF
 
+; gfx_frame's private block, laid out in X16_P0..P6 order so the take
+; and restore copies can loop
     SUBROUTINE
 gb_x    dc.w 0
     SUBROUTINE
 gb_y    dc.b 0
     SUBROUTINE
+gb_c    dc.b 0
+    SUBROUTINE
 gb_w    dc.w 0
     SUBROUTINE
 gb_h    dc.b 0
-    SUBROUTINE
-gb_c    dc.b 0
 
     SUBROUTINE
 gl_x0    dc.w 0
