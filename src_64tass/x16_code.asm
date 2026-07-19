@@ -56,8 +56,12 @@ X16_USE_VERA_CORE = 0
 X16_USE_VERA_COPY = 0
 X16_USE_IRQ_CORE = 0
 X16_USE_IRQ_VSYNC = 0
+X16_USE_IRQ_SPRCOL = 0
+X16_USE_IRQ_SPRCOL_API = 0
 X16_USE_INPUT_CORE = 0
 X16_USE_INPUT_KEYWAIT = 0
+X16_USE_SCREEN_CORE = 0
+X16_USE_SCREEN_EXTRA = 0
 X16_BITMAP_MIN = 0
 .endweak
 
@@ -108,18 +112,23 @@ xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bit
 xuse_verafx_fill = xuse_bitmap2 || X16_USE_VERAFX_FILL != 0 || xuse_verafx
 xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
 xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
+xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0
 xuse_input_any = xuse_input_core || xuse_input_keywait
+xuse_screen_core = xuse_screen || X16_USE_SCREEN_CORE != 0
+xuse_screen_extra = xuse_screen || X16_USE_SCREEN_EXTRA != 0
 xuse_verafx_any = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
 xuse_vera_core = xuse_vera || X16_USE_VERA_CORE != 0
 xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0
-xuse_irq_any = xuse_irq_core || xuse_irq_vsync
+xuse_irq_sprcol = xuse_irq || X16_USE_IRQ_SPRCOL != 0 || xuse_irq_sprcol_api
+xuse_screen_any = xuse_screen_core || xuse_screen_extra
 xuse_vera_any = xuse_vera_core || xuse_vera_copy
+xuse_irq_any = xuse_irq_core || xuse_irq_vsync || xuse_irq_sprcol
 
 ; --- modules (the ACME tree's order) ---
 .if xuse_vera_any
 .include "video/vera.asm"
 .endif
-.if xuse_screen
+.if xuse_screen_any
 .include "video/screen.asm"
 .endif
 .if xuse_palette

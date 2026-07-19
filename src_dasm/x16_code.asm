@@ -330,8 +330,12 @@ X16_USE_IRQ = 1
 ; and not a rarely-used extra sets the _CORE gate and leaves the extra
 ; out. _ANY sources the file.
 ;   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
-;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait
+;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait;
+;          _SPRCOL = collision capture (handler accumulate + mask);
+;          _SPRCOL_API = install/remove/sprite_collisions/callback
 ;   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
+;   SCREEN core = set_mode/reset/cls/chrout/color/locate;
+;          _EXTRA = get_mode/border/get_cursor/charset/puts
     IFCONST X16_USE_VERA
     IFNCONST X16_USE_VERA_CORE
 X16_USE_VERA_CORE = 1
@@ -352,10 +356,21 @@ X16_USE_VERA_ANY = 1
     ENDIF
     IFCONST X16_USE_IRQ
     IFNCONST X16_USE_IRQ_CORE
-X16_USE_IRQ_CORE  = 1
+X16_USE_IRQ_CORE       = 1
     ENDIF
     IFNCONST X16_USE_IRQ_VSYNC
-X16_USE_IRQ_VSYNC = 1
+X16_USE_IRQ_VSYNC      = 1
+    ENDIF
+    IFNCONST X16_USE_IRQ_SPRCOL
+X16_USE_IRQ_SPRCOL     = 1
+    ENDIF
+    IFNCONST X16_USE_IRQ_SPRCOL_API
+X16_USE_IRQ_SPRCOL_API = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_IRQ_SPRCOL_API
+    IFNCONST X16_USE_IRQ_SPRCOL
+X16_USE_IRQ_SPRCOL = 1
     ENDIF
     ENDIF
     IFCONST X16_USE_IRQ_CORE
@@ -364,6 +379,11 @@ X16_USE_IRQ_ANY = 1
     ENDIF
     ENDIF
     IFCONST X16_USE_IRQ_VSYNC
+    IFNCONST X16_USE_IRQ_ANY
+X16_USE_IRQ_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_IRQ_SPRCOL
     IFNCONST X16_USE_IRQ_ANY
 X16_USE_IRQ_ANY = 1
     ENDIF
@@ -386,12 +406,30 @@ X16_USE_INPUT_ANY = 1
 X16_USE_INPUT_ANY = 1
     ENDIF
     ENDIF
+    IFCONST X16_USE_SCREEN
+    IFNCONST X16_USE_SCREEN_CORE
+X16_USE_SCREEN_CORE  = 1
+    ENDIF
+    IFNCONST X16_USE_SCREEN_EXTRA
+X16_USE_SCREEN_EXTRA = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_SCREEN_CORE
+    IFNCONST X16_USE_SCREEN_ANY
+X16_USE_SCREEN_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_SCREEN_EXTRA
+    IFNCONST X16_USE_SCREEN_ANY
+X16_USE_SCREEN_ANY = 1
+    ENDIF
+    ENDIF
 
 ; --- modules ---------------------------------------------------------
     IFCONST X16_USE_VERA_ANY
     include "video/vera.asm"
     ENDIF
-    IFCONST X16_USE_SCREEN
+    IFCONST X16_USE_SCREEN_ANY
     include "video/screen.asm"
     ENDIF
     IFCONST X16_USE_PALETTE

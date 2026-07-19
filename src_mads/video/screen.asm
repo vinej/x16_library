@@ -52,6 +52,11 @@ screen_set_mode
     clc
     jmp SCREEN_MODE
 
+; The query/border/cursor/charset/puts helpers below are behind
+; X16_USE_SCREEN_EXTRA: a program that just sets a mode and prints does
+; not need them, so the core (set_mode/reset/cls/chrout/color/locate)
+; can stand alone. X16_USE_SCREEN pulls them, for compat.
+.if .def X16_USE_SCREEN_EXTRA
 ; ---------------------------------------------------------------------
 ; screen_get_mode
 ;   out: A = current mode
@@ -60,6 +65,7 @@ screen_get_mode
     vera_addrsel 0
     sec
     jmp SCREEN_MODE
+.endif
 
 ; ---------------------------------------------------------------------
 ; screen_reset -- restore the default text mode (KERNAL CINT)
@@ -107,6 +113,7 @@ screen_color
     sta KERNAL_COLOR
     rts
 
+.if .def X16_USE_SCREEN_EXTRA
 ; ---------------------------------------------------------------------
 ; screen_border
 ;   in:  A = colour (0-15)
@@ -120,6 +127,7 @@ screen_border
     pla
     sta VERA_DC_BORDER
     rts
+.endif
 
 ; ---------------------------------------------------------------------
 ; screen_locate -- move the text cursor
@@ -137,6 +145,7 @@ screen_locate
     clc
     jmp PLOT
 
+.if .def X16_USE_SCREEN_EXTRA
 screen_get_cursor
     sec
     jmp PLOT
@@ -170,4 +179,5 @@ screen_puts__loop
     bne screen_puts__loop
 screen_puts__done
     rts
+.endif
 
