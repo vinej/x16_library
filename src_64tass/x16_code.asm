@@ -2,114 +2,121 @@
 ; =====================================================================
 ; x16lib :: x16_code.asm -- the library routines (64tass edition)
 ; =====================================================================
-; Include this EXACTLY ONCE, where the machine code should sit.
-;
-; Module selection works like the ACME tree: define X16_USE_* = 1 (or
-; X16_USE_ALL = 1) anywhere in your program -- 64tass is multi-pass,
-; so before or after this include both work. Gates you don't mention
-; default to 0 through the .weak block below; the dependency closure
-; (SPRITE pulls in VERA, PCM_STREAM pulls in PCM and IRQ, ...) is
-; computed in the xuse_* values.
-;
-; The module list and order are identical to src_acme/x16_code.asm.
+; GENERATED from src_acme/x16_code.asm by tools/acme2tass.py -- do
+; not edit by hand. 64tass selects modules by VALUE, not .ifdef
+; definedness: each gate gets a .weak = 0 default, then xuse_*
+; folds in the same dependency closure the ACME !ifdef gates
+; encode. Add a gate in src_acme and it appears here on regen.
 ; =====================================================================
 
 .weak
 X16_USE_ALL        = 0
-X16_USE_VERA       = 0
-X16_USE_SCREEN     = 0
-X16_USE_PALETTE    = 0
-X16_USE_TILE       = 0
-X16_USE_SPRITE     = 0
-X16_USE_BITMAP     = 0
-X16_USE_BITMAP2    = 0
-X16_BITMAP_MIN     = 0
-X16_USE_SHAPES     = 0
-X16_USE_VERAFX     = 0
-X16_USE_VERAFX_MULT   = 0
-X16_USE_VERAFX_FILL   = 0
-X16_USE_VERAFX_COPY   = 0
+X16_USE_VERA = 0
+X16_USE_SCREEN = 0
+X16_USE_PALETTE = 0
+X16_USE_TILE = 0
+X16_USE_SPRITE = 0
+X16_USE_BITMAP = 0
+X16_USE_BITMAP2 = 0
+X16_USE_VERAFX = 0
+X16_USE_IRQ = 0
+X16_USE_PSG = 0
+X16_USE_YM = 0
+X16_USE_PCM = 0
+X16_USE_PCM_STREAM = 0
+X16_USE_INPUT = 0
+X16_USE_BANK = 0
+X16_USE_BANKALLOC = 0
+X16_USE_MEM = 0
+X16_USE_LOAD = 0
+X16_USE_DOS = 0
+X16_USE_BMX = 0
+X16_USE_MATH = 0
+X16_USE_CLIP = 0
+X16_USE_BUFFERS = 0
+X16_USE_ADPCM = 0
+X16_USE_ZX0 = 0
+X16_USE_TSC = 0
+X16_USE_FIXED = 0
+X16_USE_COLLIDE = 0
+X16_USE_BITS = 0
+X16_USE_NUMBER = 0
+X16_USE_INT16 = 0
+X16_USE_INT32 = 0
+X16_USE_FLOAT = 0
+X16_USE_SHAPES = 0
+X16_USE_VERAFX_FILL = 0
+X16_USE_VERAFX_MULT = 0
+X16_USE_VERAFX_COPY = 0
 X16_USE_VERAFX_TRANSP = 0
 X16_USE_VERAFX_AFFINE = 0
-X16_USE_VERAFX_LINE   = 0
-X16_USE_VERAFX_TRI    = 0
-X16_USE_IRQ        = 0
-X16_USE_PSG        = 0
-X16_USE_YM         = 0
-X16_USE_PCM        = 0
-X16_USE_PCM_STREAM = 0
-X16_USE_INPUT      = 0
-X16_USE_BANK       = 0
-X16_USE_BANKALLOC  = 0
-X16_USE_MEM        = 0
-X16_USE_LOAD       = 0
-X16_USE_DOS        = 0
-X16_USE_BMX        = 0
-X16_USE_FIXED      = 0
-X16_USE_COLLIDE    = 0
-X16_USE_BITS       = 0
-X16_USE_NUMBER     = 0
-X16_USE_INT16      = 0
-X16_USE_INT32      = 0
-X16_USE_FLOAT      = 0
-X16_USE_MATH       = 0
-X16_USE_CLIP       = 0
-X16_USE_BUFFERS    = 0
-X16_USE_ADPCM      = 0
-X16_USE_ZX0        = 0
-X16_USE_TSC        = 0
+X16_USE_VERAFX_LINE = 0
+X16_USE_VERAFX_TRI = 0
+X16_USE_VERA_CORE = 0
+X16_USE_VERA_COPY = 0
+X16_USE_IRQ_CORE = 0
+X16_USE_IRQ_VSYNC = 0
+X16_USE_INPUT_CORE = 0
+X16_USE_INPUT_KEYWAIT = 0
+X16_BITMAP_MIN = 0
 .endweak
 
-; --- the dependency closure (same rules as the ACME tree) -------------
-xuse_all        = X16_USE_ALL != 0
+; --- the dependency closure (generated from the ACME gates) ---
+xuse_all = X16_USE_ALL != 0
+xuse_palette = xuse_all || X16_USE_PALETTE != 0
+xuse_tile = xuse_all || X16_USE_TILE != 0
+xuse_sprite = xuse_all || X16_USE_SPRITE != 0
+xuse_bitmap = xuse_all || X16_USE_BITMAP != 0
+xuse_verafx = xuse_all || X16_USE_VERAFX != 0
+xuse_psg = xuse_all || X16_USE_PSG != 0
+xuse_ym = xuse_all || X16_USE_YM != 0
 xuse_pcm_stream = xuse_all || X16_USE_PCM_STREAM != 0
-xuse_bitmap     = xuse_all || X16_USE_BITMAP != 0
-xuse_shapes     = xuse_all || X16_USE_SHAPES != 0
-xuse_bitmap2    = xuse_all || X16_USE_BITMAP2 != 0 || xuse_shapes
-xuse_sprite     = xuse_all || X16_USE_SPRITE != 0
-xuse_psg        = xuse_all || X16_USE_PSG != 0
-xuse_vera       = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
-xuse_screen     = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
-xuse_int16      = xuse_all || X16_USE_INT16 != 0
-xuse_number     = xuse_all || X16_USE_NUMBER != 0 || xuse_int16
-xuse_pcm        = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
-xuse_irq        = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
-xuse_palette    = xuse_all || X16_USE_PALETTE != 0
-xuse_tile       = xuse_all || X16_USE_TILE != 0
-; VERAFX's parts. X16_USE_VERAFX still means all of them, so nothing
-; that exists breaks; bitmap2 asks for the fill alone and is 2,162 bytes
-; lighter for it. Every part leaves FX through fx_off, so _any carries it.
-xuse_verafx     = xuse_all || X16_USE_VERAFX != 0
-xuse_verafx_mult   = xuse_verafx || X16_USE_VERAFX_MULT != 0
-xuse_verafx_fill   = xuse_verafx || X16_USE_VERAFX_FILL != 0 || xuse_bitmap2
-xuse_verafx_copy   = xuse_verafx || X16_USE_VERAFX_COPY != 0
+xuse_input = xuse_all || X16_USE_INPUT != 0
+xuse_bank = xuse_all || X16_USE_BANK != 0
+xuse_bankalloc = xuse_all || X16_USE_BANKALLOC != 0
+xuse_mem = xuse_all || X16_USE_MEM != 0
+xuse_load = xuse_all || X16_USE_LOAD != 0
+xuse_dos = xuse_all || X16_USE_DOS != 0
+xuse_bmx = xuse_all || X16_USE_BMX != 0
+xuse_math = xuse_all || X16_USE_MATH != 0
+xuse_clip = xuse_all || X16_USE_CLIP != 0
+xuse_buffers = xuse_all || X16_USE_BUFFERS != 0
+xuse_adpcm = xuse_all || X16_USE_ADPCM != 0
+xuse_zx0 = xuse_all || X16_USE_ZX0 != 0
+xuse_tsc = xuse_all || X16_USE_TSC != 0
+xuse_fixed = xuse_all || X16_USE_FIXED != 0
+xuse_collide = xuse_all || X16_USE_COLLIDE != 0
+xuse_bits = xuse_all || X16_USE_BITS != 0
+xuse_int16 = xuse_all || X16_USE_INT16 != 0
+xuse_int32 = xuse_all || X16_USE_INT32 != 0
+xuse_float = xuse_all || X16_USE_FLOAT != 0
+xuse_shapes = X16_USE_SHAPES != 0
+xuse_screen = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
+xuse_bitmap2 = xuse_all || X16_USE_BITMAP2 != 0 || xuse_shapes
+xuse_irq = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
+xuse_pcm = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
+xuse_number = xuse_all || X16_USE_NUMBER != 0 || xuse_int16
+xuse_verafx_mult = xuse_verafx || X16_USE_VERAFX_MULT != 0
+xuse_verafx_copy = xuse_verafx || X16_USE_VERAFX_COPY != 0
 xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
 xuse_verafx_affine = xuse_verafx || X16_USE_VERAFX_AFFINE != 0
-xuse_verafx_line   = xuse_verafx || X16_USE_VERAFX_LINE != 0
-xuse_verafx_tri    = xuse_verafx || X16_USE_VERAFX_TRI != 0
-xuse_verafx_any    = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
-xuse_ym         = xuse_all || X16_USE_YM != 0
-xuse_input      = xuse_all || X16_USE_INPUT != 0
-xuse_bank       = xuse_all || X16_USE_BANK != 0
-xuse_bankalloc  = xuse_all || X16_USE_BANKALLOC != 0
-xuse_mem        = xuse_all || X16_USE_MEM != 0
-xuse_load       = xuse_all || X16_USE_LOAD != 0
-xuse_dos        = xuse_all || X16_USE_DOS != 0
-xuse_bmx        = xuse_all || X16_USE_BMX != 0
-xuse_fixed      = xuse_all || X16_USE_FIXED != 0
-xuse_collide    = xuse_all || X16_USE_COLLIDE != 0
-xuse_bits       = xuse_all || X16_USE_BITS != 0
-xuse_int32      = xuse_all || X16_USE_INT32 != 0
-xuse_float      = xuse_all || X16_USE_FLOAT != 0
-xuse_math       = xuse_all || X16_USE_MATH != 0
-xuse_clip       = xuse_all || X16_USE_CLIP != 0
-xuse_buffers    = xuse_all || X16_USE_BUFFERS != 0
-xuse_adpcm      = xuse_all || X16_USE_ADPCM != 0
-xuse_zx0        = xuse_all || X16_USE_ZX0 != 0
-xuse_tsc        = xuse_all || X16_USE_TSC != 0
+xuse_verafx_line = xuse_verafx || X16_USE_VERAFX_LINE != 0
+xuse_verafx_tri = xuse_verafx || X16_USE_VERAFX_TRI != 0
+xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
+xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
+xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
+xuse_verafx_fill = xuse_bitmap2 || X16_USE_VERAFX_FILL != 0 || xuse_verafx
+xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
+xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
+xuse_input_any = xuse_input_core || xuse_input_keywait
+xuse_verafx_any = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
+xuse_vera_core = xuse_vera || X16_USE_VERA_CORE != 0
+xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0
+xuse_irq_any = xuse_irq_core || xuse_irq_vsync
+xuse_vera_any = xuse_vera_core || xuse_vera_copy
 
-; --- modules (the ACME tree's order, byte for byte) --------------------
-.if xuse_vera
+; --- modules (the ACME tree's order) ---
+.if xuse_vera_any
 .include "video/vera.asm"
 .endif
 .if xuse_screen
@@ -136,7 +143,7 @@ xuse_tsc        = xuse_all || X16_USE_TSC != 0
 .if xuse_verafx_any
 .include "gfx/verafx.asm"
 .endif
-.if xuse_irq
+.if xuse_irq_any
 .include "system/irq.asm"
 .endif
 .if xuse_psg
@@ -148,7 +155,7 @@ xuse_tsc        = xuse_all || X16_USE_TSC != 0
 .if xuse_pcm
 .include "audio/pcm.asm"
 .endif
-.if xuse_input
+.if xuse_input_any
 .include "input/input.asm"
 .endif
 .if xuse_bank

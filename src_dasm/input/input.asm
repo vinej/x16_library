@@ -94,6 +94,10 @@ mouse_get
 key_get
     jmp GETIN
 
+; key_wait (blocking) and key_peek (lookahead) are convenience calls an
+; event-driven program never uses -- it drains with key_get -- so they are
+; behind X16_USE_INPUT_KEYWAIT (X16_USE_INPUT still pulls them, for compat).
+    IFCONST X16_USE_INPUT_KEYWAIT
 ; ---------------------------------------------------------------------
 ; key_wait -- block until a key is pressed.  out: A = PETSCII code
 ; ---------------------------------------------------------------------
@@ -112,5 +116,6 @@ key_wait
     SUBROUTINE
 key_peek
     jmp KBDBUF_PEEK
+    ENDIF
 
 ; (end zone)

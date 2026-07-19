@@ -324,8 +324,71 @@ X16_USE_IRQ = 1
     ENDIF
     ENDIF
 
-; --- modules ---------------------------------------------------------
+; --- split modules ---------------------------------------------------
+; Same shape as VERAFX above: the umbrella gate still means the whole
+; module, so nothing that exists breaks; a program that wants the core
+; and not a rarely-used extra sets the _CORE gate and leaves the extra
+; out. _ANY sources the file.
+;   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
+;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait
+;   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
     IFCONST X16_USE_VERA
+    IFNCONST X16_USE_VERA_CORE
+X16_USE_VERA_CORE = 1
+    ENDIF
+    IFNCONST X16_USE_VERA_COPY
+X16_USE_VERA_COPY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERA_CORE
+    IFNCONST X16_USE_VERA_ANY
+X16_USE_VERA_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERA_COPY
+    IFNCONST X16_USE_VERA_ANY
+X16_USE_VERA_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_IRQ
+    IFNCONST X16_USE_IRQ_CORE
+X16_USE_IRQ_CORE  = 1
+    ENDIF
+    IFNCONST X16_USE_IRQ_VSYNC
+X16_USE_IRQ_VSYNC = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_IRQ_CORE
+    IFNCONST X16_USE_IRQ_ANY
+X16_USE_IRQ_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_IRQ_VSYNC
+    IFNCONST X16_USE_IRQ_ANY
+X16_USE_IRQ_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_INPUT
+    IFNCONST X16_USE_INPUT_CORE
+X16_USE_INPUT_CORE    = 1
+    ENDIF
+    IFNCONST X16_USE_INPUT_KEYWAIT
+X16_USE_INPUT_KEYWAIT = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_INPUT_CORE
+    IFNCONST X16_USE_INPUT_ANY
+X16_USE_INPUT_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_INPUT_KEYWAIT
+    IFNCONST X16_USE_INPUT_ANY
+X16_USE_INPUT_ANY = 1
+    ENDIF
+    ENDIF
+
+; --- modules ---------------------------------------------------------
+    IFCONST X16_USE_VERA_ANY
     include "video/vera.asm"
     ENDIF
     IFCONST X16_USE_SCREEN
@@ -352,7 +415,7 @@ X16_USE_IRQ = 1
     IFCONST X16_USE_VERAFX_ANY
     include "gfx/verafx.asm"
     ENDIF
-    IFCONST X16_USE_IRQ
+    IFCONST X16_USE_IRQ_ANY
     include "system/irq.asm"
     ENDIF
     IFCONST X16_USE_PSG
@@ -364,7 +427,7 @@ X16_USE_IRQ = 1
     IFCONST X16_USE_PCM
     include "audio/pcm.asm"
     ENDIF
-    IFCONST X16_USE_INPUT
+    IFCONST X16_USE_INPUT_ANY
     include "input/input.asm"
     ENDIF
     IFCONST X16_USE_BANK

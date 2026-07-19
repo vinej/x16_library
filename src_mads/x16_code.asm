@@ -324,8 +324,71 @@
     .endif
 .endif
 
-; --- modules ---------------------------------------------------------
+; --- split modules ---------------------------------------------------
+; Same shape as VERAFX above: the umbrella gate still means the whole
+; module, so nothing that exists breaks; a program that wants the core
+; and not a rarely-used extra sets the _CORE gate and leaves the extra
+; out. _ANY sources the file.
+;   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
+;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait
+;   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
 .if .def X16_USE_VERA
+    .if !.def X16_USE_VERA_CORE
+    X16_USE_VERA_CORE = 1
+    .endif
+    .if !.def X16_USE_VERA_COPY
+    X16_USE_VERA_COPY = 1
+    .endif
+.endif
+.if .def X16_USE_VERA_CORE
+    .if !.def X16_USE_VERA_ANY
+    X16_USE_VERA_ANY = 1
+    .endif
+.endif
+.if .def X16_USE_VERA_COPY
+    .if !.def X16_USE_VERA_ANY
+    X16_USE_VERA_ANY = 1
+    .endif
+.endif
+.if .def X16_USE_IRQ
+    .if !.def X16_USE_IRQ_CORE
+    X16_USE_IRQ_CORE = 1
+    .endif
+    .if !.def X16_USE_IRQ_VSYNC
+    X16_USE_IRQ_VSYNC = 1
+    .endif
+.endif
+.if .def X16_USE_IRQ_CORE
+    .if !.def X16_USE_IRQ_ANY
+    X16_USE_IRQ_ANY = 1
+    .endif
+.endif
+.if .def X16_USE_IRQ_VSYNC
+    .if !.def X16_USE_IRQ_ANY
+    X16_USE_IRQ_ANY = 1
+    .endif
+.endif
+.if .def X16_USE_INPUT
+    .if !.def X16_USE_INPUT_CORE
+    X16_USE_INPUT_CORE = 1
+    .endif
+    .if !.def X16_USE_INPUT_KEYWAIT
+    X16_USE_INPUT_KEYWAIT = 1
+    .endif
+.endif
+.if .def X16_USE_INPUT_CORE
+    .if !.def X16_USE_INPUT_ANY
+    X16_USE_INPUT_ANY = 1
+    .endif
+.endif
+.if .def X16_USE_INPUT_KEYWAIT
+    .if !.def X16_USE_INPUT_ANY
+    X16_USE_INPUT_ANY = 1
+    .endif
+.endif
+
+; --- modules ---------------------------------------------------------
+.if .def X16_USE_VERA_ANY
     icl "video/vera.asm"
 .endif
 .if .def X16_USE_SCREEN
@@ -352,7 +415,7 @@
 .if .def X16_USE_VERAFX_ANY
     icl "gfx/verafx.asm"
 .endif
-.if .def X16_USE_IRQ
+.if .def X16_USE_IRQ_ANY
     icl "system/irq.asm"
 .endif
 .if .def X16_USE_PSG
@@ -364,7 +427,7 @@
 .if .def X16_USE_PCM
     icl "audio/pcm.asm"
 .endif
-.if .def X16_USE_INPUT
+.if .def X16_USE_INPUT_ANY
     icl "input/input.asm"
 .endif
 .if .def X16_USE_BANK

@@ -27,7 +27,6 @@ SKIP = {
     "x16.asm",
     "core/macros.asm",
     "util/math.asm",
-    "x16_code.asm",
 }
 
 DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
@@ -253,6 +252,122 @@ def promote_cheap(text, regions):
     return "\n".join(lines)
 
 
+def gen_x16_code(src, include_map):
+    """Generate the 64tass x16_code.asm gate model from the ACME source.
+
+    64tass cannot select modules by .ifdef definedness the way ca65 does
+    (its multi-pass symbol model makes an undefined gate an error, not a
+    false), so gates are VALUES: a `.weak = 0` default per gate, then
+    `xuse_*` booleans that fold in the dependency closure. This used to be
+    hand-maintained; now it is derived from the very same !ifdef structure
+    the other ports convert, so a new gate or sub-gate added in
+    src_acme/x16_code.asm propagates here with no hand edit.
+    """
+    code = (src / "x16_code.asm").read_text(encoding="ascii", errors="replace")
+    marker = code.find("--- modules ---")
+    gate_text, mod_text = code[:marker], code[marker:]
+
+    # implications: (nearest enclosing X16_USE_ condition) => assigned gate.
+    # An inner `!ifndef X { X = 1 }` idempotency guard is NOT a condition --
+    # it is pushed as None so the OUTER !ifdef wins; likewise a non-USE
+    # guard such as SHP_PSET, so SHAPES => BITMAP2 folds unconditionally.
+    impl, order = {}, []
+    def see(n):
+        if n not in order:
+            order.append(n)
+    stack = []
+    tok = re.compile(r'!ifdef\s+(\w+)\s*\{'
+                     r'|!ifndef\s+(\w+)\s*\{'
+                     r'|\}'
+                     r'|(X16_USE_\w+)\s*=\s*1')
+    for m in tok.finditer(gate_text):
+        gd, gn, asg = m.group(1), m.group(2), m.group(3)
+        if gd is not None:
+            stack.append(gd if gd.startswith("X16_USE_") else None)
+            if gd.startswith("X16_USE_"):
+                see(gd)
+        elif gn is not None:
+            stack.append(None)
+        elif asg is not None:
+            see(asg)
+            cond = next((c for c in reversed(stack) if c), None)
+            if cond and cond != asg:
+                impl.setdefault(asg, [])
+                if cond not in impl[asg]:
+                    impl[asg].append(cond)
+        else:
+            if stack:
+                stack.pop()
+
+    def xn(g):                          # X16_USE_VERA_COPY -> xuse_vera_copy
+        return "xuse_" + g[len("X16_USE_"):].lower()
+
+    public = [g for g in order if not g.endswith("_ANY") and g != "X16_USE_ALL"]
+
+    # config gates: an X16_* symbol tested with !ifndef but not X16_USE_*
+    # and not already given a home elsewhere -- an include-once guard
+    # header (`!ifdef N !eof`, the converter drops it) or a value that
+    # self-defaults in its own module (`!ifndef N { N = v }`, e.g. the ZP
+    # base X16_ZP = $22, which converts to its own .weak there). In this
+    # tree only X16_BITMAP_MIN is left: it guards CODE, has no default of
+    # its own, so it needs a .weak here to test `X16_BITMAP_MIN != 0`.
+    owned, tested = {"X16_INC"}, set()
+    for af in sorted(src.rglob("*.asm")):
+        t = af.read_text(encoding="ascii", errors="replace")
+        owned.update(re.findall(r'!ifdef\s+(X16_\w+)\s+!eof', t))       # guards
+        owned.update(re.findall(r'!ifndef\s+(X16_\w+)\s*\{\s*\1\s*=', t))  # self-default
+        tested.update(re.findall(r'!ifn?def\s+(X16_\w+)', t))
+    config = sorted(g for g in tested
+                    if not g.startswith("X16_USE_") and g not in owned)
+
+    # topological order for the xuse_* lines: a gate follows every gate it
+    # references. xuse_all is emitted first, so ALL counts as done.
+    emitted = {"X16_USE_ALL"}
+    seq, remaining = [], [g for g in order if g != "X16_USE_ALL"]
+    while remaining:
+        wave = [g for g in remaining if all(c in emitted for c in impl.get(g, []))]
+        if not wave:                    # DAG, so this cannot loop; be safe
+            wave = remaining[:]
+        for g in wave:
+            seq.append(g)
+            emitted.add(g)
+            remaining.remove(g)
+
+    out = ["; 64tass",
+           "; " + "=" * 69,
+           "; x16lib :: x16_code.asm -- the library routines (64tass edition)",
+           "; " + "=" * 69,
+           "; GENERATED from src_acme/x16_code.asm by tools/acme2tass.py -- do",
+           "; not edit by hand. 64tass selects modules by VALUE, not .ifdef",
+           "; definedness: each gate gets a .weak = 0 default, then xuse_*",
+           "; folds in the same dependency closure the ACME !ifdef gates",
+           "; encode. Add a gate in src_acme and it appears here on regen.",
+           "; " + "=" * 69,
+           "",
+           ".weak",
+           "X16_USE_ALL        = 0"]
+    out += [f"{g} = 0" for g in public + config]
+    out += [".endweak",
+            "",
+            "; --- the dependency closure (generated from the ACME gates) ---",
+            "xuse_all = X16_USE_ALL != 0"]
+    for g in seq:
+        conds = impl.get(g, [])
+        terms = ([xn(conds[0])] if conds else [])
+        if not g.endswith("_ANY"):
+            terms.append(f"{g} != 0")
+        terms += [xn(c) for c in conds[1:]]
+        if not terms:
+            terms = ["xuse_all", f"{g} != 0"]
+        out.append(f"{xn(g)} = " + " || ".join(terms))
+    out += ["", "; --- modules (the ACME tree's order) ---"]
+    for m in re.finditer(r'!ifdef\s+(\w+)\s*\{\s*!source\s+"([^"]+)"\s*\}', mod_text):
+        out.append(f".if {gate_expr(m.group(1))}")
+        out.append(f'.include "{include_map(m.group(2))}"')
+        out.append(".endif")
+    return "\n".join(out) + "\n"
+
+
 def main():
     src = Path(sys.argv[1])
     dst = Path(sys.argv[2])
@@ -267,14 +382,18 @@ def main():
         if rel in SKIP:
             print(f"skip  {rel} (hand-maintained)")
             continue
-        text = f.read_text(encoding="ascii", errors="replace")
-        if rel in CHEAP_PROMOTE:
-            text = promote_cheap(text, CHEAP_PROMOTE[rel])
-        converted = convert(text, f.stem, include_map)
+        if rel == "x16_code.asm":
+            converted = gen_x16_code(src, include_map)
+            print(f"gen   {rel} (gate model)")
+        else:
+            text = f.read_text(encoding="ascii", errors="replace")
+            if rel in CHEAP_PROMOTE:
+                text = promote_cheap(text, CHEAP_PROMOTE[rel])
+            converted = convert(text, f.stem, include_map)
+            print(f"conv  {rel}")
         outp = dst / rel
         outp.parent.mkdir(parents=True, exist_ok=True)
         outp.write_text(converted, encoding="ascii")
-        print(f"conv  {rel}")
 
 
 if __name__ == "__main__":

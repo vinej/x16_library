@@ -190,8 +190,35 @@
     !ifndef X16_USE_IRQ { X16_USE_IRQ = 1 }
 }
 
+; --- split modules ---------------------------------------------------
+; Same shape as VERAFX above: the umbrella gate still means the whole
+; module, so nothing that exists breaks; a program that wants the core
+; and not a rarely-used extra sets the _CORE gate and leaves the extra
+; out. _ANY sources the file.
+;   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
+;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait
+;   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
+!ifdef X16_USE_VERA {
+    !ifndef X16_USE_VERA_CORE { X16_USE_VERA_CORE = 1 }
+    !ifndef X16_USE_VERA_COPY { X16_USE_VERA_COPY = 1 }
+}
+!ifdef X16_USE_VERA_CORE { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
+!ifdef X16_USE_VERA_COPY { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
+!ifdef X16_USE_IRQ {
+    !ifndef X16_USE_IRQ_CORE  { X16_USE_IRQ_CORE  = 1 }
+    !ifndef X16_USE_IRQ_VSYNC { X16_USE_IRQ_VSYNC = 1 }
+}
+!ifdef X16_USE_IRQ_CORE  { !ifndef X16_USE_IRQ_ANY { X16_USE_IRQ_ANY = 1 } }
+!ifdef X16_USE_IRQ_VSYNC { !ifndef X16_USE_IRQ_ANY { X16_USE_IRQ_ANY = 1 } }
+!ifdef X16_USE_INPUT {
+    !ifndef X16_USE_INPUT_CORE    { X16_USE_INPUT_CORE    = 1 }
+    !ifndef X16_USE_INPUT_KEYWAIT { X16_USE_INPUT_KEYWAIT = 1 }
+}
+!ifdef X16_USE_INPUT_CORE    { !ifndef X16_USE_INPUT_ANY { X16_USE_INPUT_ANY = 1 } }
+!ifdef X16_USE_INPUT_KEYWAIT { !ifndef X16_USE_INPUT_ANY { X16_USE_INPUT_ANY = 1 } }
+
 ; --- modules ---------------------------------------------------------
-!ifdef X16_USE_VERA    { !source "video/vera.asm" }
+!ifdef X16_USE_VERA_ANY { !source "video/vera.asm" }
 !ifdef X16_USE_SCREEN  { !source "video/screen.asm" }
 !ifdef X16_USE_PALETTE { !source "video/palette.asm" }
 !ifdef X16_USE_TILE    { !source "video/tile.asm" }
@@ -200,11 +227,11 @@
 !ifdef X16_USE_BITMAP2 { !source "gfx/bitmap2.asm" }
 !ifdef X16_USE_SHAPES { !source "gfx/shapes.asm" }
 !ifdef X16_USE_VERAFX_ANY { !source "gfx/verafx.asm" }
-!ifdef X16_USE_IRQ     { !source "system/irq.asm" }
+!ifdef X16_USE_IRQ_ANY { !source "system/irq.asm" }
 !ifdef X16_USE_PSG     { !source "audio/psg.asm" }
 !ifdef X16_USE_YM      { !source "audio/ym.asm" }
 !ifdef X16_USE_PCM     { !source "audio/pcm.asm" }
-!ifdef X16_USE_INPUT   { !source "input/input.asm" }
+!ifdef X16_USE_INPUT_ANY { !source "input/input.asm" }
 !ifdef X16_USE_BANK    { !source "storage/bank.asm" }
 !ifdef X16_USE_BANKALLOC { !source "storage/bankalloc.asm" }
 !ifdef X16_USE_MEM     { !source "storage/mem.asm" }

@@ -324,8 +324,71 @@
     #endif
 #endif
 
-// --- modules ---------------------------------------------------------
+// --- split modules ---------------------------------------------------
+// Same shape as VERAFX above: the umbrella gate still means the whole
+// module, so nothing that exists breaks; a program that wants the core
+// and not a rarely-used extra sets the _CORE gate and leaves the extra
+// out. _ANY sources the file.
+//   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
+//   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait
+//   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
 #if X16_USE_VERA
+    #if !X16_USE_VERA_CORE
+    #define X16_USE_VERA_CORE
+    #endif
+    #if !X16_USE_VERA_COPY
+    #define X16_USE_VERA_COPY
+    #endif
+#endif
+#if X16_USE_VERA_CORE
+#if !X16_USE_VERA_ANY
+#define X16_USE_VERA_ANY
+#endif
+#endif
+#if X16_USE_VERA_COPY
+#if !X16_USE_VERA_ANY
+#define X16_USE_VERA_ANY
+#endif
+#endif
+#if X16_USE_IRQ
+    #if !X16_USE_IRQ_CORE
+    #define X16_USE_IRQ_CORE
+    #endif
+    #if !X16_USE_IRQ_VSYNC
+    #define X16_USE_IRQ_VSYNC
+    #endif
+#endif
+#if X16_USE_IRQ_CORE
+#if !X16_USE_IRQ_ANY
+#define X16_USE_IRQ_ANY
+#endif
+#endif
+#if X16_USE_IRQ_VSYNC
+#if !X16_USE_IRQ_ANY
+#define X16_USE_IRQ_ANY
+#endif
+#endif
+#if X16_USE_INPUT
+    #if !X16_USE_INPUT_CORE
+    #define X16_USE_INPUT_CORE
+    #endif
+    #if !X16_USE_INPUT_KEYWAIT
+    #define X16_USE_INPUT_KEYWAIT
+    #endif
+#endif
+#if X16_USE_INPUT_CORE
+#if !X16_USE_INPUT_ANY
+#define X16_USE_INPUT_ANY
+#endif
+#endif
+#if X16_USE_INPUT_KEYWAIT
+#if !X16_USE_INPUT_ANY
+#define X16_USE_INPUT_ANY
+#endif
+#endif
+
+// --- modules ---------------------------------------------------------
+#if X16_USE_VERA_ANY
 #import "video/vera.asm"
 #endif
 #if X16_USE_SCREEN
@@ -352,7 +415,7 @@
 #if X16_USE_VERAFX_ANY
 #import "gfx/verafx.asm"
 #endif
-#if X16_USE_IRQ
+#if X16_USE_IRQ_ANY
 #import "system/irq.asm"
 #endif
 #if X16_USE_PSG
@@ -364,7 +427,7 @@
 #if X16_USE_PCM
 #import "audio/pcm.asm"
 #endif
-#if X16_USE_INPUT
+#if X16_USE_INPUT_ANY
 #import "input/input.asm"
 #endif
 #if X16_USE_BANK

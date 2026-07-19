@@ -90,7 +90,11 @@ vera_fill
 ;   +vera_addr 0, src, VERA_INC_1
 ;   +vera_addr 1, dst, VERA_INC_1
 ;   ldx #<len : ldy #>len : jsr vera_copy
+;
+; A VERA->VERA blit; a program that only fills does not need it, so it is
+; behind X16_USE_VERA_COPY (X16_USE_VERA still pulls it, for compat).
 ; ---------------------------------------------------------------------
+    IFCONST X16_USE_VERA_COPY
     SUBROUTINE
 vera_copy
     stx X16_T1
@@ -115,6 +119,7 @@ vera_copy
     bne .loop
 .done
     rts
+    ENDIF
 
 ; ---------------------------------------------------------------------
 ; vera_has_fx
