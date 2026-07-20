@@ -72,6 +72,7 @@ main:
     jsr test_shape_flood
     jsr test_shape_polygon
     jsr test_shape_rrect
+    jsr test_shape_stadium
     jsr test_shape_arc
     jsr test_shape_pie
     jsr test_shape_bezier
@@ -1273,6 +1274,87 @@ test_shape_rrect__report:
     ldy #>test_shape_rrect__name
     jmp t_result
 test_shape_rrect__name: .text "SHAPE_RRECT"
+    .byte 0
+
+// A stadium: r = h/2, so the straight vertical sides vanish. Guards the
+// regression where the empty side-run wrapped 16-bit and painted the whole
+// x0/x1 columns top to bottom.
+test_shape_stadium:
+    lda #40                     // clear the column both above and over the shape
+    ldx #120
+    jsr shp_clear40y
+    lda #40
+    ldx #160
+    jsr shp_clear40y
+    lda #40                     // outline stadium (40,160) 60x40, r=20 = h/2
+    sta rr_x
+    stz rr_x+1
+    lda #160
+    sta rr_y
+    stz rr_y+1
+    lda #60
+    sta rr_w
+    stz rr_w+1
+    lda #40
+    sta rr_h
+    stz rr_h+1
+    lda #20
+    sta rr_r
+    lda #3
+    jsr shape_rrect
+    lda #40                     // column x0, 20 rows above the shape: MUST be clear
+    ldx #140
+    jsr shp_rd
+    beq test_shape_stadium__cont
+test_shape_stadium__rep:
+    jmp test_shape_stadium__report
+test_shape_stadium__cont:
+    lda #40                     // leftmost point of the left semicircle: set
+    ldx #180
+    jsr shp_rd
+    cmp #3
+    bne test_shape_stadium__rep
+    lda #70                     // top straight edge between the ends: set
+    ldx #160
+    jsr shp_rd
+    cmp #3
+    bne test_shape_stadium__rep
+
+    lda #40                     // clean patch for a filled stadium
+    ldx #220
+    jsr shp_clear40y
+    lda #40                     // filled stadium (40,220) 60x40, r=20
+    sta rr_x
+    stz rr_x+1
+    lda #220
+    sta rr_y
+    stz rr_y+1
+    lda #60
+    sta rr_w
+    stz rr_w+1
+    lda #40
+    sta rr_h
+    stz rr_h+1
+    lda #20
+    sta rr_r
+    lda #2
+    jsr shape_frrect
+    lda #70                     // interior: filled
+    ldx #240
+    jsr shp_rd
+    cmp #2
+    bne test_shape_stadium__rep
+    lda #40                     // sharp corner: cut away by the round end, clear
+    ldx #220
+    jsr shp_rd
+    bne test_shape_stadium__rep
+    ldy #0
+test_shape_stadium__report:
+    tya
+    ldx #<test_shape_stadium__name
+    ldy #>test_shape_stadium__name
+    jmp t_result
+test_shape_stadium__name: .text "SHAPE_STADIUM"
     .byte 0
 
 test_shape_arc:

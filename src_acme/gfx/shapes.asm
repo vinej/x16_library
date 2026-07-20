@@ -1911,6 +1911,14 @@ shape_frrect
 
 ; pset a horizontal run from (P0/P1) to x=rr_cxr on the row in P2/P3
 .rr_hspan
+	sec                         ; empty run when cxr < cxl (r reaches w/2):
+	lda rr_cxr                  ; the rounded ends meet, no straight top/bottom
+	sbc rr_cxl
+	lda rr_cxr+1
+	sbc rr_cxl+1
+	bvc +
+	eor #$80
++	bmi .rr_hsd
 	lda X16_P2                  ; hold the row (pset reloads P0..P3)
 	sta rr_ry
 	lda X16_P3
@@ -1938,6 +1946,14 @@ shape_frrect
 
 ; pset a vertical run on column (P0/P1) from y=rr_cyt to y=rr_cyb
 .rr_vspan
+	sec                         ; empty run when cyb < cyt (r reaches h/2):
+	lda rr_cyb                  ; the rounded ends meet, no straight sides
+	sbc rr_cyt
+	lda rr_cyb+1
+	sbc rr_cyt+1
+	bvc +
+	eor #$80
++	bmi .rr_vsd
 	lda X16_P0
 	sta rr_rx
 	lda X16_P1

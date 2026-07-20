@@ -1953,6 +1953,15 @@ shapes_rr_outline
 
 ; pset a horizontal run from (P0/P1) to x=rr_cxr on the row in P2/P3
 shapes_rr_hspan
+	sec                         ; empty run when cxr < cxl (r reaches w/2):
+	lda rr_cxr                  ; the rounded ends meet, no straight top/bottom
+	sbc rr_cxl
+	lda rr_cxr+1
+	sbc rr_cxl+1
+	bvc shapes_k7
+	eor #$80
+shapes_k7
+	bmi shapes_rr_hsd
 	lda X16_P2                  ; hold the row (pset reloads P0..P3)
 	sta rr_ry
 	lda X16_P3
@@ -1980,6 +1989,15 @@ shapes_rr_hsd
 
 ; pset a vertical run on column (P0/P1) from y=rr_cyt to y=rr_cyb
 shapes_rr_vspan
+	sec                         ; empty run when cyb < cyt (r reaches h/2):
+	lda rr_cyb                  ; the rounded ends meet, no straight sides
+	sbc rr_cyt
+	lda rr_cyb+1
+	sbc rr_cyt+1
+	bvc shapes_k8
+	eor #$80
+shapes_k8
+	bmi shapes_rr_vsd
 	lda X16_P0
 	sta rr_rx
 	lda X16_P1
@@ -2132,9 +2150,9 @@ shapes_rr_wap
 	asl rr_wt                   ; err += 2t + 1
 	rol rr_wt+1
 	inc rr_wt
-	bne shapes_k7
+	bne shapes_k9
 	inc rr_wt+1
-shapes_k7
+shapes_k9
 	clc
 	lda rr_werr
 	adc rr_wt
@@ -2156,9 +2174,9 @@ shapes_rr_fl
 	cmp rr_ry
 	lda rr_y1+1
 	sbc rr_ry+1
-	bvc shapes_k8
+	bvc shapes_k10
 	eor #$80
-shapes_k8
+shapes_k10
 	bmi shapes_rr_fld
 	jsr shapes_rr_row
 	inc rr_ry
@@ -2175,17 +2193,17 @@ shapes_rr_row
 	cmp rr_cyt
 	lda rr_ry+1
 	sbc rr_cyt+1
-	bvc shapes_k9
+	bvc shapes_k11
 	eor #$80
-shapes_k9
+shapes_k11
 	bmi shapes_rr_rtop
 	lda rr_cyb                  ; row > cyb ?  bottom band, d = row-cyb
 	cmp rr_ry
 	lda rr_cyb+1
 	sbc rr_ry+1
-	bvc shapes_k10
+	bvc shapes_k12
 	eor #$80
-shapes_k10
+shapes_k12
 	bmi shapes_rr_rbot
 	ldx #0                      ; middle band: d = 0, ext[0] = r -> full width
 	beq shapes_rr_inset               ; (always: ldx #0 set Z)
@@ -2230,9 +2248,9 @@ shapes_rr_inset
 	sbc X16_P1
 	sta X16_P5
 	inc X16_P4
-	bne shapes_k11
+	bne shapes_k13
 	inc X16_P5
-shapes_k11
+shapes_k13
 	lda rr_col
 	jmp SHP_HLINE
 
@@ -2265,15 +2283,15 @@ shapes_rr_bwp
 	ldx rr_wy                   ; ext[y] = max(ext[y], x)
 	lda rr_wx
 	cmp rr_ext,x
-	bcc shapes_k12
+	bcc shapes_k14
 	sta rr_ext,x
-shapes_k12
+shapes_k14
 	ldx rr_wx                   ; ext[x] = max(ext[x], y)
 	lda rr_wy
 	cmp rr_ext,x
-	bcc shapes_k13
+	bcc shapes_k15
 	sta rr_ext,x
-shapes_k13
+shapes_k15
 	jsr shapes_rr_wstep
 	bra shapes_rr_bwl
 shapes_rr_bwd
@@ -2675,9 +2693,9 @@ shapes_tf_go
 	sbc tf_by
 	lda tf_ay+1
 	sbc tf_by+1
-	bvc shapes_k14
+	bvc shapes_k16
 	eor #$80
-shapes_k14
+shapes_k16
 	bpl shapes_tf_p2init              ; ay >= by (flat top): skip to phase 2
 	lda tf_ax                   ; short edge a -> b  (index 2)
 	sta tf_isx
@@ -2703,9 +2721,9 @@ shapes_tf_p1loop
 	sbc tf_by
 	lda tf_y+1
 	sbc tf_by+1
-	bvc shapes_k15
+	bvc shapes_k17
 	eor #$80
-shapes_k15
+shapes_k17
 	bmi shapes_tf_p1do
 	jmp shapes_tf_p2init
 shapes_tf_p1do
@@ -2715,9 +2733,9 @@ shapes_tf_p1do
 	ldx #2
 	jsr shapes_tf_adv
 	inc tf_y
-	bne shapes_k16
+	bne shapes_k18
 	inc tf_y+1
-shapes_k16
+shapes_k18
 	jmp shapes_tf_p1loop
 shapes_tf_p2init
 	lda tf_bx                   ; short edge b -> c  (index 2)
@@ -2753,25 +2771,25 @@ shapes_tf_p2do
 	ldx #2
 	jsr shapes_tf_adv
 	inc tf_y
-	bne shapes_k17
+	bne shapes_k19
 	inc tf_y+1
-shapes_k17
+shapes_k19
 	jmp shapes_tf_p2loop
 
 ; sort tf_a/tf_b/tf_c by y ascending (each slot is x.w then y.w)
 shapes_tf_sort
 	jsr shapes_tf_cmp_ab
-	bpl shapes_k18
-	jsr shapes_tf_swap_ab
-shapes_k18
-	jsr shapes_tf_cmp_bc
-	bpl shapes_k19
-	jsr shapes_tf_swap_bc
-shapes_k19
-	jsr shapes_tf_cmp_ab
 	bpl shapes_k20
 	jsr shapes_tf_swap_ab
 shapes_k20
+	jsr shapes_tf_cmp_bc
+	bpl shapes_k21
+	jsr shapes_tf_swap_bc
+shapes_k21
+	jsr shapes_tf_cmp_ab
+	bpl shapes_k22
+	jsr shapes_tf_swap_ab
+shapes_k22
 	rts
 shapes_tf_cmp_ab
 	sec
@@ -2779,9 +2797,9 @@ shapes_tf_cmp_ab
 	sbc tf_ay
 	lda tf_by+1
 	sbc tf_ay+1
-	bvc shapes_k21
+	bvc shapes_k23
 	eor #$80
-shapes_k21
+shapes_k23
 	rts
 shapes_tf_cmp_bc
 	sec
@@ -2789,9 +2807,9 @@ shapes_tf_cmp_bc
 	sbc tf_by
 	lda tf_cy+1
 	sbc tf_by+1
-	bvc shapes_k22
+	bvc shapes_k24
 	eor #$80
-shapes_k22
+shapes_k24
 	rts
 shapes_tf_swap_ab
 	ldx #3
@@ -2925,9 +2943,9 @@ shapes_te_pos
 	sta X16_P5
 shapes_te_len
 	inc X16_P4                  ; len = |diff| + 1
-	bne shapes_k23
+	bne shapes_k25
 	inc X16_P5
-shapes_k23
+shapes_k25
 	lda tf_y
 	sta X16_P2
 	lda tf_y+1
