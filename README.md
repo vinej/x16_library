@@ -312,6 +312,7 @@ treated as caller-save scratch.
 | `X16_USE_INT16` | 16-bit integers: `i16_add`/`sub`/`neg`/`abs`/`mul`/`divmod`/`divmod_s`, `i16_cmps`/`cmpu`, `i16_shl`/`shr`/`asr`, `i16_sqrt`, `i16_from_u8`/`s8`, `i16_to_dec`/`dec_s`, `+i16_const` |
 | `X16_USE_INT32` | 32-bit integers: `i32_add`/`sub`/`neg`/`abs`/`mul`/`divmod`, `i32_cmps`/`cmpu`, `i32_shl`/`shr`/`asr`, `i32_from_u16`/`s16`, `i32_to_s16`, `i32_to_dec`, `+i32_const` |
 | `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` — the ROM's 5-byte float (~9 digits) |
+| `X16_USE_DOUBLE` | Software IEEE-754 **binary64** (~15-16 digits) where the ROM float is too coarse — a `d_ac` accumulator like FLOAT's `FAC`: `d_load`/`store`, `d_from_s16`/`s32`, `d_to_s32`, `d_neg`/`abs`, `d_cmp`, `d_add`/`sub`/`mul`/`div`, `d_sqrt`, `d_exp`, `d_ln`, `d_pow`, `d_sin`/`cos`/`tan`/`atan`, `d_from_str`/`d_to_str` (decimal I/O). A full scientific-calculator core in software. Self-contained (no ROM), so it is not in `X16_USE_ALL` / the prebuilt blob — enable the gate to use it. |
 
 Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
 asking for a module twice is not an error.

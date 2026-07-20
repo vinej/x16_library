@@ -105,6 +105,12 @@
 ;   X16_USE_FLOAT     f_load/store, f_add/sub/mul/div, f_rsub/rdiv,
 ;                     f_pow, f_cmp, f_sqrt, f_ln, f_exp, f_sin, f_cos,
 ;                     f_tan, f_atan, f_from_s16/u8/str, f_to_s16/str
+;   X16_USE_DOUBLE    64-bit software binary64 (~15-16 digits) on a d_ac
+;                     accumulator -- a scientific calculator core with
+;                     decimal I/O: d_load/store, d_from_s16/s32, d_to_s32,
+;                     d_neg/abs, d_cmp, d_add/sub/mul/div, d_from_str,
+;                     d_to_str, d_sqrt, d_exp, d_ln, d_pow, d_sin, d_cos,
+;                     d_tan, d_atan
 ; =====================================================================
 
 ; Gates are set with !ifndef so that asking for a module twice -- say via
@@ -165,6 +171,13 @@
     !ifndef SHP_PSET {
         !ifndef X16_USE_BITMAP2 { X16_USE_BITMAP2 = 1 }
     }
+}
+; util/double.asm stands alone (no module dependencies). This otherwise
+; empty gate block is what makes the 64tass gate-model generator register
+; xuse_double -- it scans the dependency section here, not the module
+; !source lines below. DOUBLE is deliberately kept OUT of X16_USE_ALL so
+; the dist blob stays under the $9EFF low-RAM ceiling.
+!ifdef X16_USE_DOUBLE {
 }
 !ifdef X16_USE_BITMAP2 {
     !ifndef X16_USE_VERA        { X16_USE_VERA        = 1 }
@@ -276,3 +289,4 @@
 !ifdef X16_USE_INT16   { !source "util/int16.asm" }
 !ifdef X16_USE_INT32   { !source "util/int32.asm" }
 !ifdef X16_USE_FLOAT   { !source "util/float.asm" }
+!ifdef X16_USE_DOUBLE  { !source "util/double.asm" }

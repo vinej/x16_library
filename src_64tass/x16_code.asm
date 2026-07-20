@@ -46,6 +46,7 @@ X16_USE_INT32 = 0
 X16_USE_FLOAT = 0
 X16_USE_SHAPES_POLY = 0
 X16_USE_SHAPES = 0
+X16_USE_DOUBLE = 0
 X16_USE_VERAFX_FILL = 0
 X16_USE_VERAFX_MULT = 0
 X16_USE_VERAFX_COPY = 0
@@ -96,6 +97,7 @@ xuse_int16 = xuse_all || X16_USE_INT16 != 0
 xuse_int32 = xuse_all || X16_USE_INT32 != 0
 xuse_float = xuse_all || X16_USE_FLOAT != 0
 xuse_shapes_poly = X16_USE_SHAPES_POLY != 0
+xuse_double = X16_USE_DOUBLE != 0
 xuse_screen = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
 xuse_irq = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
 xuse_pcm = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
@@ -227,4 +229,7 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .endif
 .if xuse_float
 .include "util/float.asm"
+.endif
+.if xuse_double
+.include "util/double.asm"
 .endif
