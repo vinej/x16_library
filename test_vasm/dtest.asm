@@ -71,6 +71,12 @@ main
     jsr test_atan0
     jsr test_atan1
     jsr test_atansqrt3
+    jsr test_sinh0
+    jsr test_cosh0
+    jsr test_sinh1
+    jsr test_cosh1
+    jsr test_tanh1
+    jsr test_tanhbig
 
     jsr t_summary
     rts
@@ -1005,6 +1011,113 @@ test_atansqrt3
     jmp t_result
 .n byte "DATAN_S3", 0
 
+; --- sinh(0) -> "0", cosh(0) -> "1" ------------------------------
+test_sinh0
+    lda #0
+    ldx #0
+    jsr d_from_s16
+    jsr d_sinh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #<x_0s
+    ldx #>x_0s
+    jsr strcmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n byte "DSINH0", 0
+
+test_cosh0
+    lda #0
+    ldx #0
+    jsr d_from_s16
+    jsr d_cosh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #<x_1s
+    ldx #>x_1s
+    jsr strcmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n byte "DCOSH0", 0
+
+; --- sinh(1), first 12 chars "1.1752011936" ----------------------
+test_sinh1
+    lda #1
+    ldx #0
+    jsr d_from_s16
+    jsr d_sinh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #12
+    sta strncmp_n
+    lda #<x_sinh1
+    ldx #>x_sinh1
+    jsr strncmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n byte "DSINH1", 0
+
+; --- cosh(1), first 12 chars "1.5430806348" ----------------------
+test_cosh1
+    lda #1
+    ldx #0
+    jsr d_from_s16
+    jsr d_cosh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #12
+    sta strncmp_n
+    lda #<x_cosh1
+    ldx #>x_cosh1
+    jsr strncmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n byte "DCOSH1", 0
+
+; --- tanh(1), first 12 chars "0.7615941559" ----------------------
+test_tanh1
+    lda #1
+    ldx #0
+    jsr d_from_s16
+    jsr d_tanh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #12
+    sta strncmp_n
+    lda #<x_tanh1
+    ldx #>x_tanh1
+    jsr strncmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n byte "DTANH1", 0
+
+; --- tanh(30) saturates to "1" ------------------------------------
+test_tanhbig
+    lda #<c_30
+    ldy #>c_30
+    jsr d_load
+    jsr d_tanh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #<x_1s
+    ldx #>x_1s
+    jsr strcmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n byte "DTANH_BIG", 0
+
 ; NUL-terminated string compare of the first strncmp_n bytes.
 strncmp
     sta CHK2
@@ -1132,6 +1245,10 @@ x_ln2  byte "0.693147180559"
 x_sqrt2 byte "1.4142135623"
 x_sin1 byte "0.84147098480"
 x_pi3  byte "1.047197551196"
+x_sinh1 byte "1.1752011936"
+x_cosh1 byte "1.5430806348"
+x_tanh1 byte "0.7615941559"
+c_30   byte $00,$00,$00,$00,$00,$00,$3E,$40   ; 30.0
 c_pi4  byte $18,$2D,$44,$54,$FB,$21,$E9,$3F   ; pi/4
 c_sqrt3 byte $AA,$4C,$58,$E8,$7A,$B6,$FB,$3F   ; sqrt(3)
 c_pih  byte $18,$2D,$44,$54,$FB,$21,$F9,$3F   ; pi/2

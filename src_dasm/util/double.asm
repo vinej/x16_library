@@ -2057,6 +2057,122 @@ double_dat_norec2
 double_dat_fin
     rts
 
+; ---------------------------------------------------------------------
+; d_sinh / d_cosh / d_tanh -- d_ac = sinh/cosh/tanh(d_ac), via exp
+;   sinh = (e(x >> 16) - e^-x)/2, cosh = (e(x >> 16) + e^-x)/2, tanh = sinh/cosh.
+; tanh saturates to +-1 for |x| >= 20 (where e(x >> 16) would overflow) and
+; propagates NaN. (sinh of a tiny x cancels e(x >> 16) - e^-x -- ~ulp there.)
+; ---------------------------------------------------------------------
+    SUBROUTINE
+d_sinh
+    jsr double_d_hyp_exps              ; d_hypa = e(x >> 16), d_hypb = e^-x
+    lda #<d_hypa
+    ldy #>d_hypa
+    jsr d_load
+    lda #<d_hypb
+    ldy #>d_hypb
+    jsr d_sub                    ; e(x >> 16) - e^-x
+    lda #<d_half
+    ldy #>d_half
+    jmp d_mul                    ; / 2
+
+    SUBROUTINE
+d_cosh
+    jsr double_d_hyp_exps
+    lda #<d_hypa
+    ldy #>d_hypa
+    jsr d_load
+    lda #<d_hypb
+    ldy #>d_hypb
+    jsr d_add                    ; e(x >> 16) + e^-x
+    lda #<d_half
+    ldy #>d_half
+    jmp d_mul
+
+    SUBROUTINE
+d_tanh
+    lda #<d_ac
+    sta d_ptr
+    lda #>d_ac
+    sta d_ptr+1
+    jsr double_d_unpack
+    lda dac_c
+    cmp #D_NAN
+    bne double_dth_go
+    rts                          ; NaN -> NaN
+    SUBROUTINE
+double_dth_go
+    lda #<d_hypx                 ; save x (for the sign, and to restore)
+    ldy #>d_hypx
+    jsr d_store
+    jsr d_abs
+    lda #<d_hyp20
+    ldy #>d_hyp20
+    jsr d_cmp                    ; |x| < 20 ?
+    cmp #$FF
+    beq double_dth_small
+    lda #<d_one                  ; |x| >= 20: tanh = sign(x)
+    ldy #>d_one
+    jsr d_load
+    lda d_hypx+7
+    bpl double_dth_ret
+    jmp d_neg
+    SUBROUTINE
+double_dth_ret
+    rts
+    SUBROUTINE
+double_dth_small
+    lda #<d_hypx
+    ldy #>d_hypx
+    jsr d_load                   ; x
+    jsr double_d_hyp_exps
+    lda #<d_hypa                 ; num = e(x >> 16) - e^-x
+    ldy #>d_hypa
+    jsr d_load
+    lda #<d_hypb
+    ldy #>d_hypb
+    jsr d_sub
+    lda #<d_hypn
+    ldy #>d_hypn
+    jsr d_store
+    lda #<d_hypa                 ; den = e(x >> 16) + e^-x
+    ldy #>d_hypa
+    jsr d_load
+    lda #<d_hypb
+    ldy #>d_hypb
+    jsr d_add
+    lda #<d_hypd
+    ldy #>d_hypd
+    jsr d_store
+    lda #<d_hypn
+    ldy #>d_hypn
+    jsr d_load
+    lda #<d_hypd
+    ldy #>d_hypd
+    jmp d_div                    ; num / den
+
+; d_hypa = e((d_ac) >> 16), d_hypb = e((-d_ac) >> 16)
+    SUBROUTINE
+double_d_hyp_exps
+    lda #<d_hypx
+    ldy #>d_hypx
+    jsr d_store                  ; save x
+    lda #<d_hypx
+    ldy #>d_hypx
+    jsr d_load
+    jsr d_exp
+    lda #<d_hypa
+    ldy #>d_hypa
+    jsr d_store                  ; e(x >> 16)
+    lda #<d_hypx
+    ldy #>d_hypx
+    jsr d_load
+    jsr d_neg
+    jsr d_exp
+    lda #<d_hypb
+    ldy #>d_hypb
+    jmp d_store                  ; e^-x
+
 ; x (d_ac) -> d_tr = r in [-pi/4, pi/4], d_scq = n mod 4
     SUBROUTINE
 double_d_trig_reduce
@@ -3443,6 +3559,8 @@ d_pi6    dc.b $66,$73,$2D,$38,$52,$C1,$E0,$3F   ; pi/6 = 0.5235987755982988
 d_sqrt3  dc.b $AA,$4C,$58,$E8,$7A,$B6,$FB,$3F   ; sqrt3 = 1.7320508075688772
     SUBROUTINE
 d_tan15  dc.b $56,$CD,$9E,$5E,$14,$26,$D1,$3F   ; tan(pi/12) = 0.26794919243112270
+    SUBROUTINE
+d_hyp20  dc.b $00,$00,$00,$00,$00,$00,$34,$40   ; 20.0 (tanh saturation cutoff)
 
     SUBROUTINE
 d_tv     ds 8, 0                              ; transcendental scratch
@@ -3480,6 +3598,16 @@ d_atx    ds 8, 0
 d_atn    ds 8, 0
     SUBROUTINE
 d_atd    ds 8, 0
+    SUBROUTINE
+d_hypx   ds 8, 0
+    SUBROUTINE
+d_hypa   ds 8, 0
+    SUBROUTINE
+d_hypb   ds 8, 0
+    SUBROUTINE
+d_hypn   ds 8, 0
+    SUBROUTINE
+d_hypd   ds 8, 0
 
     SUBROUTINE
 dstr_len   dc.b 0

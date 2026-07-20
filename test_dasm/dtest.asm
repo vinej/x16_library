@@ -72,6 +72,12 @@ main
     jsr test_atan0
     jsr test_atan1
     jsr test_atansqrt3
+    jsr test_sinh0
+    jsr test_cosh0
+    jsr test_sinh1
+    jsr test_cosh1
+    jsr test_tanh1
+    jsr test_tanhbig
 
     jsr t_summary
     rts
@@ -1058,6 +1064,119 @@ test_atansqrt3
     jmp t_result
 .n dc.b "DATAN_S3", 0
 
+; --- sinh(0) -> "0", cosh(0) -> "1" ------------------------------
+    SUBROUTINE
+test_sinh0
+    lda #0
+    ldx #0
+    jsr d_from_s16
+    jsr d_sinh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #<x_0s
+    ldx #>x_0s
+    jsr strcmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n dc.b "DSINH0", 0
+
+    SUBROUTINE
+test_cosh0
+    lda #0
+    ldx #0
+    jsr d_from_s16
+    jsr d_cosh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #<x_1s
+    ldx #>x_1s
+    jsr strcmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n dc.b "DCOSH0", 0
+
+; --- sinh(1), first 12 chars "1.1752011936" ----------------------
+    SUBROUTINE
+test_sinh1
+    lda #1
+    ldx #0
+    jsr d_from_s16
+    jsr d_sinh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #12
+    sta strncmp_n
+    lda #<x_sinh1
+    ldx #>x_sinh1
+    jsr strncmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n dc.b "DSINH1", 0
+
+; --- cosh(1), first 12 chars "1.5430806348" ----------------------
+    SUBROUTINE
+test_cosh1
+    lda #1
+    ldx #0
+    jsr d_from_s16
+    jsr d_cosh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #12
+    sta strncmp_n
+    lda #<x_cosh1
+    ldx #>x_cosh1
+    jsr strncmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n dc.b "DCOSH1", 0
+
+; --- tanh(1), first 12 chars "0.7615941559" ----------------------
+    SUBROUTINE
+test_tanh1
+    lda #1
+    ldx #0
+    jsr d_from_s16
+    jsr d_tanh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #12
+    sta strncmp_n
+    lda #<x_tanh1
+    ldx #>x_tanh1
+    jsr strncmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n dc.b "DTANH1", 0
+
+; --- tanh(30) saturates to "1" ------------------------------------
+    SUBROUTINE
+test_tanhbig
+    lda #<c_30
+    ldy #>c_30
+    jsr d_load
+    jsr d_tanh
+    jsr d_to_str
+    sta CHK_ZP
+    stx CHK_ZP+1
+    lda #<x_1s
+    ldx #>x_1s
+    jsr strcmp
+    ldx #<.n
+    ldy #>.n
+    jmp t_result
+.n dc.b "DTANH_BIG", 0
+
 ; NUL-terminated string compare of the first strncmp_n bytes.
     SUBROUTINE
 strncmp
@@ -1236,6 +1355,14 @@ x_sqrt2 dc.b "1.4142135623"
 x_sin1 dc.b "0.84147098480"
     SUBROUTINE
 x_pi3  dc.b "1.047197551196"
+    SUBROUTINE
+x_sinh1 dc.b "1.1752011936"
+    SUBROUTINE
+x_cosh1 dc.b "1.5430806348"
+    SUBROUTINE
+x_tanh1 dc.b "0.7615941559"
+    SUBROUTINE
+c_30   dc.b $00,$00,$00,$00,$00,$00,$3E,$40   ; 30.0
     SUBROUTINE
 c_pi4  dc.b $18,$2D,$44,$54,$FB,$21,$E9,$3F   ; pi/4
     SUBROUTINE

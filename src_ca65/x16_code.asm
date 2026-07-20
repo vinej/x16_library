@@ -110,7 +110,7 @@
 ;                     decimal I/O: d_load/store, d_from_s16/s32, d_to_s32,
 ;                     d_neg/abs, d_cmp, d_add/sub/mul/div, d_from_str,
 ;                     d_to_str, d_sqrt, d_exp, d_ln, d_pow, d_sin, d_cos,
-;                     d_tan, d_atan
+;                     d_tan, d_atan, d_sinh, d_cosh, d_tanh
 ; =====================================================================
 
 ; Gates are set with !ifndef so that asking for a module twice -- say via
