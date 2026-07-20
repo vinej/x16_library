@@ -13,6 +13,7 @@
 
 X16_USE_BITMAP2 = 1
 X16_USE_SHAPES  = 1             ; pulls in VERA and VERAFX
+X16_USE_SHAPES_POLY = 1         ; + regular polygons (pulls in MATH)
 
 ; The harness's zero-page pointer (see runner.asm).
 T_ZP = $70
@@ -64,6 +65,7 @@ main
     jsr test_shape_ellipse
     jsr test_shape_fellipse
     jsr test_shape_flood
+    jsr test_shape_polygon
     jsr test_g2_clear
     jsr test_g2_init
 
@@ -1085,6 +1087,78 @@ test_shape_flood__report
     ldy #>test_shape_flood__name
     jmp t_result
 test_shape_flood__name dta c'SHAPE_FLOOD', 0
+
+; SHAPE_POLYGON: a diamond (4-gon, rotation 0) -- outline, then filled
+test_shape_polygon
+    lda #100
+    jsr shp_clear40             ; a clean patch at (100,100)
+    lda #120                    ; outline at (120,120), r=10, colour 3
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #10
+    sta X16_P4                  ; radius
+    lda #4
+    sta X16_P5                  ; sides
+    lda #0
+    sta X16_P6                  ; rotation: vertices at E, S, W, N
+    lda #3
+    jsr shape_polygon
+    ldy #1
+    lda #130                    ; the east vertex
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne test_shape_polygon__report
+    lda #120                    ; the north vertex
+    ldx #110
+    jsr shp_rd
+    cmp #3
+    bne test_shape_polygon__report
+    lda #120                    ; centre: an outline leaves it clear
+    ldx #120
+    jsr shp_rd
+    bne test_shape_polygon__report
+
+    lda #160
+    jsr shp_clear40             ; a clean patch at (160,100)
+    lda #180                    ; filled at (180,120), r=10, colour 2
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    lda #10
+    sta X16_P4
+    lda #4
+    sta X16_P5
+    lda #0
+    sta X16_P6
+    lda #2
+    jsr shape_fpolygon
+    lda #180                    ; centre: filled
+    ldx #120
+    jsr shp_rd
+    cmp #2
+    bne test_shape_polygon__report
+    lda #180                    ; interior, four rows up
+    ldx #116
+    jsr shp_rd
+    cmp #2
+    bne test_shape_polygon__report
+    lda #180                    ; above the north vertex: clear
+    ldx #103
+    jsr shp_rd
+    bne test_shape_polygon__report
+    ldy #0
+test_shape_polygon__report
+    tya
+    ldx #<test_shape_polygon__name
+    ldy #>test_shape_polygon__name
+    jmp t_result
+test_shape_polygon__name dta c'SHAPE_POLYGON', 0
 
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0

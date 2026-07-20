@@ -34,7 +34,7 @@ if not exist "%SRC%"  goto no_source
 if not exist build mkdir build
 
 echo acme   %SRC% -^> %PRG%
-"%ACME%" -I src -f cbm -o "%PRG%" "%SRC%"
+"%ACME%" -I src_acme -f cbm -o "%PRG%" "%SRC%"
 if errorlevel 1 echo ERROR: assembly failed. & goto fail
 
 echo x16emu %PRG%   (close the emulator window to stop)

@@ -278,6 +278,7 @@ treated as caller-save scratch.
 | `X16_USE_BITMAP` | 320×240 @ 8bpp (256 colours): `gfx_init`, `gfx_clear`, `gfx_read`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_pattern_set`/`gfx_pattern_rect`, `gfx_blit`, `gfx_blitm` (colour-key), `gfx_char`, `gfx_text` |
 | `X16_USE_BITMAP2` | 640×480 @ 2bpp (4 colours, 160-byte rows, MSB-first pixels): `gfx2_init`, `gfx2_clear` (FX cache fill), `gfx2_setptr`, `gfx2_pset`, `gfx2_read`, `gfx2_hline`, `gfx2_vline`, `gfx2_rect`, `gfx2_frame`, `gfx2_line`, `gfx2_pattern_set`/`gfx2_pattern_rect` (screen-anchored 8×8 patterns), `gfx2_blit` (byte-aligned raster ops copy/OR/AND/XOR), `gfx2_blitm` (masked pre-shifted column blit — proportional-text speed). Pulls in VERA and VERAFX. Spans clip like the 8bpp module: `gfx2_pset`/`gfx2_read` clip, the rest assume on-screen arguments |
 | `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_ellipse`, `shape_fellipse`, `shape_flood` — engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`), so ONE copy serves both bitmap modules: the default binds them to `gfx2` (2bpp); bind `SHP_*` to `gfx_*` for 8bpp. Pulls in `X16_USE_BITMAP2` by default. (kick/mads can't test definedness of an already-referenced symbol, so overriding a binding there sets a sentinel alongside it: `SHP_PSET_SET = 1` next to your `SHP_PSET`, and likewise per symbol.) |
+| `X16_USE_SHAPES_POLY` | Adds `shape_polygon` (outline) and `shape_fpolygon` (filled) — regular convex N-gons through the same `SHP_*` bindings. Pulls in `X16_USE_SHAPES` and `X16_USE_MATH` (the vertices come from `sin8`/`cos8`), so it is a pay-per-use extra: a program that only draws circles keeps a math-free `SHAPES` build. |
 | `X16_USE_VERAFX` | All of the parts below, as it always has been. The parts exist because the whole is 2.5 KB and a program that wants one fast fill should not carry a rotozoom sampler to get it — `X16_USE_BITMAP2` asks for `_FILL` alone and is 2,162 bytes lighter for it. `fx_off` comes with any part. |
 |   `X16_USE_VERAFX_MULT` | `fx_mult` (signed 16×16→32 in hardware) |
 |   `X16_USE_VERAFX_FILL` | `fx_fill`, `fx_clear` |
@@ -310,7 +311,7 @@ treated as caller-save scratch.
 | `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
 | `X16_USE_INT16` | 16-bit integers: `i16_add`/`sub`/`neg`/`abs`/`mul`/`divmod`/`divmod_s`, `i16_cmps`/`cmpu`, `i16_shl`/`shr`/`asr`, `i16_sqrt`, `i16_from_u8`/`s8`, `i16_to_dec`/`dec_s`, `+i16_const` |
 | `X16_USE_INT32` | 32-bit integers: `i32_add`/`sub`/`neg`/`abs`/`mul`/`divmod`, `i32_cmps`/`cmpu`, `i32_shl`/`shr`/`asr`, `i32_from_u16`/`s16`, `i32_to_s16`, `i32_to_dec`, `+i32_const` |
-| `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` |
+| `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` — the ROM's 5-byte float (~9 digits) |
 
 Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
 asking for a module twice is not an error.
@@ -417,6 +418,21 @@ pathological shapes only). They plot through `SHP_PSET`/`SHP_HLINE` and
 read through `SHP_READ`, all overridable, so one copy serves the 2bpp
 `gfx2` and 8bpp `gfx` modules alike (rather than a hand-written circle in
 each). Left alone they bind to `gfx2`.
+
+`X16_USE_SHAPES_POLY` adds regular convex polygons on top: `shape_polygon`
+(cx, cy, radius, sides, rotation, colour) walks `sides` vertices evenly
+around the circle — `3` is a triangle, `4` a square/diamond, `6` a
+hexagon, `12` a dodecagon (3–24) — and connects them with an engine-agnostic
+Bresenham through `SHP_PSET`, so the outline clips exactly like
+`shape_circle`. `shape_fpolygon` is the filled twin: a per-scanline convex
+span fill through `SHP_HLINE` (so it does not clip — keep it on screen,
+like `shape_disc`), half-open at the bottom edge so tiled polygons never
+double-paint a shared side. `rotation` is a byte angle (0 = the first
+vertex points east, 64 = south, matching `sin8`/`cos8`) — it turns a
+point-up triangle into a flat-bottom one, or a pointy-top hexagon into a
+flat-top one. The vertices come from `sin8`/`cos8`, so the gate pulls in
+`X16_USE_MATH`; it is a one-shot drawing primitive (cost scales with
+sides × height), not a per-frame filler.
 
 The compression picture, complete: the ROM's LZSA2 (`mem_decompress`) is
 free and can stream into VRAM; `zx0_decompress` (the modern ZX0 v2 that
@@ -548,6 +564,8 @@ float being a float; use `f_to_str` when you want the printed value.
 | `examples/hello.asm` | Smallest thing that proves the toolchain: assemble, autorun, print, touch VRAM. |
 | `examples/bounce.asm` | A sprite bouncing over the full 640×480 display on fixed-point velocity, frame-locked to VSYNC. A PSG blip with a per-frame decay envelope on every wall bounce; a YM2151 FM note while it overlaps the outlined target box, released when it leaves. Exercises VSYNC, sprites, palette, fixed point, 16-bit collision, tilemap drawing, PSG, FM, and number formatting together. |
 | `examples/numbers.asm` | A tour of the number libraries: 16-bit and 32-bit integers, 8.8 fixed point, and floating point. Each line prints an expression and its result, so it doubles as a check. Needs no VSYNC, so it also runs headless. |
+| `examples/polygons.asm` | A gallery of the regular polygons — triangle, square, pentagon, hexagon, heptagon, octagon, nonagon, decagon, dodecagon — each filled with `shape_fpolygon` and outlined with `shape_polygon`, on the 2bpp bitmap engine with a custom four-colour palette. Windowed (waits for a key). |
+| `examples/polyspin.asm` | A filled polygon spinning in place, redrawn each frame with a growing `rotation`, frame-locked to VSYNC. Shows the rotation argument in motion. Windowed. |
 
 `bounce.asm` shows two audio patterns worth copying. **Play on the edge, not the
 level:** `hit` is true for every frame of an overlap, so retriggering the FM note

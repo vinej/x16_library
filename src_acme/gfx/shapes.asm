@@ -768,6 +768,805 @@ shape_flood
 .run !byte 0
 .stk !fill FLOOD_MAX * 4, 0
 
+; ---------------------------------------------------------------------
+; shape_polygon / shape_fpolygon -- regular convex polygons (X16_USE_SHAPES_POLY)
+; ---------------------------------------------------------------------
+; A regular N-gon: N vertices evenly spaced on a circle of radius r about
+; (cx, cy), the first at byte-angle `rotation` (0 = east, 64 = south, the
+; sin8/cos8 convention). shape_polygon draws the outline through SHP_PSET
+; (so it clips like shape_circle); shape_fpolygon fills it with SHP_HLINE
+; spans (so it does NOT clip -- keep it on screen, like shape_disc).
+;
+;   in: P0/P1 = cx, P2/P3 = cy, P4 = radius (0-255),
+;       P5 = sides (3..POLY_MAX; fewer draws nothing, more is clamped),
+;       P6 = rotation (byte angle), A = colour
+;
+; Vertices come from sin8/cos8 (hence the X16_USE_MATH dependency) scaled
+; by r and rounded. The fill is a per-scanline convex span fill: for each
+; row it finds the two edge crossings and draws between them, half-open at
+; the bottom row so tiled polygons do not double-paint a shared edge. It
+; is a one-shot primitive (cost ~ sides * height), not a per-frame filler.
+;
+; House style, as everywhere in this file: all labels are zone-locals with
+; unique names (ACME's @cheap locals do not reset at a zone-local routine
+; label, so two routines could not each own an @loop), and the work is cut
+; into small routines so no branch reaches past its 127-byte range.
+; ---------------------------------------------------------------------
+!ifdef X16_USE_SHAPES_POLY {
+
+POLY_MAX = 24                   ; vertices; the buffers below are 2 bytes each
+
+shape_polygon
+	sta poly_col
+	stz poly_efl                ; outline
+	jmp .poly_begin
+shape_fpolygon
+	sta poly_col
+	lda #1                      ; filled
+	sta poly_efl
+	; fall through
+.poly_begin
+	lda X16_P5                  ; clamp the side count to 3..POLY_MAX
+	cmp #3
+	bcc .pg_bret                ; fewer than 3: not a polygon
+	cmp #(POLY_MAX + 1)
+	bcc .pg_bnok
+	lda #POLY_MAX
+.pg_bnok
+	sta poly_n
+	lda X16_P0
+	sta poly_cx
+	lda X16_P1
+	sta poly_cx+1
+	lda X16_P2
+	sta poly_cy
+	lda X16_P3
+	sta poly_cy+1
+	lda X16_P4
+	sta poly_r
+	stz poly_acc                ; angle accumulator = rotation << 8
+	lda X16_P6
+	sta poly_acc+1
+	jsr .poly_verts
+	lda poly_efl
+	bne .pg_bfill
+	jmp .poly_outline
+.pg_bfill
+	jmp .poly_fill
+.pg_bret
+	rts
+
+; compute the N vertices into poly_vx[]/poly_vy[]
+.poly_verts
+	jsr .poly_step              ; poly_step = 65536 / n
+	stz poly_i
+.pg_vloop
+	lda poly_i
+	cmp poly_n
+	beq .pg_vend
+	lda poly_acc+1              ; this vertex's byte angle
+	pha
+	jsr cos8                    ; A = cos * 127 (signed)
+	jsr .poly_scale             ; poly_off = round(r * A / 128), signed
+	lda poly_i
+	asl
+	tax                         ; 2*i
+	clc
+	lda poly_cx
+	adc poly_off
+	sta poly_vx,x
+	lda poly_cx+1
+	adc poly_off+1
+	sta poly_vx+1,x
+	pla                         ; the angle again
+	jsr sin8                    ; A = sin * 127 (signed)
+	jsr .poly_scale
+	lda poly_i
+	asl
+	tax
+	clc
+	lda poly_cy
+	adc poly_off
+	sta poly_vy,x
+	lda poly_cy+1
+	adc poly_off+1
+	sta poly_vy+1,x
+	clc                         ; acc += step
+	lda poly_acc
+	adc poly_step
+	sta poly_acc
+	lda poly_acc+1
+	adc poly_step+1
+	sta poly_acc+1
+	inc poly_i
+	bra .pg_vloop
+.pg_vend
+	rts
+
+; poly_off = round(poly_r * |A| / 128) with A's sign, A a signed byte
+.poly_scale
+	stz poly_sgn
+	pha
+	and #$80
+	beq .pg_spos
+	inc poly_sgn
+	pla
+	eor #$FF
+	clc
+	adc #1
+	bra .pg_smul
+.pg_spos
+	pla
+.pg_smul
+	jsr .poly_mul8              ; poly_p16 = poly_r * |A|
+	clc
+	lda poly_p16                ; + 0.5 LSB, so >>7 rounds
+	adc #64
+	sta poly_p16
+	lda poly_p16+1
+	adc #0
+	sta poly_p16+1
+	lda poly_p16                ; >>7 (product < 32768, so one byte out)
+	asl
+	lda poly_p16+1
+	rol
+	sta poly_off
+	stz poly_off+1
+	lda poly_sgn
+	beq .pg_sdone
+	sec                         ; negate
+	lda #0
+	sbc poly_off
+	sta poly_off
+	lda #0
+	sbc poly_off+1
+	sta poly_off+1
+.pg_sdone
+	rts
+
+; poly_p16 = poly_r * A  (8x8 -> 16, unsigned)
+.poly_mul8
+	sta poly_t
+	lda #0
+	ldx #8
+.pg_mloop
+	lsr poly_t
+	bcc .pg_mskip
+	clc
+	adc poly_r
+.pg_mskip
+	ror
+	ror poly_p16
+	dex
+	bne .pg_mloop
+	sta poly_p16+1
+	rts
+
+; poly_step = floor(65536 / poly_n), by restoring division of $010000
+.poly_step
+	stz poly_dvd
+	stz poly_dvd+1
+	lda #1
+	sta poly_dvd+2
+	stz poly_rem
+	stz poly_step
+	stz poly_step+1
+	ldx #24
+.pg_dloop
+	asl poly_dvd
+	rol poly_dvd+1
+	rol poly_dvd+2
+	rol poly_rem                ; carry = the remainder's 9th bit
+	bcs .pg_dsub                ; overflowed 8 bits: certainly >= n
+	lda poly_rem
+	cmp poly_n
+	bcc .pg_dnoq
+.pg_dsub
+	lda poly_rem                ; carry is set on both paths here
+	sbc poly_n
+	sta poly_rem
+	sec                         ; quotient bit = 1
+	bra .pg_dbit
+.pg_dnoq
+	clc                         ; quotient bit = 0
+.pg_dbit
+	rol poly_step
+	rol poly_step+1
+	dex
+	bne .pg_dloop
+	rts
+
+; --- outline ---------------------------------------------------------
+.poly_outline
+	stz poly_i
+.pg_oloop
+	lda poly_i                  ; endpoint 0 = vertex i
+	asl
+	tax
+	lda poly_vx,x
+	sta poly_lx0
+	lda poly_vx+1,x
+	sta poly_lx0+1
+	lda poly_vy,x
+	sta poly_ly0
+	lda poly_vy+1,x
+	sta poly_ly0+1
+	lda poly_i                  ; endpoint 1 = vertex (i+1) mod n
+	clc
+	adc #1
+	cmp poly_n
+	bne .pg_ojok
+	lda #0
+.pg_ojok
+	asl
+	tax
+	lda poly_vx,x
+	sta poly_lx1
+	lda poly_vx+1,x
+	sta poly_lx1+1
+	lda poly_vy,x
+	sta poly_ly1
+	lda poly_vy+1,x
+	sta poly_ly1+1
+	jsr .poly_line
+	inc poly_i
+	lda poly_i
+	cmp poly_n
+	bne .pg_oloop
+	rts
+
+; 16-bit Bresenham from (lx0,ly0) to (lx1,ly1), plotting through SHP_PSET
+; (the gfx2_line algorithm, engine-agnostic and clipping via the binding)
+.poly_line
+	sec                         ; dx = |x1 - x0|, sx = direction
+	lda poly_lx1
+	sbc poly_lx0
+	sta poly_ldx
+	lda poly_lx1+1
+	sbc poly_lx0+1
+	sta poly_ldx+1
+	bpl .pg_ldxp
+	sec
+	lda #0
+	sbc poly_ldx
+	sta poly_ldx
+	lda #0
+	sbc poly_ldx+1
+	sta poly_ldx+1
+	lda #$FF
+	sta poly_lsx
+	sta poly_lsx+1
+	bra .pg_ldxd
+.pg_ldxp
+	lda #1
+	sta poly_lsx
+	stz poly_lsx+1
+.pg_ldxd
+	sec                         ; dy = -|y1 - y0|, sy = direction
+	lda poly_ly1
+	sbc poly_ly0
+	sta poly_lt
+	lda poly_ly1+1
+	sbc poly_ly0+1
+	sta poly_lt+1
+	bpl .pg_ldyp
+	sec
+	lda #0
+	sbc poly_lt
+	sta poly_lt
+	lda #0
+	sbc poly_lt+1
+	sta poly_lt+1
+	lda #$FF
+	sta poly_lsy
+	sta poly_lsy+1
+	bra .pg_ldyd
+.pg_ldyp
+	lda #1
+	sta poly_lsy
+	stz poly_lsy+1
+.pg_ldyd
+	sec                         ; ldy = -|dy|
+	lda #0
+	sbc poly_lt
+	sta poly_ldy
+	lda #0
+	sbc poly_lt+1
+	sta poly_ldy+1
+	clc                         ; err = dx + dy
+	lda poly_ldx
+	adc poly_ldy
+	sta poly_lerr
+	lda poly_ldx+1
+	adc poly_ldy+1
+	sta poly_lerr+1
+.pg_lloop
+	lda poly_lx0
+	sta X16_P0
+	lda poly_lx0+1
+	sta X16_P1
+	lda poly_ly0
+	sta X16_P2
+	lda poly_ly0+1
+	sta X16_P3
+	lda poly_col
+	jsr SHP_PSET
+	lda poly_lx0                ; reached the endpoint?
+	cmp poly_lx1
+	bne .pg_lstep
+	lda poly_lx0+1
+	cmp poly_lx1+1
+	bne .pg_lstep
+	lda poly_ly0
+	cmp poly_ly1
+	bne .pg_lstep
+	lda poly_ly0+1
+	cmp poly_ly1+1
+	bne .pg_lstep
+	rts
+.pg_lstep
+	lda poly_lerr               ; e2 = 2 * err
+	asl
+	sta poly_le2
+	lda poly_lerr+1
+	rol
+	sta poly_le2+1
+	sec                         ; e2 >= dy ?  err += dy, x0 += sx
+	lda poly_le2
+	sbc poly_ldy
+	lda poly_le2+1
+	sbc poly_ldy+1
+	bvc .pg_lnv1
+	eor #$80
+.pg_lnv1
+	bmi .pg_lskx
+	clc
+	lda poly_lerr
+	adc poly_ldy
+	sta poly_lerr
+	lda poly_lerr+1
+	adc poly_ldy+1
+	sta poly_lerr+1
+	clc
+	lda poly_lx0
+	adc poly_lsx
+	sta poly_lx0
+	lda poly_lx0+1
+	adc poly_lsx+1
+	sta poly_lx0+1
+.pg_lskx
+	sec                         ; e2 <= dx ?  err += dx, y0 += sy
+	lda poly_ldx
+	sbc poly_le2
+	lda poly_ldx+1
+	sbc poly_le2+1
+	bvc .pg_lnv2
+	eor #$80
+.pg_lnv2
+	bmi .pg_lsky
+	clc
+	lda poly_lerr
+	adc poly_ldx
+	sta poly_lerr
+	lda poly_lerr+1
+	adc poly_ldx+1
+	sta poly_lerr+1
+	clc
+	lda poly_ly0
+	adc poly_lsy
+	sta poly_ly0
+	lda poly_ly0+1
+	adc poly_lsy+1
+	sta poly_ly0+1
+.pg_lsky
+	jmp .pg_lloop
+
+; --- fill ------------------------------------------------------------
+; one scanline at a time; .poly_scanline gathers the row's span and draws
+; it, .poly_edge does the per-edge crossing. Kept apart so every branch
+; stays in range and each routine owns its own zone-local labels.
+.poly_fill
+	jsr .poly_ybounds           ; poly_ymin / poly_ymax over all vertices
+	lda poly_ymin
+	sta poly_y
+	lda poly_ymin+1
+	sta poly_y+1
+.pg_floop
+	lda poly_ymax               ; y > ymax ? done
+	cmp poly_y
+	lda poly_ymax+1
+	sbc poly_y+1
+	bvc .pg_fl1
+	eor #$80
+.pg_fl1
+	bmi .pg_fret                ; ymax < y
+	jsr .poly_scanline
+	inc poly_y
+	bne .pg_floop
+	inc poly_y+1
+	bra .pg_floop
+.pg_fret
+	rts
+
+; fill row poly_y: find the span (xl..xr) across the edges, draw it
+.poly_scanline
+	stz poly_found
+	lda #$FF                    ; xl = +32767, xr = -32768
+	sta poly_xl
+	lda #$7F
+	sta poly_xl+1
+	stz poly_xr
+	lda #$80
+	sta poly_xr+1
+	stz poly_i
+.pg_slloop
+	lda poly_i
+	cmp poly_n
+	beq .pg_sldraw
+	jsr .poly_edge
+	inc poly_i
+	bra .pg_slloop
+.pg_sldraw
+	lda poly_found
+	beq .pg_slret
+	lda poly_xl                 ; span (xl .. xr) on row y
+	sta X16_P0
+	lda poly_xl+1
+	sta X16_P1
+	lda poly_y
+	sta X16_P2
+	lda poly_y+1
+	sta X16_P3
+	sec                         ; len = xr - xl + 1
+	lda poly_xr
+	sbc poly_xl
+	sta X16_P4
+	lda poly_xr+1
+	sbc poly_xl+1
+	sta X16_P5
+	inc X16_P4
+	bne .pg_sllen
+	inc X16_P5
+.pg_sllen
+	lda poly_col
+	jmp SHP_HLINE
+.pg_slret
+	rts
+
+; edge poly_i crossing row poly_y: if it spans the row, fold its x into
+; poly_xl (min) / poly_xr (max) and set poly_found
+.poly_edge
+	lda poly_i                  ; vertex a = i
+	asl
+	tax
+	lda poly_i                  ; vertex b = (i+1) mod n
+	clc
+	adc #1
+	cmp poly_n
+	bne .pg_ejok
+	lda #0
+.pg_ejok
+	asl
+	tay
+	lda poly_vx,x
+	sta poly_xa
+	lda poly_vx+1,x
+	sta poly_xa+1
+	lda poly_vy,x
+	sta poly_ya
+	lda poly_vy+1,x
+	sta poly_ya+1
+	lda poly_vx,y
+	sta poly_xb
+	lda poly_vx+1,y
+	sta poly_xb+1
+	lda poly_vy,y
+	sta poly_yb
+	lda poly_vy+1,y
+	sta poly_yb+1
+	lda poly_ya                 ; top = the smaller-y endpoint
+	cmp poly_yb
+	lda poly_ya+1
+	sbc poly_yb+1
+	bvc .pg_escab
+	eor #$80
+.pg_escab
+	bmi .pg_eatop               ; ya < yb
+	lda poly_xb                 ; b on top
+	sta poly_xtop
+	lda poly_xb+1
+	sta poly_xtop+1
+	lda poly_yb
+	sta poly_ytop
+	lda poly_yb+1
+	sta poly_ytop+1
+	lda poly_xa
+	sta poly_xbot
+	lda poly_xa+1
+	sta poly_xbot+1
+	lda poly_ya
+	sta poly_ybot
+	lda poly_ya+1
+	sta poly_ybot+1
+	bra .pg_eedge
+.pg_eatop
+	lda poly_xa                 ; a on top
+	sta poly_xtop
+	lda poly_xa+1
+	sta poly_xtop+1
+	lda poly_ya
+	sta poly_ytop
+	lda poly_ya+1
+	sta poly_ytop+1
+	lda poly_xb
+	sta poly_xbot
+	lda poly_xb+1
+	sta poly_xbot+1
+	lda poly_yb
+	sta poly_ybot
+	lda poly_yb+1
+	sta poly_ybot+1
+.pg_eedge
+	lda poly_y                  ; y < ytop ? out (also skips horizontals)
+	cmp poly_ytop
+	lda poly_y+1
+	sbc poly_ytop+1
+	bvc .pg_esct
+	eor #$80
+.pg_esct
+	bmi .pg_eout
+	lda poly_y                  ; y >= ybot ? out (half-open bottom)
+	cmp poly_ybot
+	lda poly_y+1
+	sbc poly_ybot+1
+	bvc .pg_escb
+	eor #$80
+.pg_escb
+	bpl .pg_eout
+	bra .pg_ein
+.pg_eout
+	rts
+.pg_ein
+	sec                         ; md3 = dy = ybot - ytop  (> 0)
+	lda poly_ybot
+	sbc poly_ytop
+	sta poly_md3
+	lda poly_ybot+1
+	sbc poly_ytop+1
+	sta poly_md3+1
+	sec                         ; md2 = t = y - ytop
+	lda poly_y
+	sbc poly_ytop
+	sta poly_md2
+	lda poly_y+1
+	sbc poly_ytop+1
+	sta poly_md2+1
+	sec                         ; md1 = dx = xbot - xtop (signed)
+	lda poly_xbot
+	sbc poly_xtop
+	sta poly_md1
+	lda poly_xbot+1
+	sbc poly_xtop+1
+	sta poly_md1+1
+	stz poly_dxs
+	lda poly_md1+1
+	bpl .pg_edxpos
+	inc poly_dxs                ; dx < 0: take |dx|, remember the sign
+	sec
+	lda #0
+	sbc poly_md1
+	sta poly_md1
+	lda #0
+	sbc poly_md1+1
+	sta poly_md1+1
+.pg_edxpos
+	jsr .poly_umuldiv           ; poly_mdq = |dx| * t / dy
+	lda poly_dxs
+	bne .pg_exneg
+	clc                         ; x = xtop + mdq
+	lda poly_xtop
+	adc poly_mdq
+	sta poly_x
+	lda poly_xtop+1
+	adc poly_mdq+1
+	sta poly_x+1
+	bra .pg_egotx
+.pg_exneg
+	sec                         ; x = xtop - mdq
+	lda poly_xtop
+	sbc poly_mdq
+	sta poly_x
+	lda poly_xtop+1
+	sbc poly_mdq+1
+	sta poly_x+1
+.pg_egotx
+	lda #1
+	sta poly_found
+	lda poly_x                  ; xl = min(xl, x)
+	cmp poly_xl
+	lda poly_x+1
+	sbc poly_xl+1
+	bvc .pg_escl
+	eor #$80
+.pg_escl
+	bpl .pg_enoxl               ; x >= xl
+	lda poly_x
+	sta poly_xl
+	lda poly_x+1
+	sta poly_xl+1
+.pg_enoxl
+	lda poly_xr                 ; xr = max(xr, x)
+	cmp poly_x
+	lda poly_xr+1
+	sbc poly_x+1
+	bvc .pg_escr
+	eor #$80
+.pg_escr
+	bpl .pg_enoxr               ; xr >= x
+	lda poly_x
+	sta poly_xr
+	lda poly_x+1
+	sta poly_xr+1
+.pg_enoxr
+	rts
+
+; poly_ymin / poly_ymax = the y extent of the vertices
+.poly_ybounds
+	lda poly_vy
+	sta poly_ymin
+	sta poly_ymax
+	lda poly_vy+1
+	sta poly_ymin+1
+	sta poly_ymax+1
+	lda #1
+	sta poly_i
+.pg_ybloop
+	lda poly_i
+	cmp poly_n
+	beq .pg_ybend
+	asl
+	tax
+	lda poly_vy,x               ; vy[i] < ymin ?
+	cmp poly_ymin
+	lda poly_vy+1,x
+	sbc poly_ymin+1
+	bvc .pg_ybc1
+	eor #$80
+.pg_ybc1
+	bpl .pg_ybnmin
+	lda poly_vy,x
+	sta poly_ymin
+	lda poly_vy+1,x
+	sta poly_ymin+1
+.pg_ybnmin
+	lda poly_ymax               ; vy[i] > ymax ?
+	cmp poly_vy,x
+	lda poly_ymax+1
+	sbc poly_vy+1,x
+	bvc .pg_ybc2
+	eor #$80
+.pg_ybc2
+	bpl .pg_ybnmax
+	lda poly_vy,x
+	sta poly_ymax
+	lda poly_vy+1,x
+	sta poly_ymax+1
+.pg_ybnmax
+	inc poly_i
+	bra .pg_ybloop
+.pg_ybend
+	rts
+
+; poly_mdq = poly_md1 * poly_md2 / poly_md3, all unsigned (16x16->32, /16)
+.poly_umuldiv
+	stz poly_prod+2
+	stz poly_prod+3
+	ldx #16
+.pg_uml
+	lsr poly_md2+1
+	ror poly_md2
+	bcc .pg_unoadd
+	lda poly_prod+2
+	clc
+	adc poly_md1
+	sta poly_prod+2
+	lda poly_prod+3
+	adc poly_md1+1
+	bra .pg_urot
+.pg_unoadd
+	lda poly_prod+3
+.pg_urot
+	ror
+	sta poly_prod+3
+	ror poly_prod+2
+	ror poly_prod+1
+	ror poly_prod
+	dex
+	bne .pg_uml
+	stz poly_rem
+	stz poly_rem+1
+	ldx #32
+.pg_udv
+	asl poly_prod
+	rol poly_prod+1
+	rol poly_prod+2
+	rol poly_prod+3
+	rol poly_rem
+	rol poly_rem+1
+	sec
+	lda poly_rem
+	sbc poly_md3
+	tay
+	lda poly_rem+1
+	sbc poly_md3+1
+	bcc .pg_udvno
+	sta poly_rem+1
+	sty poly_rem
+	inc poly_prod
+.pg_udvno
+	dex
+	bne .pg_udv
+	lda poly_prod
+	sta poly_mdq
+	lda poly_prod+1
+	sta poly_mdq+1
+	rts
+
+; --- polygon state ---------------------------------------------------
+poly_col   !byte 0
+poly_efl   !byte 0
+poly_cx    !word 0
+poly_cy    !word 0
+poly_r     !byte 0
+poly_n     !byte 0
+poly_i     !byte 0
+poly_acc   !word 0
+poly_step  !word 0
+poly_off   !word 0
+poly_sgn   !byte 0
+poly_p16   !word 0
+poly_t     !byte 0
+poly_dvd   !fill 3, 0
+poly_rem   !word 0
+poly_vx    !fill POLY_MAX * 2, 0
+poly_vy    !fill POLY_MAX * 2, 0
+
+poly_lx0   !word 0
+poly_ly0   !word 0
+poly_lx1   !word 0
+poly_ly1   !word 0
+poly_ldx   !word 0
+poly_ldy   !word 0
+poly_lerr  !word 0
+poly_le2   !word 0
+poly_lsx   !word 0
+poly_lsy   !word 0
+poly_lt    !word 0
+
+poly_ymin  !word 0
+poly_ymax  !word 0
+poly_y     !word 0
+poly_found !byte 0
+poly_xa    !word 0
+poly_ya    !word 0
+poly_xb    !word 0
+poly_yb    !word 0
+poly_xtop  !word 0
+poly_ytop  !word 0
+poly_xbot  !word 0
+poly_ybot  !word 0
+poly_x     !word 0
+poly_xl    !word 0
+poly_xr    !word 0
+poly_dxs   !byte 0
+poly_md1   !word 0
+poly_md2   !word 0
+poly_md3   !word 0
+poly_mdq   !word 0
+poly_prod  !fill 4, 0
+
+} ; X16_USE_SHAPES_POLY
+
 ; --- the default binding: the 2bpp module ------------------------------
 ; (evaluated here, at the END, so an overrider defines its symbols
 ; before sourcing the file and these !ifdefs stay quiet)

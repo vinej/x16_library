@@ -44,6 +44,9 @@
 //                     agnostic: they draw through SHP_PSET/SHP_READ/
 //                     SHP_HLINE (+ SHP_W/SHP_H bounds), which default to
 //                     the 2bpp module; predefine them to bind any engine
+//   X16_USE_SHAPES_POLY  + shape_polygon, shape_fpolygon (regular convex
+//                     N-gons, outline and filled; pulls in MATH for the
+//                     sin8/cos8 vertex placement)
 //   X16_USE_VERAFX    all of the below, as it always has been
 //     _MULT           fx_mult
 //     _FILL           fx_fill, fx_clear
@@ -234,6 +237,14 @@
     #endif
     #if !X16_USE_SCREEN
     #define X16_USE_SCREEN
+    #endif
+#endif
+#if X16_USE_SHAPES_POLY
+    #if !X16_USE_SHAPES
+    #define X16_USE_SHAPES
+    #endif
+    #if !X16_USE_MATH
+    #define X16_USE_MATH
     #endif
 #endif
 #if X16_USE_SHAPES
