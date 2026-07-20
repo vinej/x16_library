@@ -15,6 +15,10 @@
 X16_USE_BITMAP2 = 1
 X16_USE_SHAPES  = 1             ; pulls in VERA and VERAFX
 X16_USE_SHAPES_POLY = 1         ; + regular polygons (pulls in MATH)
+X16_USE_SHAPES_RRECT = 1        ; + rounded rectangles
+X16_USE_SHAPES_ARC = 1          ; + arcs (pulls MATH + SHP_LINE)
+X16_USE_SHAPES_PIE = 1          ; + filled pies (pulls SHAPES_ARC)
+X16_USE_SHAPES_BEZIER = 1       ; + cubic Bezier curves (pulls SHP_LINE)
 
 ; The harness's zero-page pointer (see runner.asm).
 T_ZP = $70
@@ -67,6 +71,10 @@ main
     jsr test_shape_fellipse
     jsr test_shape_flood
     jsr test_shape_polygon
+    jsr test_shape_rrect
+    jsr test_shape_arc
+    jsr test_shape_pie
+    jsr test_shape_bezier
     jsr test_g2_clear
     jsr test_g2_init
 
@@ -1160,6 +1168,291 @@ test_shape_polygon
     ldy #>@name
     jmp t_result
 @name !text "SHAPE_POLYGON", 0
+
+test_shape_rrect
+    lda #200                    ; clean patch at (200,100)
+    ldx #100
+    jsr shp_clear40y
+    lda #200                    ; outline rrect (200,100) 40x30 r=8 colour 3
+    sta rr_x
+    stz rr_x+1
+    lda #100
+    sta rr_y
+    stz rr_y+1
+    lda #40
+    sta rr_w
+    stz rr_w+1
+    lda #30
+    sta rr_h
+    stz rr_h+1
+    lda #8
+    sta rr_r
+    lda #3
+    jsr shape_rrect
+    lda #220                    ; top edge, mid: set
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #200                    ; sharp corner: cut away, clear
+    ldx #100
+    jsr shp_rd
+    bne @report
+    lda #200                    ; left edge, mid height: set
+    ldx #115
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #220                    ; centre: outline leaves it clear
+    ldx #115
+    jsr shp_rd
+    bne @report
+
+    lda #40                     ; clean patch at (40,160)
+    ldx #160
+    jsr shp_clear40y
+    lda #40                     ; filled rrect (40,160) 40x30 r=8 colour 2
+    sta rr_x
+    stz rr_x+1
+    lda #160
+    sta rr_y
+    stz rr_y+1
+    lda #40
+    sta rr_w
+    stz rr_w+1
+    lda #30
+    sta rr_h
+    stz rr_h+1
+    lda #8
+    sta rr_r
+    lda #2
+    jsr shape_frrect
+    lda #60                     ; centre: filled
+    ldx #175
+    jsr shp_rd
+    cmp #2
+    bne @report
+    lda #40                     ; sharp corner: cut away, clear
+    ldx #160
+    jsr shp_rd
+    bne @report
+    lda #60                     ; top flat edge: filled
+    ldx #160
+    jsr shp_rd
+    cmp #2
+    bne @report
+    lda #40                     ; left edge at mid height: filled to x0
+    ldx #175
+    jsr shp_rd
+    cmp #2
+    bne @report
+    ldy #0
+@report
+    tya
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SHAPE_RRECT", 0
+
+test_shape_arc
+    lda #80                     ; clean patch at (80,80)
+    ldx #80
+    jsr shp_clear40y
+    lda #100                    ; arc centre (100,100) r=15, 0..64 (E->S)
+    sta X16_P0
+    stz X16_P1
+    lda #100
+    sta X16_P2
+    stz X16_P3
+    lda #15
+    sta X16_P4                  ; radius
+    lda #0
+    sta X16_P5                  ; start angle: east
+    lda #64
+    sta X16_P6                  ; end angle: south
+    lda #3
+    jsr shape_arc
+    lda #115                    ; east endpoint (cx+r, cy): set
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #100                    ; south endpoint (cx, cy+r): set
+    ldx #115
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #85                     ; west (not in 0..64): clear
+    ldx #100
+    jsr shp_rd
+    bne @report
+    lda #100                    ; north (not in 0..64): clear
+    ldx #85
+    jsr shp_rd
+    bne @report
+    lda #100                    ; centre: an outline leaves it clear
+    ldx #100
+    jsr shp_rd
+    bne @report
+    ldy #0
+@report
+    tya
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SHAPE_ARC", 0
+
+test_shape_pie
+    lda #80                     ; clean patch at (80,80)
+    ldx #80
+    jsr shp_clear40y
+    lda #100                    ; pie centre (100,100) r=15, 0..64 (SE quarter)
+    sta X16_P0
+    stz X16_P1
+    lda #100
+    sta X16_P2
+    stz X16_P3
+    lda #15
+    sta X16_P4
+    lda #0
+    sta X16_P5
+    lda #64
+    sta X16_P6
+    lda #3
+    jsr shape_pie
+    lda #100                    ; centre (the fan apex): filled
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #105                    ; SE interior (45 deg, r~7): filled
+    ldx #105
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #110                    ; on the east radius (angle 0): filled
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @report
+    lda #95                     ; NW (opposite the wedge): clear
+    ldx #95
+    jsr shp_rd
+    bne @report
+    lda #105                    ; NE (outside 0..64): clear
+    ldx #95
+    jsr shp_rd
+    bne @report
+    ldy #0
+@report
+    tya
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SHAPE_PIE", 0
+
+test_shape_bezier
+    lda #95                     ; clean patch at (95,95)
+    ldx #95
+    jsr shp_clear40y
+    lda #100                    ; a straight (collinear) cubic on row 100
+    sta bez_x0                  ; P0 = (100,100)
+    stz bez_x0+1
+    lda #100
+    sta bez_y0
+    stz bez_y0+1
+    lda #110                    ; P1 = (110,100)
+    sta bez_x1
+    stz bez_x1+1
+    lda #100
+    sta bez_y1
+    stz bez_y1+1
+    lda #120                    ; P2 = (120,100)
+    sta bez_x2
+    stz bez_x2+1
+    lda #100
+    sta bez_y2
+    stz bez_y2+1
+    lda #130                    ; P3 = (130,100)
+    sta bez_x3
+    stz bez_x3+1
+    lda #100
+    sta bez_y3
+    stz bez_y3+1
+    lda #3
+    jsr shape_bezier
+    lda #100                    ; P0 anchor: set
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @rep
+    lda #130                    ; P3 anchor: set
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @rep
+    lda #115                    ; midpoint sample (t=0.5): set
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne @rep
+    lda #115                    ; ten rows below: a 1px line leaves it clear
+    ldx #110
+    jsr shp_rd
+    beq @cont
+@rep
+    jmp @report
+@cont
+    lda #98                     ; clean patch at (98,158)
+    ldx #158
+    jsr shp_clear40y
+    lda #100                    ; an arched cubic: handles pull upward
+    sta bez_x0                  ; P0 = (100,190)
+    stz bez_x0+1
+    lda #190
+    sta bez_y0
+    stz bez_y0+1
+    lda #110                    ; P1 = (110,160)
+    sta bez_x1
+    stz bez_x1+1
+    lda #160
+    sta bez_y1
+    stz bez_y1+1
+    lda #125                    ; P2 = (125,160)
+    sta bez_x2
+    stz bez_x2+1
+    lda #160
+    sta bez_y2
+    stz bez_y2+1
+    lda #135                    ; P3 = (135,190)
+    sta bez_x3
+    stz bez_x3+1
+    lda #190
+    sta bez_y3
+    stz bez_y3+1
+    lda #2
+    jsr shape_bezier
+    lda #100                    ; P0 anchor: set
+    ldx #190
+    jsr shp_rd
+    cmp #2
+    bne @report
+    lda #135                    ; P3 anchor: set
+    ldx #190
+    jsr shp_rd
+    cmp #2
+    bne @report
+    lda #117                    ; the straight midpoint: curve arched away, clear
+    ldx #190
+    jsr shp_rd
+    bne @report
+    ldy #0
+@report
+    tya
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@name !text "SHAPE_BEZIER", 0
 
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0

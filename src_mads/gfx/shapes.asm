@@ -1610,6 +1610,1715 @@ poly_prod
 
 .endif
 
+; ---------------------------------------------------------------------
+; shp_line -- shared 16-bit Bresenham (X16_USE_SHP_LINE)
+; ---------------------------------------------------------------------
+; The curve shapes (arc, bezier) sample a handful of points and join
+; them; this is the join. It is the same engine-agnostic gfx2_line walk
+; the polygon carries privately (shapes_poly_line), lifted out so arc and
+; bezier share ONE copy behind their own gate. A program that wants only
+; the polygon still pays nothing for this; one that wants an arc pays for
+; it once, not once per curve.
+;
+;   in: shl_x0/shl_y0 -> shl_x1/shl_y1 (signed words), shl_col = colour
+;       draws through SHP_PSET, so it clips wherever pset clips.
+; ---------------------------------------------------------------------
+.if .def X16_USE_SHP_LINE
+
+shp_line
+	sec                         ; dx = |x1 - x0|, sx = direction
+	lda shl_x1
+	sbc shl_x0
+	sta shl_dx
+	lda shl_x1+1
+	sbc shl_x0+1
+	sta shl_dx+1
+	bpl shapes_sl_dxp
+	sec
+	lda #0
+	sbc shl_dx
+	sta shl_dx
+	lda #0
+	sbc shl_dx+1
+	sta shl_dx+1
+	lda #$FF
+	sta shl_sx
+	sta shl_sx+1
+	bra shapes_sl_dxd
+shapes_sl_dxp
+	lda #1
+	sta shl_sx
+	stz shl_sx+1
+shapes_sl_dxd
+	sec                         ; dy = -|y1 - y0|, sy = direction
+	lda shl_y1
+	sbc shl_y0
+	sta shl_t
+	lda shl_y1+1
+	sbc shl_y0+1
+	sta shl_t+1
+	bpl shapes_sl_dyp
+	sec
+	lda #0
+	sbc shl_t
+	sta shl_t
+	lda #0
+	sbc shl_t+1
+	sta shl_t+1
+	lda #$FF
+	sta shl_sy
+	sta shl_sy+1
+	bra shapes_sl_dyd
+shapes_sl_dyp
+	lda #1
+	sta shl_sy
+	stz shl_sy+1
+shapes_sl_dyd
+	sec                         ; dy stored negative
+	lda #0
+	sbc shl_t
+	sta shl_dy
+	lda #0
+	sbc shl_t+1
+	sta shl_dy+1
+	clc                         ; err = dx + dy
+	lda shl_dx
+	adc shl_dy
+	sta shl_err
+	lda shl_dx+1
+	adc shl_dy+1
+	sta shl_err+1
+shapes_sl_loop
+	lda shl_x0
+	sta X16_P0
+	lda shl_x0+1
+	sta X16_P1
+	lda shl_y0
+	sta X16_P2
+	lda shl_y0+1
+	sta X16_P3
+	lda shl_col
+	jsr SHP_PSET
+	lda shl_x0                  ; reached the endpoint?
+	cmp shl_x1
+	bne shapes_sl_step
+	lda shl_x0+1
+	cmp shl_x1+1
+	bne shapes_sl_step
+	lda shl_y0
+	cmp shl_y1
+	bne shapes_sl_step
+	lda shl_y0+1
+	cmp shl_y1+1
+	bne shapes_sl_step
+	rts
+shapes_sl_step
+	lda shl_err                 ; e2 = 2 * err
+	asl
+	sta shl_e2
+	lda shl_err+1
+	rol
+	sta shl_e2+1
+	sec                         ; e2 >= dy ?  err += dy, x0 += sx
+	lda shl_e2
+	sbc shl_dy
+	lda shl_e2+1
+	sbc shl_dy+1
+	bvc shapes_sl_nv1
+	eor #$80
+shapes_sl_nv1
+	bmi shapes_sl_skx
+	clc
+	lda shl_err
+	adc shl_dy
+	sta shl_err
+	lda shl_err+1
+	adc shl_dy+1
+	sta shl_err+1
+	clc
+	lda shl_x0
+	adc shl_sx
+	sta shl_x0
+	lda shl_x0+1
+	adc shl_sx+1
+	sta shl_x0+1
+shapes_sl_skx
+	sec                         ; e2 <= dx ?  err += dx, y0 += sy
+	lda shl_dx
+	sbc shl_e2
+	lda shl_dx+1
+	sbc shl_e2+1
+	bvc shapes_sl_nv2
+	eor #$80
+shapes_sl_nv2
+	bmi shapes_sl_sky
+	clc
+	lda shl_err
+	adc shl_dx
+	sta shl_err
+	lda shl_err+1
+	adc shl_dx+1
+	sta shl_err+1
+	clc
+	lda shl_y0
+	adc shl_sy
+	sta shl_y0
+	lda shl_y0+1
+	adc shl_sy+1
+	sta shl_y0+1
+shapes_sl_sky
+	jmp shapes_sl_loop
+
+shl_x0  .word 0
+shl_y0  .word 0
+shl_x1  .word 0
+shl_y1  .word 0
+shl_col .byte 0
+shl_dx  .word 0
+shl_dy  .word 0
+shl_sx  .word 0
+shl_sy  .word 0
+shl_err .word 0
+shl_e2  .word 0
+shl_t   .word 0
+
+.endif
+
+; ---------------------------------------------------------------------
+; shape_rrect / shape_frrect -- rounded rectangle (X16_USE_SHAPES_RRECT)
+; ---------------------------------------------------------------------
+; A rectangle with quarter-circle corners. Self-contained: the corners
+; come from a midpoint circle walk (no trig, no MATH dependency), the
+; straight runs from SHP_HLINE / SHP_PSET.
+;
+;   in: rr_x/rr_y = top-left corner (signed words),
+;       rr_w/rr_h = width / height (words, >= 1),
+;       rr_r      = corner radius (0-255, clamped to min(w,h)/2),
+;       A         = colour
+;
+; shape_rrect draws the outline through SHP_PSET (so it clips like
+; shape_circle); shape_frrect fills it with SHP_HLINE spans (so it does
+; NOT clip -- keep it on screen, like shape_disc). r = 0 degenerates to
+; a plain rectangle.
+;
+; The fill precomputes rr_ext[d] = the corner's horizontal half-extent at
+; vertical offset d (0..r) once, then draws one span per row: full width
+; in the straight middle band, inset by rr_ext[d] through the rounded
+; top and bottom bands.
+; ---------------------------------------------------------------------
+.if .def X16_USE_SHAPES_RRECT
+
+shape_rrect
+	sta rr_col
+	stz rr_fl
+	jmp shapes_rr_begin
+shape_frrect
+	sta rr_col
+	lda #1
+	sta rr_fl
+shapes_rr_begin
+	lda rr_x                    ; corner reference points:
+	sta rr_x0                   ;   x0 = x, x1 = x + w - 1
+	lda rr_x+1
+	sta rr_x0+1
+	clc
+	lda rr_x
+	adc rr_w
+	sta rr_x1
+	lda rr_x+1
+	adc rr_w+1
+	sta rr_x1+1
+	lda rr_x1                   ; x1 -= 1
+	bne shapes_k5
+	dec rr_x1+1
+shapes_k5
+	dec rr_x1
+	lda rr_y                    ;   y0 = y, y1 = y + h - 1
+	sta rr_y0
+	lda rr_y+1
+	sta rr_y0+1
+	clc
+	lda rr_y
+	adc rr_h
+	sta rr_y1
+	lda rr_y+1
+	adc rr_h+1
+	sta rr_y1+1
+	lda rr_y1                   ; y1 -= 1
+	bne shapes_k6
+	dec rr_y1+1
+shapes_k6
+	dec rr_y1
+
+	jsr shapes_rr_clampr              ; rr_r = min(rr_r, min(w,h)/2)
+	lda rr_x0                   ; corner centres:
+	clc                         ;   cxl = x0 + r, cxr = x1 - r
+	adc rr_r
+	sta rr_cxl
+	lda rr_x0+1
+	adc #0
+	sta rr_cxl+1
+	sec
+	lda rr_x1
+	sbc rr_r
+	sta rr_cxr
+	lda rr_x1+1
+	sbc #0
+	sta rr_cxr+1
+	lda rr_y0                   ;   cyt = y0 + r, cyb = y1 - r
+	clc
+	adc rr_r
+	sta rr_cyt
+	lda rr_y0+1
+	adc #0
+	sta rr_cyt+1
+	sec
+	lda rr_y1
+	sbc rr_r
+	sta rr_cyb
+	lda rr_y1+1
+	sbc #0
+	sta rr_cyb+1
+
+	lda rr_fl
+	beq shapes_rr_out
+	jmp shapes_rr_fill
+shapes_rr_out
+	jmp shapes_rr_outline
+
+; rr_r = min(rr_r, min(rr_w, rr_h) / 2)
+shapes_rr_clampr
+	lda rr_w                    ; m = min(w, h)  (16-bit unsigned)
+	sta rr_m
+	lda rr_w+1
+	sta rr_m+1
+	lda rr_h+1
+	cmp rr_m+1
+	bcc shapes_rr_cmh
+	bne shapes_rr_cmok
+	lda rr_h
+	cmp rr_m
+	bcs shapes_rr_cmok
+shapes_rr_cmh
+	lda rr_h
+	sta rr_m
+	lda rr_h+1
+	sta rr_m+1
+shapes_rr_cmok
+	lsr rr_m+1                  ; m /= 2
+	ror rr_m
+	lda rr_m+1                  ; m >= 256 ? radius already fits any byte
+	bne shapes_rr_crok
+	lda rr_r                    ; r > m ? clamp to m
+	cmp rr_m
+	bcc shapes_rr_crok
+	lda rr_m
+	sta rr_r
+shapes_rr_crok
+	rts
+
+; --- outline ---------------------------------------------------------
+shapes_rr_outline
+	jsr shapes_rr_corners             ; the four quarter-circle corners
+	; top edge: (cxl, y0) .. (cxr, y0)
+	lda rr_cxl
+	sta X16_P0
+	lda rr_cxl+1
+	sta X16_P1
+	lda rr_y0
+	sta X16_P2
+	lda rr_y0+1
+	sta X16_P3
+	jsr shapes_rr_hspan               ; pset run from P0 to cxr on row P2/P3
+	; bottom edge: (cxl, y1) .. (cxr, y1)
+	lda rr_cxl
+	sta X16_P0
+	lda rr_cxl+1
+	sta X16_P1
+	lda rr_y1
+	sta X16_P2
+	lda rr_y1+1
+	sta X16_P3
+	jsr shapes_rr_hspan
+	; left edge: column x0, rows cyt..cyb
+	lda rr_x0
+	sta X16_P0
+	lda rr_x0+1
+	sta X16_P1
+	jsr shapes_rr_vspan
+	; right edge: column x1, rows cyt..cyb
+	lda rr_x1
+	sta X16_P0
+	lda rr_x1+1
+	sta X16_P1
+	jsr shapes_rr_vspan
+	rts
+
+; pset a horizontal run from (P0/P1) to x=rr_cxr on the row in P2/P3
+shapes_rr_hspan
+	lda X16_P2                  ; hold the row (pset reloads P0..P3)
+	sta rr_ry
+	lda X16_P3
+	sta rr_ry+1
+shapes_rr_hsl
+	lda rr_ry
+	sta X16_P2
+	lda rr_ry+1
+	sta X16_P3
+	lda rr_col
+	jsr SHP_PSET
+	lda X16_P0                  ; at cxr ?
+	cmp rr_cxr
+	bne shapes_rr_hsn
+	lda X16_P1
+	cmp rr_cxr+1
+	beq shapes_rr_hsd
+shapes_rr_hsn
+	inc X16_P0
+	bne shapes_rr_hsl
+	inc X16_P1
+	bra shapes_rr_hsl
+shapes_rr_hsd
+	rts
+
+; pset a vertical run on column (P0/P1) from y=rr_cyt to y=rr_cyb
+shapes_rr_vspan
+	lda X16_P0
+	sta rr_rx
+	lda X16_P1
+	sta rr_rx+1
+	lda rr_cyt
+	sta X16_P2
+	lda rr_cyt+1
+	sta X16_P3
+shapes_rr_vsl
+	lda rr_rx
+	sta X16_P0
+	lda rr_rx+1
+	sta X16_P1
+	lda rr_col
+	jsr SHP_PSET
+	lda X16_P2                  ; at cyb ?
+	cmp rr_cyb
+	bne shapes_rr_vsn
+	lda X16_P3
+	cmp rr_cyb+1
+	beq shapes_rr_vsd
+shapes_rr_vsn
+	inc X16_P2
+	bne shapes_rr_vsl
+	inc X16_P3
+	bra shapes_rr_vsl
+shapes_rr_vsd
+	rts
+
+; walk the quarter circle once; each octant point plots at all 4 corners
+shapes_rr_corners
+	lda rr_r                    ; x = r, y = 0, err = 1 - r
+	sta rr_wx
+	stz rr_wy
+	sec
+	lda #1
+	sbc rr_r
+	sta rr_werr
+	lda #0
+	sbc #0
+	sta rr_werr+1
+shapes_rr_cwl
+	lda rr_wy                   ; while y <= x
+	cmp rr_wx
+	beq shapes_rr_cwp
+	bcs shapes_rr_cwd
+shapes_rr_cwp
+	lda rr_wx                   ; plot (a,b) = (x,y) and (y,x) at 4 corners
+	sta rr_ca
+	lda rr_wy
+	sta rr_cb
+	jsr shapes_rr_c4
+	lda rr_wy
+	sta rr_ca
+	lda rr_wx
+	sta rr_cb
+	jsr shapes_rr_c4
+	jsr shapes_rr_wstep
+	bra shapes_rr_cwl
+shapes_rr_cwd
+	rts
+
+; plot (a,b) offsets at the four corner centres
+shapes_rr_c4
+	sec                         ; TL: (cxl - a, cyt - b)
+	lda rr_cxl
+	sbc rr_ca
+	sta X16_P0
+	lda rr_cxl+1
+	sbc #0
+	sta X16_P1
+	sec
+	lda rr_cyt
+	sbc rr_cb
+	sta X16_P2
+	lda rr_cyt+1
+	sbc #0
+	sta X16_P3
+	lda rr_col
+	jsr SHP_PSET
+	clc                         ; TR: (cxr + a, cyt - b)
+	lda rr_cxr
+	adc rr_ca
+	sta X16_P0
+	lda rr_cxr+1
+	adc #0
+	sta X16_P1
+	sec
+	lda rr_cyt
+	sbc rr_cb
+	sta X16_P2
+	lda rr_cyt+1
+	sbc #0
+	sta X16_P3
+	lda rr_col
+	jsr SHP_PSET
+	sec                         ; BL: (cxl - a, cyb + b)
+	lda rr_cxl
+	sbc rr_ca
+	sta X16_P0
+	lda rr_cxl+1
+	sbc #0
+	sta X16_P1
+	clc
+	lda rr_cyb
+	adc rr_cb
+	sta X16_P2
+	lda rr_cyb+1
+	adc #0
+	sta X16_P3
+	lda rr_col
+	jsr SHP_PSET
+	clc                         ; BR: (cxr + a, cyb + b)
+	lda rr_cxr
+	adc rr_ca
+	sta X16_P0
+	lda rr_cxr+1
+	adc #0
+	sta X16_P1
+	clc
+	lda rr_cyb
+	adc rr_cb
+	sta X16_P2
+	lda rr_cyb+1
+	adc #0
+	sta X16_P3
+	lda rr_col
+	jmp SHP_PSET
+
+; midpoint error walk shared by shapes_rr_corners and the fill's table build
+shapes_rr_wstep
+	inc rr_wy
+	bit rr_werr+1
+	bmi shapes_rr_wgrow
+	dec rr_wx
+	sec                         ; t = y - x
+	lda rr_wy
+	sbc rr_wx
+	sta rr_wt
+	lda #0
+	sbc #0
+	sta rr_wt+1
+	bra shapes_rr_wap
+shapes_rr_wgrow
+	lda rr_wy                   ; t = y
+	sta rr_wt
+	lda #0
+	sta rr_wt+1
+shapes_rr_wap
+	asl rr_wt                   ; err += 2t + 1
+	rol rr_wt+1
+	inc rr_wt
+	bne shapes_k7
+	inc rr_wt+1
+shapes_k7
+	clc
+	lda rr_werr
+	adc rr_wt
+	sta rr_werr
+	lda rr_werr+1
+	adc rr_wt+1
+	sta rr_werr+1
+	rts
+
+; --- fill ------------------------------------------------------------
+shapes_rr_fill
+	jsr shapes_rr_build               ; rr_ext[0..r] = corner half-extents
+	lda rr_y0                   ; row = y0
+	sta rr_ry
+	lda rr_y0+1
+	sta rr_ry+1
+shapes_rr_fl
+	lda rr_y1                   ; row > y1 ? done
+	cmp rr_ry
+	lda rr_y1+1
+	sbc rr_ry+1
+	bvc shapes_k8
+	eor #$80
+shapes_k8
+	bmi shapes_rr_fld
+	jsr shapes_rr_row
+	inc rr_ry
+	bne shapes_rr_fl
+	inc rr_ry+1
+	bra shapes_rr_fl
+shapes_rr_fld
+	rts
+
+; draw the one span for row rr_ry: full width in the middle band, inset
+; by rr_ext[d] in the rounded top/bottom bands
+shapes_rr_row
+	lda rr_ry                   ; row < cyt ?  top rounded band, d = cyt-row
+	cmp rr_cyt
+	lda rr_ry+1
+	sbc rr_cyt+1
+	bvc shapes_k9
+	eor #$80
+shapes_k9
+	bmi shapes_rr_rtop
+	lda rr_cyb                  ; row > cyb ?  bottom band, d = row-cyb
+	cmp rr_ry
+	lda rr_cyb+1
+	sbc rr_ry+1
+	bvc shapes_k10
+	eor #$80
+shapes_k10
+	bmi shapes_rr_rbot
+	ldx #0                      ; middle band: d = 0, ext[0] = r -> full width
+	beq shapes_rr_inset               ; (always: ldx #0 set Z)
+shapes_rr_rtop
+	sec                         ; d = cyt - row (1..r)
+	lda rr_cyt
+	sbc rr_ry
+	tax
+	bra shapes_rr_inset
+shapes_rr_rbot
+	sec                         ; d = row - cyb (1..r)
+	lda rr_ry
+	sbc rr_cyb
+	tax
+shapes_rr_inset
+	lda rr_ext,x                ; ins = rr_ext[d]
+	sta rr_ins
+	stz rr_ins+1
+	sec                         ; P0 = left = cxl - ins
+	lda rr_cxl
+	sbc rr_ins
+	sta X16_P0
+	lda rr_cxl+1
+	sbc #0
+	sta X16_P1
+	lda rr_ry                   ; row
+	sta X16_P2
+	lda rr_ry+1
+	sta X16_P3
+	clc                         ; right = cxr + ins  -> T0
+	lda rr_cxr
+	adc rr_ins
+	sta X16_T0
+	lda rr_cxr+1
+	adc rr_ins+1
+	sta X16_T0+1
+	sec                         ; len = right - left + 1
+	lda X16_T0
+	sbc X16_P0
+	sta X16_P4
+	lda X16_T0+1
+	sbc X16_P1
+	sta X16_P5
+	inc X16_P4
+	bne shapes_k11
+	inc X16_P5
+shapes_k11
+	lda rr_col
+	jmp SHP_HLINE
+
+; rr_ext[d] = corner half-extent at vertical offset d, for d = 0..r
+shapes_rr_build
+	ldx #0                      ; zero rr_ext[0..255]
+	lda #0
+shapes_rr_bz
+	sta rr_ext,x
+	inx
+	bne shapes_rr_bz
+	lda rr_r                    ; ext[0] = r
+	sta rr_ext
+	lda rr_r                    ; walk the quarter circle
+	sta rr_wx
+	stz rr_wy
+	sec
+	lda #1
+	sbc rr_r
+	sta rr_werr
+	lda #0
+	sbc #0
+	sta rr_werr+1
+shapes_rr_bwl
+	lda rr_wy                   ; while y <= x
+	cmp rr_wx
+	beq shapes_rr_bwp
+	bcs shapes_rr_bwd
+shapes_rr_bwp
+	ldx rr_wy                   ; ext[y] = max(ext[y], x)
+	lda rr_wx
+	cmp rr_ext,x
+	bcc shapes_k12
+	sta rr_ext,x
+shapes_k12
+	ldx rr_wx                   ; ext[x] = max(ext[x], y)
+	lda rr_wy
+	cmp rr_ext,x
+	bcc shapes_k13
+	sta rr_ext,x
+shapes_k13
+	jsr shapes_rr_wstep
+	bra shapes_rr_bwl
+shapes_rr_bwd
+	rts
+
+; --- rounded-rect state ----------------------------------------------
+rr_x    .word 0
+rr_y    .word 0
+rr_w    .word 0
+rr_h    .word 0
+rr_r    .byte 0
+rr_col  .byte 0
+rr_fl   .byte 0
+rr_x0   .word 0
+rr_y0   .word 0
+rr_x1   .word 0
+rr_y1   .word 0
+rr_cxl  .word 0
+rr_cxr  .word 0
+rr_cyt  .word 0
+rr_cyb  .word 0
+rr_m    .word 0
+rr_ry   .word 0
+rr_rx   .word 0
+rr_ins  .word 0
+rr_ca   .byte 0
+rr_cb   .byte 0
+rr_wx   .byte 0
+rr_wy   .byte 0
+rr_werr .word 0
+rr_wt   .word 0
+rr_ext
+    :(256) dta 0
+
+.endif
+
+; ---------------------------------------------------------------------
+; shape_arc -- a portion of a circle outline (X16_USE_SHAPES_ARC)
+; ---------------------------------------------------------------------
+; The arc runs from byte-angle `start` to `end`, increasing (0 = east,
+; 64 = south, 128 = west, 192 = north -- the sin8/cos8, screen-y-down
+; convention shared with the polygon). It is sampled every ~4 byte-angle
+; units and the samples are joined with shp_line, so the chord error is
+; under a third of a pixel even at r = 255 and the arc clips wherever
+; SHP_PSET clips. When start == end the whole circle is drawn.
+;
+;   in: P0/P1 = cx, P2/P3 = cy, P4 = r (0-255),
+;       P5 = start angle, P6 = end angle, A = colour
+;
+; shapes_arc_point / shapes_arc_scale place a sample the same way the polygon places
+; a vertex (r * cos8/sin8 / 128, rounded); shape_pie reuses them, which
+; is why they live in this gate and PIE depends on ARC.
+; ---------------------------------------------------------------------
+.if .def X16_USE_SHAPES_ARC
+
+ARC_STEP = 4                    ; byte-angle units between samples
+
+shape_arc
+	sta shl_col                 ; shp_line draws in this colour
+	lda X16_P0
+	sta arc_cx
+	lda X16_P1
+	sta arc_cx+1
+	lda X16_P2
+	sta arc_cy
+	lda X16_P3
+	sta arc_cy+1
+	lda X16_P4
+	sta arc_r
+	lda X16_P5
+	sta arc_a0
+	sec                         ; span = (end - start) & 255; 0 -> 256
+	lda X16_P6
+	sbc arc_a0
+	sta arc_span
+	stz arc_span+1
+	lda arc_span
+	bne shapes_ar_have
+	inc arc_span+1
+shapes_ar_have
+	lda arc_a0                  ; first sample -> shl_x0/y0 (prev point)
+	jsr shapes_arc_point
+	lda arc_px
+	sta shl_x0
+	lda arc_px+1
+	sta shl_x0+1
+	lda arc_py
+	sta shl_y0
+	lda arc_py+1
+	sta shl_y0+1
+	lda arc_a0
+	sta arc_ang
+shapes_ar_loop
+	lda arc_span+1              ; step = min(ARC_STEP, span)
+	bne shapes_ar_full
+	lda arc_span
+	cmp #ARC_STEP
+	bcc shapes_ar_last
+shapes_ar_full
+	lda #ARC_STEP
+	sta arc_step
+	bra shapes_ar_adv
+shapes_ar_last
+	lda arc_span
+	sta arc_step
+shapes_ar_adv
+	clc                         ; ang = (ang + step) mod 256
+	lda arc_ang
+	adc arc_step
+	sta arc_ang
+	sec                         ; span -= step
+	lda arc_span
+	sbc arc_step
+	sta arc_span
+	lda arc_span+1
+	sbc #0
+	sta arc_span+1
+	lda arc_ang                 ; this sample -> shl_x1/y1
+	jsr shapes_arc_point
+	lda arc_px
+	sta shl_x1
+	lda arc_px+1
+	sta shl_x1+1
+	lda arc_py
+	sta shl_y1
+	lda arc_py+1
+	sta shl_y1+1
+	jsr shp_line
+	lda shl_x1                  ; cur -> prev for the next segment
+	sta shl_x0
+	lda shl_x1+1
+	sta shl_x0+1
+	lda shl_y1
+	sta shl_y0
+	lda shl_y1+1
+	sta shl_y0+1
+	lda arc_span                ; span exhausted ? done
+	ora arc_span+1
+	bne shapes_ar_loop
+	rts
+
+; sample at byte-angle A -> (arc_px, arc_py)
+shapes_arc_point
+	pha
+	jsr cos8                    ; A = cos * 127 (signed)
+	jsr shapes_arc_scale              ; arc_off = round(r * A / 128)
+	clc
+	lda arc_cx
+	adc arc_off
+	sta arc_px
+	lda arc_cx+1
+	adc arc_off+1
+	sta arc_px+1
+	pla
+	jsr sin8                    ; A = sin * 127 (signed)
+	jsr shapes_arc_scale
+	clc
+	lda arc_cy
+	adc arc_off
+	sta arc_py
+	lda arc_cy+1
+	adc arc_off+1
+	sta arc_py+1
+	rts
+
+; arc_off = round(arc_r * |A| / 128) with A's sign (A a signed byte)
+shapes_arc_scale
+	stz arc_sgn
+	pha
+	and #$80
+	beq shapes_as_pos
+	inc arc_sgn
+	pla
+	eor #$FF
+	clc
+	adc #1
+	bra shapes_as_mul
+shapes_as_pos
+	pla
+shapes_as_mul
+	jsr shapes_arc_mul8               ; arc_p16 = arc_r * |A|
+	clc
+	lda arc_p16                 ; + 0.5 LSB so >>7 rounds
+	adc #64
+	sta arc_p16
+	lda arc_p16+1
+	adc #0
+	sta arc_p16+1
+	lda arc_p16                 ; >>7 (product < 32768, one byte out)
+	asl
+	lda arc_p16+1
+	rol
+	sta arc_off
+	stz arc_off+1
+	lda arc_sgn
+	beq shapes_as_done
+	sec                         ; negate
+	lda #0
+	sbc arc_off
+	sta arc_off
+	lda #0
+	sbc arc_off+1
+	sta arc_off+1
+shapes_as_done
+	rts
+
+; arc_p16 = arc_r * A  (8x8 -> 16, unsigned)
+shapes_arc_mul8
+	sta arc_t
+	lda #0
+	ldx #8
+shapes_am_loop
+	lsr arc_t
+	bcc shapes_am_skip
+	clc
+	adc arc_r
+shapes_am_skip
+	ror
+	ror arc_p16
+	dex
+	bne shapes_am_loop
+	sta arc_p16+1
+	rts
+
+; --- arc state (shared with shape_pie) -------------------------------
+arc_cx   .word 0
+arc_cy   .word 0
+arc_r    .byte 0
+arc_a0   .byte 0
+arc_ang  .byte 0
+arc_step .byte 0
+arc_span .word 0
+arc_px   .word 0
+arc_py   .word 0
+arc_off  .word 0
+arc_sgn  .byte 0
+arc_p16  .word 0
+arc_t    .byte 0
+
+.endif
+
+; ---------------------------------------------------------------------
+; shape_pie -- a filled wedge from the centre to the arc (X16_USE_SHAPES_PIE)
+; ---------------------------------------------------------------------
+; Same arguments and angle convention as shape_arc; the region swept
+; between the two radii and the arc is filled. It is built as a fan of
+; thin triangles (centre, sample_i, sample_i+1) so ANY span works,
+; including the reflex (> 180-degree) case a single convex scan cannot
+; do; start == end fills the whole disc. The triangles share their radial
+; edges, so like shape_disc it draws with SHP_HLINE (no clipping) and its
+; overdraw on the shared edges is harmless. It reuses ARC's shapes_arc_point.
+;
+;   in: P0/P1 = cx, P2/P3 = cy, P4 = r (0-255),
+;       P5 = start angle, P6 = end angle, A = colour
+; ---------------------------------------------------------------------
+.if .def X16_USE_SHAPES_PIE
+
+shape_pie
+	sta pie_col
+	lda X16_P0
+	sta arc_cx
+	lda X16_P1
+	sta arc_cx+1
+	lda X16_P2
+	sta arc_cy
+	lda X16_P3
+	sta arc_cy+1
+	lda X16_P4
+	sta arc_r
+	lda X16_P5
+	sta arc_a0
+	sec                         ; span = (end - start) & 255; 0 -> 256
+	lda X16_P6
+	sbc arc_a0
+	sta arc_span
+	stz arc_span+1
+	lda arc_span
+	bne shapes_pie_have
+	inc arc_span+1
+shapes_pie_have
+	lda arc_a0                  ; prev = sample(start)
+	jsr shapes_arc_point
+	lda arc_px
+	sta pie_prevx
+	lda arc_px+1
+	sta pie_prevx+1
+	lda arc_py
+	sta pie_prevy
+	lda arc_py+1
+	sta pie_prevy+1
+	lda arc_a0
+	sta arc_ang
+shapes_pie_loop
+	lda arc_span+1              ; step = min(ARC_STEP, span)
+	bne shapes_pie_full
+	lda arc_span
+	cmp #ARC_STEP
+	bcc shapes_pie_last
+shapes_pie_full
+	lda #ARC_STEP
+	sta arc_step
+	bra shapes_pie_adv
+shapes_pie_last
+	lda arc_span
+	sta arc_step
+shapes_pie_adv
+	clc
+	lda arc_ang
+	adc arc_step
+	sta arc_ang
+	sec
+	lda arc_span
+	sbc arc_step
+	sta arc_span
+	lda arc_span+1
+	sbc #0
+	sta arc_span+1
+	lda arc_ang                 ; cur = sample(ang)
+	jsr shapes_arc_point
+	lda arc_cx                  ; triangle A = centre
+	sta tf_ax
+	lda arc_cx+1
+	sta tf_ax+1
+	lda arc_cy
+	sta tf_ay
+	lda arc_cy+1
+	sta tf_ay+1
+	lda pie_prevx               ; B = prev sample
+	sta tf_bx
+	lda pie_prevx+1
+	sta tf_bx+1
+	lda pie_prevy
+	sta tf_by
+	lda pie_prevy+1
+	sta tf_by+1
+	lda arc_px                  ; C = cur sample
+	sta tf_cx
+	lda arc_px+1
+	sta tf_cx+1
+	lda arc_py
+	sta tf_cy
+	lda arc_py+1
+	sta tf_cy+1
+	jsr shapes_tf_fill
+	lda arc_px                  ; prev = cur
+	sta pie_prevx
+	lda arc_px+1
+	sta pie_prevx+1
+	lda arc_py
+	sta pie_prevy
+	lda arc_py+1
+	sta pie_prevy+1
+	lda arc_span                ; span exhausted ? done
+	ora arc_span+1
+	beq shapes_pie_done
+	jmp shapes_pie_loop
+shapes_pie_done
+	rts
+
+; --- triangle scanline fill (fan primitive) --------------------------
+; Fills triangle (tf_ax/ay, tf_bx/by, tf_cx/cy) in pie_col with SHP_HLINE
+; spans. Sorts the vertices by y, then walks the long edge and the two
+; short edges by scanline with a division-free DDA (err += |dx|; while
+; err >= dy: x += sign, err -= dy). A zero-height triangle has no area
+; and is skipped. Edge state is two-wide: index 0 = long, 2 = short.
+shapes_tf_fill
+	jsr shapes_tf_sort                ; ay <= by <= cy
+	lda tf_ay                   ; ay == cy ? zero height, nothing to fill
+	cmp tf_cy
+	bne shapes_tf_go
+	lda tf_ay+1
+	cmp tf_cy+1
+	bne shapes_tf_go
+	rts
+shapes_tf_go
+	lda tf_ax                   ; long edge a -> c  (index 0)
+	sta tf_isx
+	lda tf_ax+1
+	sta tf_isx+1
+	lda tf_ay
+	sta tf_isy
+	lda tf_ay+1
+	sta tf_isy+1
+	lda tf_cx
+	sta tf_iex
+	lda tf_cx+1
+	sta tf_iex+1
+	lda tf_cy
+	sta tf_iey
+	lda tf_cy+1
+	sta tf_iey+1
+	ldx #0
+	jsr shapes_tf_init
+	lda tf_ay                   ; y = ay
+	sta tf_y
+	lda tf_ay+1
+	sta tf_y+1
+	sec                         ; phase 1 only if ay < by
+	lda tf_ay
+	sbc tf_by
+	lda tf_ay+1
+	sbc tf_by+1
+	bvc shapes_k14
+	eor #$80
+shapes_k14
+	bpl shapes_tf_p2init              ; ay >= by (flat top): skip to phase 2
+	lda tf_ax                   ; short edge a -> b  (index 2)
+	sta tf_isx
+	lda tf_ax+1
+	sta tf_isx+1
+	lda tf_ay
+	sta tf_isy
+	lda tf_ay+1
+	sta tf_isy+1
+	lda tf_bx
+	sta tf_iex
+	lda tf_bx+1
+	sta tf_iex+1
+	lda tf_by
+	sta tf_iey
+	lda tf_by+1
+	sta tf_iey+1
+	ldx #2
+	jsr shapes_tf_init
+shapes_tf_p1loop
+	sec                         ; y >= by ? phase 1 done
+	lda tf_y
+	sbc tf_by
+	lda tf_y+1
+	sbc tf_by+1
+	bvc shapes_k15
+	eor #$80
+shapes_k15
+	bmi shapes_tf_p1do
+	jmp shapes_tf_p2init
+shapes_tf_p1do
+	jsr shapes_tf_emitrow
+	ldx #0
+	jsr shapes_tf_adv
+	ldx #2
+	jsr shapes_tf_adv
+	inc tf_y
+	bne shapes_k16
+	inc tf_y+1
+shapes_k16
+	jmp shapes_tf_p1loop
+shapes_tf_p2init
+	lda tf_bx                   ; short edge b -> c  (index 2)
+	sta tf_isx
+	lda tf_bx+1
+	sta tf_isx+1
+	lda tf_by
+	sta tf_isy
+	lda tf_by+1
+	sta tf_isy+1
+	lda tf_cx
+	sta tf_iex
+	lda tf_cx+1
+	sta tf_iex+1
+	lda tf_cy
+	sta tf_iey
+	lda tf_cy+1
+	sta tf_iey+1
+	ldx #2
+	jsr shapes_tf_init
+shapes_tf_p2loop
+	jsr shapes_tf_emitrow
+	lda tf_y                    ; y == cy ? done (last row)
+	cmp tf_cy
+	bne shapes_tf_p2do
+	lda tf_y+1
+	cmp tf_cy+1
+	bne shapes_tf_p2do
+	rts
+shapes_tf_p2do
+	ldx #0
+	jsr shapes_tf_adv
+	ldx #2
+	jsr shapes_tf_adv
+	inc tf_y
+	bne shapes_k17
+	inc tf_y+1
+shapes_k17
+	jmp shapes_tf_p2loop
+
+; sort tf_a/tf_b/tf_c by y ascending (each slot is x.w then y.w)
+shapes_tf_sort
+	jsr shapes_tf_cmp_ab
+	bpl shapes_k18
+	jsr shapes_tf_swap_ab
+shapes_k18
+	jsr shapes_tf_cmp_bc
+	bpl shapes_k19
+	jsr shapes_tf_swap_bc
+shapes_k19
+	jsr shapes_tf_cmp_ab
+	bpl shapes_k20
+	jsr shapes_tf_swap_ab
+shapes_k20
+	rts
+shapes_tf_cmp_ab
+	sec
+	lda tf_by
+	sbc tf_ay
+	lda tf_by+1
+	sbc tf_ay+1
+	bvc shapes_k21
+	eor #$80
+shapes_k21
+	rts
+shapes_tf_cmp_bc
+	sec
+	lda tf_cy
+	sbc tf_by
+	lda tf_cy+1
+	sbc tf_by+1
+	bvc shapes_k22
+	eor #$80
+shapes_k22
+	rts
+shapes_tf_swap_ab
+	ldx #3
+shapes_tsab
+	lda tf_ax,x
+	ldy tf_bx,x
+	sta tf_bx,x
+	tya
+	sta tf_ax,x
+	dex
+	bpl shapes_tsab
+	rts
+shapes_tf_swap_bc
+	ldx #3
+shapes_tsbc
+	lda tf_bx,x
+	ldy tf_cx,x
+	sta tf_cx,x
+	tya
+	sta tf_bx,x
+	dex
+	bpl shapes_tsbc
+	rts
+
+; init edge X (0 long / 2 short) from (tf_isx,tf_isy) to (tf_iex,tf_iey)
+shapes_tf_init
+	lda tf_isx
+	sta e_curx,x
+	lda tf_isx+1
+	sta e_curx+1,x
+	sec                         ; dy = iey - isy  (>= 0)
+	lda tf_iey
+	sbc tf_isy
+	sta e_dy,x
+	lda tf_iey+1
+	sbc tf_isy+1
+	sta e_dy+1,x
+	sec                         ; dx = iex - isx  (signed)
+	lda tf_iex
+	sbc tf_isx
+	sta tf_edx
+	lda tf_iex+1
+	sbc tf_isx+1
+	sta tf_edx+1
+	bpl shapes_ti_pos
+	sec                         ; adx = -dx, sx = -1
+	lda #0
+	sbc tf_edx
+	sta e_adx,x
+	lda #0
+	sbc tf_edx+1
+	sta e_adx+1,x
+	lda #$FF
+	sta e_sx,x
+	sta e_sx+1,x
+	bra shapes_ti_err
+shapes_ti_pos
+	lda tf_edx                  ; adx = dx, sx = +1
+	sta e_adx,x
+	lda tf_edx+1
+	sta e_adx+1,x
+	lda #1
+	sta e_sx,x
+	stz e_sx+1,x
+shapes_ti_err
+	stz e_err,x
+	stz e_err+1,x
+	rts
+
+; advance edge X by one scanline (dy for this edge must be > 0)
+shapes_tf_adv
+	clc                         ; err += adx
+	lda e_err,x
+	adc e_adx,x
+	sta e_err,x
+	lda e_err+1,x
+	adc e_adx+1,x
+	sta e_err+1,x
+shapes_ta_w
+	sec                         ; err >= dy ?
+	lda e_err,x
+	sbc e_dy,x
+	tay
+	lda e_err+1,x
+	sbc e_dy+1,x
+	bcc shapes_ta_done                ; err < dy
+	sta e_err+1,x               ; err -= dy
+	tya
+	sta e_err,x
+	clc                         ; x += sx
+	lda e_curx,x
+	adc e_sx,x
+	sta e_curx,x
+	lda e_curx+1,x
+	adc e_sx+1,x
+	sta e_curx+1,x
+	bra shapes_ta_w
+shapes_ta_done
+	rts
+
+; HLINE on row tf_y between the long (index 0) and short (index 2) x's
+shapes_tf_emitrow
+	sec                         ; diff = short_x - long_x
+	lda e_curx+2
+	sbc e_curx
+	sta tf_tmp
+	lda e_curx+3
+	sbc e_curx+1
+	sta tf_tmp+1
+	bpl shapes_te_pos                 ; short >= long: left = long, len = diff+1
+	lda e_curx+2                ; short < long: left = short, len = -diff+1
+	sta X16_P0
+	lda e_curx+3
+	sta X16_P1
+	sec
+	lda #0
+	sbc tf_tmp
+	sta X16_P4
+	lda #0
+	sbc tf_tmp+1
+	sta X16_P5
+	bra shapes_te_len
+shapes_te_pos
+	lda e_curx
+	sta X16_P0
+	lda e_curx+1
+	sta X16_P1
+	lda tf_tmp
+	sta X16_P4
+	lda tf_tmp+1
+	sta X16_P5
+shapes_te_len
+	inc X16_P4                  ; len = |diff| + 1
+	bne shapes_k23
+	inc X16_P5
+shapes_k23
+	lda tf_y
+	sta X16_P2
+	lda tf_y+1
+	sta X16_P3
+	lda pie_col
+	jsr SHP_HLINE
+	rts
+
+; --- pie / triangle-fill state ---------------------------------------
+pie_col   .byte 0
+pie_prevx .word 0
+pie_prevy .word 0
+tf_ax  .word 0
+tf_ay  .word 0
+tf_bx  .word 0
+tf_by  .word 0
+tf_cx  .word 0
+tf_cy  .word 0
+tf_y   .word 0
+tf_isx .word 0
+tf_isy .word 0
+tf_iex .word 0
+tf_iey .word 0
+tf_edx .word 0
+tf_tmp .word 0
+e_curx
+    :(4) dta 0
+e_err
+    :(4) dta 0
+e_adx
+    :(4) dta 0
+e_dy
+    :(4) dta 0
+e_sx
+    :(4) dta 0
+
+.endif
+
+; ---------------------------------------------------------------------
+; shape_bezier -- cubic Bezier curve (X16_USE_SHAPES_BEZIER)
+; ---------------------------------------------------------------------
+; The curve through four control points P0 (on the curve), P1, P2
+; (handles), P3 (on the curve), by de Casteljau at a handful of t and
+; shp_line between the samples. The sample count adapts to the control
+; polygon's size (its Manhattan perimeter / 8, clamped to 4..64), so a
+; small curve is cheap and a large one stays smooth. Clips wherever
+; SHP_PSET clips.
+;
+;   in: bez_x0/bez_y0 .. bez_x3/bez_y3 = the four control points
+;       (signed words, set by the caller), A = colour
+;
+; t is an 8-bit fraction (0..255); the endpoints P0 and P3 are emitted
+; exactly rather than evaluated, so the curve meets its anchors.
+; ---------------------------------------------------------------------
+.if .def X16_USE_SHAPES_BEZIER
+
+shape_bezier
+	sta shl_col
+	jsr shapes_bz_nseg                ; bez_n = clamp(perimeter/8, 4, 64)
+	lda bez_x0                  ; prev = P0 (emitted exactly)
+	sta shl_x0
+	lda bez_x0+1
+	sta shl_x0+1
+	lda bez_y0
+	sta shl_y0
+	lda bez_y0+1
+	sta shl_y0+1
+	lda #1
+	sta bez_i
+	stz bez_tb
+	stz bez_rem
+	stz bez_rem+1
+shapes_bz_loop
+	lda bez_i                   ; i == n ? last segment goes to P3
+	cmp bez_n
+	beq shapes_bz_last
+	inc bez_rem+1               ; rem += 256; while rem >= n: tb++, rem -= n
+shapes_bz_tw
+	lda bez_rem+1
+	bne shapes_bz_tsub
+	lda bez_rem
+	cmp bez_n
+	bcc shapes_bz_tdone
+shapes_bz_tsub
+	sec
+	lda bez_rem
+	sbc bez_n
+	sta bez_rem
+	lda bez_rem+1
+	sbc #0
+	sta bez_rem+1
+	inc bez_tb
+	bra shapes_bz_tw
+shapes_bz_tdone
+	jsr shapes_bz_eval                ; (bez_rx, bez_ry) = B(tb)
+	lda bez_rx
+	sta shl_x1
+	lda bez_rx+1
+	sta shl_x1+1
+	lda bez_ry
+	sta shl_y1
+	lda bez_ry+1
+	sta shl_y1+1
+	jsr shp_line
+	lda shl_x1                  ; cur -> prev
+	sta shl_x0
+	lda shl_x1+1
+	sta shl_x0+1
+	lda shl_y1
+	sta shl_y0
+	lda shl_y1+1
+	sta shl_y0+1
+	inc bez_i
+	jmp shapes_bz_loop
+shapes_bz_last
+	lda bez_x3                  ; final sample = P3, exact
+	sta shl_x1
+	lda bez_x3+1
+	sta shl_x1+1
+	lda bez_y3
+	sta shl_y1
+	lda bez_y3+1
+	sta shl_y1+1
+	jmp shp_line
+
+; bez_n = clamp(Manhattan perimeter of the control polygon / 8, 4, 64)
+shapes_bz_nseg
+	stz bez_per
+	stz bez_per+1
+	ldx #0                      ; X = 4*k over the three control segments
+shapes_bn_loop
+	sec                         ; dx = pts[k+1]shapes_x - pts[k]shapes_x
+	lda bez_x0+4,x
+	sbc bez_x0,x
+	sta bez_tmp
+	lda bez_x0+5,x
+	sbc bez_x0+1,x
+	sta bez_tmp+1
+	jsr shapes_bz_absacc
+	sec                         ; dy = pts[k+1]shapes_y - pts[k]shapes_y
+	lda bez_x0+6,x
+	sbc bez_x0+2,x
+	sta bez_tmp
+	lda bez_x0+7,x
+	sbc bez_x0+3,x
+	sta bez_tmp+1
+	jsr shapes_bz_absacc
+	inx
+	inx
+	inx
+	inx
+	cpx #12
+	bne shapes_bn_loop
+	ldx #3                      ; per >>= 3
+shapes_bn_sh
+	lsr bez_per+1
+	ror bez_per
+	dex
+	bne shapes_bn_sh
+	lda bez_per+1               ; clamp high -> 64
+	bne shapes_bn_hi
+	lda bez_per
+	cmp #64
+	bcs shapes_bn_hi
+	cmp #4
+	bcs shapes_bn_ok                  ; 4..63
+	lda #4
+shapes_bn_ok
+	sta bez_n
+	rts
+shapes_bn_hi
+	lda #64
+	sta bez_n
+	rts
+
+; bez_per += |bez_tmp|  (signed word magnitude)
+shapes_bz_absacc
+	lda bez_tmp+1
+	bpl shapes_ba_pos
+	sec
+	lda #0
+	sbc bez_tmp
+	sta bez_tmp
+	lda #0
+	sbc bez_tmp+1
+	sta bez_tmp+1
+shapes_ba_pos
+	clc
+	lda bez_per
+	adc bez_tmp
+	sta bez_per
+	lda bez_per+1
+	adc bez_tmp+1
+	sta bez_per+1
+	rts
+
+; (bez_rx, bez_ry) = cubic B(bez_tb) by de Casteljau
+shapes_bz_eval
+	ldx #0                      ; copy control points into the work arrays
+	ldy #0
+shapes_be_cp
+	lda bez_x0,y
+	sta bez_wx,x
+	lda bez_x0+1,y
+	sta bez_wx+1,x
+	lda bez_x0+2,y
+	sta bez_wy,x
+	lda bez_x0+3,y
+	sta bez_wy+1,x
+	inx
+	inx
+	tya
+	clc
+	adc #4
+	tay
+	cpx #8
+	bne shapes_be_cp
+	lda #3
+	sta bez_cnt
+shapes_be_lvl
+	lda bez_cnt                 ; inner loop j = 0 .. cnt-1  (index j*2)
+	asl
+	sta bez_lim
+	stz bez_jx
+shapes_be_jx
+	ldx bez_jx                  ; wx[j] = lerp(wx[j], wx[j+1], t)
+	lda bez_wx,x
+	sta bez_p
+	lda bez_wx+1,x
+	sta bez_p+1
+	lda bez_wx+2,x
+	sta bez_q
+	lda bez_wx+3,x
+	sta bez_q+1
+	jsr shapes_bz_lerp
+	ldx bez_jx
+	lda bez_r
+	sta bez_wx,x
+	lda bez_r+1
+	sta bez_wx+1,x
+	lda bez_wy,x                ; wy[j] = lerp(wy[j], wy[j+1], t)
+	sta bez_p
+	lda bez_wy+1,x
+	sta bez_p+1
+	lda bez_wy+2,x
+	sta bez_q
+	lda bez_wy+3,x
+	sta bez_q+1
+	jsr shapes_bz_lerp
+	ldx bez_jx
+	lda bez_r
+	sta bez_wy,x
+	lda bez_r+1
+	sta bez_wy+1,x
+	lda bez_jx
+	clc
+	adc #2
+	sta bez_jx
+	cmp bez_lim
+	bne shapes_be_jx
+	dec bez_cnt
+	bne shapes_be_lvl
+	lda bez_wx                  ; result = work[0]
+	sta bez_rx
+	lda bez_wx+1
+	sta bez_rx+1
+	lda bez_wy
+	sta bez_ry
+	lda bez_wy+1
+	sta bez_ry+1
+	rts
+
+; bez_r = bez_p + round((bez_q - bez_p) * bez_tb / 256)   (signed)
+shapes_bz_lerp
+	sec                         ; d = q - p
+	lda bez_q
+	sbc bez_p
+	sta bez_d
+	lda bez_q+1
+	sbc bez_p+1
+	sta bez_d+1
+	stz bez_dsgn
+	lda bez_d+1                 ; take |d|, remember the sign
+	bpl shapes_bl_pos
+	inc bez_dsgn
+	sec
+	lda #0
+	sbc bez_d
+	sta bez_d
+	lda #0
+	sbc bez_d+1
+	sta bez_d+1
+shapes_bl_pos
+	jsr shapes_bz_mul                 ; bez_prod = |d| * t (24-bit)
+	clc                         ; + 128 (round), then take bytes 1..2 (>>8)
+	lda bez_prod
+	adc #128
+	lda bez_prod+1
+	adc #0
+	sta bez_m
+	lda bez_prod+2
+	adc #0
+	sta bez_m+1
+	lda bez_dsgn
+	beq shapes_bl_add
+	sec                         ; re-apply the sign
+	lda #0
+	sbc bez_m
+	sta bez_m
+	lda #0
+	sbc bez_m+1
+	sta bez_m+1
+shapes_bl_add
+	clc                         ; r = p + m
+	lda bez_p
+	adc bez_m
+	sta bez_r
+	lda bez_p+1
+	adc bez_m+1
+	sta bez_r+1
+	rts
+
+; bez_prod (24-bit) = bez_d (16-bit) * bez_tb (8-bit), unsigned
+shapes_bz_mul
+	stz bez_prod
+	stz bez_prod+1
+	stz bez_prod+2
+	lda bez_tb
+	sta bez_mt
+	ldx #8
+shapes_bm_loop
+	asl bez_prod
+	rol bez_prod+1
+	rol bez_prod+2
+	asl bez_mt
+	bcc shapes_bm_skip
+	clc
+	lda bez_prod
+	adc bez_d
+	sta bez_prod
+	lda bez_prod+1
+	adc bez_d+1
+	sta bez_prod+1
+	lda bez_prod+2
+	adc #0
+	sta bez_prod+2
+shapes_bm_skip
+	dex
+	bne shapes_bm_loop
+	rts
+
+; --- bezier state ----------------------------------------------------
+bez_x0 .word 0
+bez_y0 .word 0
+bez_x1 .word 0
+bez_y1 .word 0
+bez_x2 .word 0
+bez_y2 .word 0
+bez_x3 .word 0
+bez_y3 .word 0
+bez_n    .byte 0
+bez_i    .byte 0
+bez_tb   .byte 0
+bez_rem  .word 0
+bez_per  .word 0
+bez_tmp  .word 0
+bez_rx   .word 0
+bez_ry   .word 0
+bez_wx
+    :(8) dta 0
+bez_wy
+    :(8) dta 0
+bez_cnt  .byte 0
+bez_lim  .byte 0
+bez_jx   .byte 0
+bez_p    .word 0
+bez_q    .word 0
+bez_d    .word 0
+bez_dsgn .byte 0
+bez_prod
+    :(3) dta 0
+bez_mt   .byte 0
+bez_m    .word 0
+bez_r    .word 0
+
+.endif
+
 ; --- the default binding: the 2bpp module ------------------------------
 ; (evaluated here, at the END, so an overrider defines its symbols
 ; before sourcing the file and these !ifdefs stay quiet)

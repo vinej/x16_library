@@ -46,6 +46,11 @@ X16_USE_INT32 = 0
 X16_USE_FLOAT = 0
 X16_USE_SHAPES_POLY = 0
 X16_USE_SHAPES = 0
+X16_USE_SHAPES_PIE = 0
+X16_USE_SHAPES_ARC = 0
+X16_USE_SHP_LINE = 0
+X16_USE_SHAPES_RRECT = 0
+X16_USE_SHAPES_BEZIER = 0
 X16_USE_DOUBLE = 0
 X16_USE_VERAFX_FILL = 0
 X16_USE_VERAFX_MULT = 0
@@ -97,13 +102,15 @@ xuse_int16 = xuse_all || X16_USE_INT16 != 0
 xuse_int32 = xuse_all || X16_USE_INT32 != 0
 xuse_float = xuse_all || X16_USE_FLOAT != 0
 xuse_shapes_poly = X16_USE_SHAPES_POLY != 0
+xuse_shapes_pie = X16_USE_SHAPES_PIE != 0
+xuse_shapes_rrect = X16_USE_SHAPES_RRECT != 0
+xuse_shapes_bezier = X16_USE_SHAPES_BEZIER != 0
 xuse_double = X16_USE_DOUBLE != 0
 xuse_screen = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
 xuse_irq = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
 xuse_pcm = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
-xuse_math = xuse_all || X16_USE_MATH != 0 || xuse_shapes_poly
 xuse_number = xuse_all || X16_USE_NUMBER != 0 || xuse_int16
-xuse_shapes = xuse_shapes_poly || X16_USE_SHAPES != 0
+xuse_shapes_arc = xuse_shapes_pie || X16_USE_SHAPES_ARC != 0
 xuse_verafx_mult = xuse_verafx || X16_USE_VERAFX_MULT != 0
 xuse_verafx_copy = xuse_verafx || X16_USE_VERAFX_COPY != 0
 xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
@@ -112,7 +119,8 @@ xuse_verafx_line = xuse_verafx || X16_USE_VERAFX_LINE != 0
 xuse_verafx_tri = xuse_verafx || X16_USE_VERAFX_TRI != 0
 xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
 xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
-xuse_bitmap2 = xuse_all || X16_USE_BITMAP2 != 0 || xuse_shapes
+xuse_math = xuse_all || X16_USE_MATH != 0 || xuse_shapes_poly || xuse_shapes_arc
+xuse_shp_line = xuse_shapes_arc || X16_USE_SHP_LINE != 0 || xuse_shapes_bezier
 xuse_verafx_linetri = xuse_verafx_line || X16_USE_VERAFX_LINETRI != 0 || xuse_verafx_tri
 xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
 xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
@@ -120,14 +128,16 @@ xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0
 xuse_input_any = xuse_input_core || xuse_input_keywait
 xuse_screen_core = xuse_screen || X16_USE_SCREEN_CORE != 0
 xuse_screen_extra = xuse_screen || X16_USE_SCREEN_EXTRA != 0
-xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
-xuse_verafx_fill = xuse_bitmap2 || X16_USE_VERAFX_FILL != 0 || xuse_verafx
+xuse_shapes = xuse_shapes_poly || X16_USE_SHAPES != 0 || xuse_shapes_pie || xuse_shapes_arc || xuse_shapes_rrect || xuse_shapes_bezier || xuse_shp_line
 xuse_irq_sprcol = xuse_irq || X16_USE_IRQ_SPRCOL != 0 || xuse_irq_sprcol_api
 xuse_screen_any = xuse_screen_core || xuse_screen_extra
+xuse_bitmap2 = xuse_all || X16_USE_BITMAP2 != 0 || xuse_shapes
+xuse_irq_any = xuse_irq_core || xuse_irq_vsync || xuse_irq_sprcol
+xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
+xuse_verafx_fill = xuse_bitmap2 || X16_USE_VERAFX_FILL != 0 || xuse_verafx
 xuse_verafx_any = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
 xuse_vera_core = xuse_vera || X16_USE_VERA_CORE != 0
 xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0
-xuse_irq_any = xuse_irq_core || xuse_irq_vsync || xuse_irq_sprcol
 xuse_vera_any = xuse_vera_core || xuse_vera_copy
 
 ; --- modules (the ACME tree's order) ---

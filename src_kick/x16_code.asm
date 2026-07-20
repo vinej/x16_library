@@ -47,6 +47,15 @@
 //   X16_USE_SHAPES_POLY  + shape_polygon, shape_fpolygon (regular convex
 //                     N-gons, outline and filled; pulls in MATH for the
 //                     sin8/cos8 vertex placement)
+//   X16_USE_SHAPES_RRECT + shape_rrect, shape_frrect (rounded rectangle,
+//                     outline and filled; self-contained, no trig)
+//   X16_USE_SHAPES_ARC   + shape_arc (a portion of a circle outline
+//                     between two byte-angles; pulls MATH + the shared
+//                     line helper X16_USE_SHP_LINE)
+//   X16_USE_SHAPES_PIE   + shape_pie (a filled wedge from the centre to
+//                     the arc; pulls in SHAPES_ARC)
+//   X16_USE_SHAPES_BEZIER + shape_bezier (a cubic Bezier curve through
+//                     four control points; pulls the shared line helper)
 //   X16_USE_VERAFX    all of the below, as it always has been
 //     _MULT           fx_mult
 //     _FILL           fx_fill, fx_clear
@@ -252,6 +261,47 @@
     #if !X16_USE_MATH
     #define X16_USE_MATH
     #endif
+#endif
+// The curve shapes. PIE reuses ARC's trig point helper, so it pulls ARC;
+// ARC and BEZIER share one 16-bit Bresenham (the internal X16_USE_SHP_LINE).
+// Ordered so a pulled gate's own dependencies still get a turn below it:
+// PIE sets ARC, then ARC sets MATH + SHP_LINE, then SHP_LINE sets SHAPES.
+#if X16_USE_SHAPES_PIE
+    #if !X16_USE_SHAPES
+    #define X16_USE_SHAPES
+    #endif
+    #if !X16_USE_SHAPES_ARC
+    #define X16_USE_SHAPES_ARC
+    #endif
+#endif
+#if X16_USE_SHAPES_ARC
+    #if !X16_USE_SHAPES
+    #define X16_USE_SHAPES
+    #endif
+    #if !X16_USE_MATH
+    #define X16_USE_MATH
+    #endif
+    #if !X16_USE_SHP_LINE
+    #define X16_USE_SHP_LINE
+    #endif
+#endif
+#if X16_USE_SHAPES_RRECT
+#if !X16_USE_SHAPES
+#define X16_USE_SHAPES
+#endif
+#endif
+#if X16_USE_SHAPES_BEZIER
+    #if !X16_USE_SHAPES
+    #define X16_USE_SHAPES
+    #endif
+    #if !X16_USE_SHP_LINE
+    #define X16_USE_SHP_LINE
+    #endif
+#endif
+#if X16_USE_SHP_LINE
+#if !X16_USE_SHAPES
+#define X16_USE_SHAPES
+#endif
 #endif
 #if X16_USE_SHAPES
     #if !SHP_PSET

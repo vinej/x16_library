@@ -279,6 +279,11 @@ treated as caller-save scratch.
 | `X16_USE_BITMAP2` | 640×480 @ 2bpp (4 colours, 160-byte rows, MSB-first pixels): `gfx2_init`, `gfx2_clear` (FX cache fill), `gfx2_setptr`, `gfx2_pset`, `gfx2_read`, `gfx2_hline`, `gfx2_vline`, `gfx2_rect`, `gfx2_frame`, `gfx2_line`, `gfx2_pattern_set`/`gfx2_pattern_rect` (screen-anchored 8×8 patterns), `gfx2_blit` (byte-aligned raster ops copy/OR/AND/XOR), `gfx2_blitm` (masked pre-shifted column blit — proportional-text speed). Pulls in VERA and VERAFX. Spans clip like the 8bpp module: `gfx2_pset`/`gfx2_read` clip, the rest assume on-screen arguments |
 | `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_ellipse`, `shape_fellipse`, `shape_flood` — engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`), so ONE copy serves both bitmap modules: the default binds them to `gfx2` (2bpp); bind `SHP_*` to `gfx_*` for 8bpp. Pulls in `X16_USE_BITMAP2` by default. (kick/mads can't test definedness of an already-referenced symbol, so overriding a binding there sets a sentinel alongside it: `SHP_PSET_SET = 1` next to your `SHP_PSET`, and likewise per symbol.) |
 | `X16_USE_SHAPES_POLY` | Adds `shape_polygon` (outline) and `shape_fpolygon` (filled) — regular convex N-gons through the same `SHP_*` bindings. Pulls in `X16_USE_SHAPES` and `X16_USE_MATH` (the vertices come from `sin8`/`cos8`), so it is a pay-per-use extra: a program that only draws circles keeps a math-free `SHAPES` build. |
+| `X16_USE_SHAPES_RRECT` | Adds `shape_rrect` (outline) and `shape_frrect` (filled) — rounded rectangles. Caller sets `rr_x`/`rr_y` (top-left), `rr_w`/`rr_h`, `rr_r` (corner radius, clamped to `min(w,h)/2`); colour in `A`. Self-contained (the corners come from a midpoint circle walk, no trig), so it only pulls in `X16_USE_SHAPES`. |
+| `X16_USE_SHAPES_ARC` | Adds `shape_arc` — a portion of a circle outline from a start to an end byte-angle (`0` = east, `64` = south, the `sin8`/`cos8` convention; `start == end` draws the whole circle). Args in the P block: `P0/P1` = cx, `P2/P3` = cy, `P4` = r, `P5` = start, `P6` = end, colour in `A`. Sampled every ~4 byte-angle units and joined with the shared line helper, so the chord error stays under a third of a pixel. Pulls in `X16_USE_MATH` and `X16_USE_SHP_LINE`. |
+| `X16_USE_SHAPES_PIE` | Adds `shape_pie` — a filled wedge from the centre to the arc, same arguments as `shape_arc`. Built as a fan of triangles, so any span works (including the reflex &gt; 180° case, and `start == end` for a whole disc); draws with `SHP_HLINE`. Pulls in `X16_USE_SHAPES_ARC` (it reuses the arc's sample placement). |
+| `X16_USE_SHAPES_BEZIER` | Adds `shape_bezier` — a cubic Bézier through four control points. Caller sets `bez_x0`/`bez_y0` … `bez_x3`/`bez_y3` (signed words); colour in `A`. Evaluated by de Casteljau at a size-adaptive number of samples (control-polygon perimeter / 8, clamped to 4..64) and joined with the shared line helper; the P0/P3 anchors are emitted exactly. Pulls in `X16_USE_SHP_LINE`. |
+| `X16_USE_SHP_LINE` | Internal: the shared 16-bit Bresenham (`shp_line`, `shl_x0`/`shl_y0` → `shl_x1`/`shl_y1`, `shl_col`) that `SHAPES_ARC` and `SHAPES_BEZIER` join their samples with. Pulled automatically; you would not normally set it yourself. |
 | `X16_USE_VERAFX` | All of the parts below, as it always has been. The parts exist because the whole is 2.5 KB and a program that wants one fast fill should not carry a rotozoom sampler to get it — `X16_USE_BITMAP2` asks for `_FILL` alone and is 2,162 bytes lighter for it. `fx_off` comes with any part. |
 |   `X16_USE_VERAFX_MULT` | `fx_mult` (signed 16×16→32 in hardware) |
 |   `X16_USE_VERAFX_FILL` | `fx_fill`, `fx_clear` |
@@ -435,6 +440,22 @@ flat-top one. The vertices come from `sin8`/`cos8`, so the gate pulls in
 `X16_USE_MATH`; it is a one-shot drawing primitive (cost scales with
 sides × height), not a per-frame filler.
 
+Four more curve shapes sit behind their own pay-per-use gates.
+`X16_USE_SHAPES_RRECT` adds `shape_rrect`/`shape_frrect` (rounded
+rectangles: `rr_x`/`rr_y`/`rr_w`/`rr_h`/`rr_r`, colour in `A`) — the
+corners come from a midpoint circle walk, so it needs no trig and pulls in
+nothing but `SHAPES`. `X16_USE_SHAPES_ARC` adds `shape_arc`, a slice of a
+circle outline from a start to an end byte-angle, sampled every ~4 units
+and joined with a shared 16-bit Bresenham (`X16_USE_SHP_LINE`) so the chord
+error stays sub-pixel; `X16_USE_SHAPES_PIE` fills the matching wedge
+(`shape_pie`) as a fan of triangles, which handles any span up to a full
+disc. `X16_USE_SHAPES_BEZIER` adds `shape_bezier`, a cubic curve through
+four control points (`bez_x0`/`bez_y0` … `bez_x3`/`bez_y3`), evaluated by
+de Casteljau at a size-adaptive sample count and joined with the same
+line helper — the P0/P3 anchors land exactly on the curve. Arc and bézier
+clip like `shape_circle` (they draw through `SHP_PSET`); the pie draws
+with `SHP_HLINE`, so keep it on screen like `shape_disc`.
+
 The compression picture, complete: the ROM's LZSA2 (`mem_decompress`) is
 free and can stream into VRAM; `zx0_decompress` (the modern ZX0 v2 that
 `salvador`/`zx0` emit — not their `-classic` mode) packs tightest;
@@ -567,6 +588,7 @@ float being a float; use `f_to_str` when you want the printed value.
 | `examples/numbers.asm` | A tour of the number libraries: 16-bit and 32-bit integers, 8.8 fixed point, and floating point. Each line prints an expression and its result, so it doubles as a check. Needs no VSYNC, so it also runs headless. |
 | `examples/polygons.asm` | A gallery of the regular polygons — triangle, square, pentagon, hexagon, heptagon, octagon, nonagon, decagon, dodecagon — each filled with `shape_fpolygon` and outlined with `shape_polygon`, on the 2bpp bitmap engine with a custom four-colour palette. Windowed (waits for a key). |
 | `examples/polyspin.asm` | A filled polygon spinning in place, redrawn each frame with a growing `rotation`, frame-locked to VSYNC. Shows the rotation argument in motion. Windowed. |
+| `examples/curves.asm` | A gallery of the curve shapes: rounded rectangles (`shape_frrect`/`shape_rrect`, including a fully-rounded stadium), concentric arcs and a Pac-Man `shape_pie` with its rim outlined by `shape_arc`, and three cubic `shape_bezier` curves driven from a control-point table. Same 2bpp engine and four-colour palette as the polygon gallery. Windowed (waits for a key). |
 
 `bounce.asm` shows two audio patterns worth copying. **Play on the edge, not the
 level:** `hit` is true for every frame of an overlap, so retriggering the FM note

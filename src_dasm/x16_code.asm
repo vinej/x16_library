@@ -47,6 +47,15 @@
 ;   X16_USE_SHAPES_POLY  + shape_polygon, shape_fpolygon (regular convex
 ;                     N-gons, outline and filled; pulls in MATH for the
 ;                     sin8/cos8 vertex placement)
+;   X16_USE_SHAPES_RRECT + shape_rrect, shape_frrect (rounded rectangle,
+;                     outline and filled; self-contained, no trig)
+;   X16_USE_SHAPES_ARC   + shape_arc (a portion of a circle outline
+;                     between two byte-angles; pulls MATH + the shared
+;                     line helper X16_USE_SHP_LINE)
+;   X16_USE_SHAPES_PIE   + shape_pie (a filled wedge from the centre to
+;                     the arc; pulls in SHAPES_ARC)
+;   X16_USE_SHAPES_BEZIER + shape_bezier (a cubic Bezier curve through
+;                     four control points; pulls the shared line helper)
 ;   X16_USE_VERAFX    all of the below, as it always has been
 ;     _MULT           fx_mult
 ;     _FILL           fx_fill, fx_clear
@@ -251,6 +260,47 @@ X16_USE_SHAPES = 1
     ENDIF
     IFNCONST X16_USE_MATH
 X16_USE_MATH   = 1
+    ENDIF
+    ENDIF
+; The curve shapes. PIE reuses ARC's trig point helper, so it pulls ARC;
+; ARC and BEZIER share one 16-bit Bresenham (the internal X16_USE_SHP_LINE).
+; Ordered so a pulled gate's own dependencies still get a turn below it:
+; PIE sets ARC, then ARC sets MATH + SHP_LINE, then SHP_LINE sets SHAPES.
+    IFCONST X16_USE_SHAPES_PIE
+    IFNCONST X16_USE_SHAPES
+X16_USE_SHAPES     = 1
+    ENDIF
+    IFNCONST X16_USE_SHAPES_ARC
+X16_USE_SHAPES_ARC = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_SHAPES_ARC
+    IFNCONST X16_USE_SHAPES
+X16_USE_SHAPES   = 1
+    ENDIF
+    IFNCONST X16_USE_MATH
+X16_USE_MATH     = 1
+    ENDIF
+    IFNCONST X16_USE_SHP_LINE
+X16_USE_SHP_LINE = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_SHAPES_RRECT
+    IFNCONST X16_USE_SHAPES
+X16_USE_SHAPES = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_SHAPES_BEZIER
+    IFNCONST X16_USE_SHAPES
+X16_USE_SHAPES   = 1
+    ENDIF
+    IFNCONST X16_USE_SHP_LINE
+X16_USE_SHP_LINE = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_SHP_LINE
+    IFNCONST X16_USE_SHAPES
+X16_USE_SHAPES = 1
     ENDIF
     ENDIF
     IFCONST X16_USE_SHAPES
