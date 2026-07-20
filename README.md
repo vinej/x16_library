@@ -94,6 +94,42 @@ machine code to sit, and must be sourced exactly once. ACME has no linker, so
 unused routines cannot be stripped automatically — that is what the `X16_USE_*`
 gates are for.
 
+### Friendly macros (optional): `core/sugar.asm`
+
+Loading an argument block by hand — a dozen `lda`/`sta` lines per call — is the
+tax of a register-and-P-block ABI. `core/sugar.asm` is an **optional, opt-in**
+layer that pays it for you: one macro per public routine, named `xm_<routine>`,
+that takes the arguments in order and calls it. So
+
+```asm
++xm_shape_frrect 40, 40, 200, 110, 28, FILL   ; rounded rect, filled
++xm_pal_set 1, $0F00                           ; palette entry 1 = red
++xm_sprite_pos 0, 100, 50                       ; sprite 0 to (100,50)
+```
+
+replaces the setup blocks entirely. It is the same idea as the CXGEOS `asmsdk`
+`cxm_*` layer, adapted to this repo and generated the same way as everything
+else (written for ACME; the six ports come out of `tools/acme2*.py`). Set your
+gates, then source it — each module's macros are wrapped in that module's
+`X16_USE_*`, so `xm_pal_set` only exists when `X16_USE_PALETTE` is set:
+
+```asm
+!source "x16.asm"
+X16_USE_SHAPES_RRECT = 1
+X16_USE_PALETTE      = 1
+!source "core/sugar.asm"     ; <- optional, AFTER the gates
+```
+
+Two things to know. **It is purely additive**: a program that does not source it,
+or does not invoke a macro, is byte-for-byte unchanged, and each macro expands to
+exactly the hand-written setup + `jsr`, so it costs nothing at run time.
+**Arguments are immediates** (`lda #arg`), so pass constants; to call with a value
+held in a variable, set the block by hand and `jsr` the routine (see
+`examples/m_bounce.asm`, which macros the constant setup and hand-writes the
+per-frame position/collision). Argument-free routines (`i16_add`, `f_sqrt`,
+`sprites_on`) are called directly — a wrapper would add nothing. The
+`examples/m_*.asm` files are macro editions of the plain examples.
+
 ## Other assemblers: ca65, 64tass, KickAssembler, dasm, MADS, vasm
 
 Two ways in, pick per project:
@@ -588,7 +624,8 @@ float being a float; use `f_to_str` when you want the printed value.
 | `examples/numbers.asm` | A tour of the number libraries: 16-bit and 32-bit integers, 8.8 fixed point, and floating point. Each line prints an expression and its result, so it doubles as a check. Needs no VSYNC, so it also runs headless. |
 | `examples/polygons.asm` | A gallery of the regular polygons — triangle, square, pentagon, hexagon, heptagon, octagon, nonagon, decagon, dodecagon — each filled with `shape_fpolygon` and outlined with `shape_polygon`, on the 2bpp bitmap engine with a custom four-colour palette. Windowed (waits for a key). |
 | `examples/polyspin.asm` | A filled polygon spinning in place, redrawn each frame with a growing `rotation`, frame-locked to VSYNC. Shows the rotation argument in motion. Windowed. |
-| `examples/curves.asm` | A gallery of the curve shapes: rounded rectangles (`shape_frrect`/`shape_rrect`, including a fully-rounded stadium), concentric arcs and a Pac-Man `shape_pie` with its rim outlined by `shape_arc`, and three cubic `shape_bezier` curves driven from a control-point table. Same 2bpp engine and four-colour palette as the polygon gallery. Windowed (waits for a key). |
+| `examples/curves.asm` | A gallery of the curve shapes: rounded rectangles (`shape_frrect`/`shape_rrect`, including a fully-rounded stadium), concentric arcs and a Pac-Man `shape_pie` with its rim outlined by `shape_arc`, and three cubic `shape_bezier` curves. Uses the optional `xm_*` macro layer throughout, so every draw is one line. Windowed (waits for a key). |
+| `examples/m_hello.asm`, `m_polygons.asm`, `m_polyspin.asm`, `m_bounce.asm`, `m_numbers.asm` | Macro editions of the examples above, calling the library through the optional friendly macro layer `core/sugar.asm` (the `+xm_*` macros). `m_polygons` spells the 3×3 gallery out as literal one-line calls; `m_numbers` produces byte-identical output to `numbers.asm`; `m_bounce` shows the honest split — constant setup through macros, per-frame run-time values (position, envelope, collision) still hand-written. Run any with `run.bat m_bounce` etc. |
 
 `bounce.asm` shows two audio patterns worth copying. **Play on the edge, not the
 level:** `hit` is true for every frame of an overlap, so retriggering the FM note

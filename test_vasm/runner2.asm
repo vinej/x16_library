@@ -19,6 +19,9 @@ X16_USE_SHAPES_RRECT = 1        ; + rounded rectangles
 X16_USE_SHAPES_ARC = 1          ; + arcs (pulls MATH + SHP_LINE)
 X16_USE_SHAPES_PIE = 1          ; + filled pies (pulls SHAPES_ARC)
 X16_USE_SHAPES_BEZIER = 1       ; + cubic Bezier curves (pulls SHP_LINE)
+X16_USE_COLLIDE = 1             ; for the xm_collide16 macro test
+
+    include "core/sugar.asm"        ; optional friendly xm_* macros (gated; tested below)
 
 ; The harness's zero-page pointer (see runner.asm).
 T_ZP = $70
@@ -76,6 +79,8 @@ main
     jsr test_shape_arc
     jsr test_shape_pie
     jsr test_shape_bezier
+    jsr test_sugar
+    jsr test_sugar_collide
     jsr test_g2_clear
     jsr test_g2_init
 
@@ -1534,6 +1539,56 @@ test_shape_bezier
     ldy #>.name
     jmp t_result
 .name byte "SHAPE_BEZIER", 0
+
+; The optional sugar macros expand to exactly the hand-written argument
+; setup + jsr, so this both proves they work and (via the 7-way PRG hash)
+; that they convert byte-identically across every assembler.
+test_sugar
+    lda #180                    ; clean patch at (180,80)
+    ldx #80
+    jsr shp_clear40y
+    xm_shape_disc 200, 100, 12, 3   ; filled disc via macro
+    lda #200                    ; centre: filled
+    ldx #100
+    jsr shp_rd
+    cmp #3
+    bne .report
+    lda #180                    ; clean patch at (180,140)
+    ldx #140
+    jsr shp_clear40y
+    xm_shape_circle 200, 160, 12, 2  ; outline circle via macro
+    lda #212                    ; east rim (cx+r): set
+    ldx #160
+    jsr shp_rd
+    cmp #2
+    bne .report
+    lda #200                    ; centre: an outline leaves it clear
+    ldx #160
+    jsr shp_rd
+    bne .report
+    ldy #0
+.report
+    tya
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "SUGAR_MACROS", 0
+
+; xm_collide16 writes the cl_* operands and calls collide16 (16-bit boxes).
+test_sugar_collide
+    xm_collide16 10, 10, 20, 20, 15, 15, 20, 20   ; overlapping -> carry set
+    bcc .fail
+    xm_collide16 10, 10, 5, 5, 300, 300, 5, 5     ; disjoint -> carry clear
+    bcs .fail
+    lda #0
+    bra .done
+.fail
+    lda #1
+.done
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "SUGAR_COLLIDE", 0
 
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0

@@ -155,17 +155,16 @@ def convert(text, stem, include_map):
             blocks.append('zone')
             continue
 
-        # macro definitions
-        # .segment, not .macro: identical, but expands WITHOUT opening a
-        # new scope -- so _local labels passed as arguments still resolve
-        # in the caller, exactly like ACME's textual macro expansion.
+        # macro definitions: `name .macro params ... .endm`, params
+        # referenced as \name (handled below). This matches the hand-ported
+        # core/macros.asm exactly; the close handler emits the `.endm`.
         m = re.match(r'(\s*)!macro\s+(\w+)\s*(.*?)\s*\{\s*$', line)
         if m:
             ind, name, params = m.groups()
             plist = [p.strip().lstrip('.') for p in params.split(',') if p.strip()]
             macro_params = plist
             blocks.append('macro')
-            out.append(f"{name} .segment {', '.join(plist)}")
+            out.append(f"{name} .macro {', '.join(plist)}")
             continue
 
         # closing braces
