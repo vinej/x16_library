@@ -698,7 +698,7 @@ shapes_push
 	lda shapes_sp
 	cmp #FLOOD_MAX
 	bcc shapes_k4
-	lda #2                      ; remembered; lsr at exit -> carry
+	lda #1                      ; remembered; lsr at exit -> carry
 	sta shapes_ovf
 	rts
 shapes_k4

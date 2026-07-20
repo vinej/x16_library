@@ -695,7 +695,7 @@ shape_flood
 	lda .sp
 	cmp #FLOOD_MAX
 	bcc +
-	lda #2                      ; remembered; lsr at exit -> carry
+	lda #1                      ; remembered; lsr at exit -> carry
 	sta .ovf
 	rts
 +	asl                         ; sp * 4
