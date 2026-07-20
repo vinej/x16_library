@@ -182,6 +182,10 @@ from an interrupt callback, bracket them with `irq_save_regs` /
 Defined in `core/macros.asm`, available after `!source "x16.asm"`. Macros
 emit inline code — no `jsr` needed, but also no gate required.
 
+> These are the low-level plumbing macros. There is also an optional,
+> higher-level convenience layer — `core/sugar.asm`, one `+xm_<routine>` macro
+> per library call — documented separately in the [Macro Guide](macroguide.md).
+
 ### `+vera_addr port, addr, inc` — point a data port at VRAM
 
 The workhorse. Points VERA data port 0 or 1 at a 17-bit VRAM address with
