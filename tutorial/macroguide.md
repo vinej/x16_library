@@ -39,10 +39,10 @@ just fills in the argument block.
 5. [Reference](#reference)
    - [VERA](#vera-x16_use_vera) · [Screen](#screen-x16_use_screen) · [Palette](#palette-x16_use_palette) · [Tiles](#tiles-and-layers-x16_use_tile) · [Sprites](#sprites-x16_use_sprite)
    - [Bitmap 8bpp](#bitmap-8bpp-x16_use_bitmap) · [Bitmap 2bpp](#bitmap-2bpp-x16_use_bitmap2) · [Shapes](#shapes-x16_use_shapes) · [VERA FX](#vera-fx-x16_use_verafx)
-   - [Interrupts](#interrupts-x16_use_irq) · [PSG](#psg-x16_use_psg) · [YM2151](#ym2151-x16_use_ym) · [PCM](#pcm-x16_use_pcm) · [ADPCM](#adpcm-x16_use_adpcm) · [Input](#input-x16_use_input)
+   - [Interrupts](#interrupts-x16_use_irq) · [PSG](#psg-x16_use_psg) · [YM2151](#ym2151-x16_use_ym) · [PCM](#pcm-x16_use_pcm) · [ADPCM](#adpcm-x16_use_adpcm) · [Input](#input-x16_use_input) · [Serial](#serial-x16_use_serial) · [ZiModem](#zimodem-x16_use_serial_zimodem)
    - [Banked RAM](#banked-ram-x16_use_bank) · [Bank allocator](#bank-allocator-x16_use_bankalloc) · [Block memory](#block-memory-x16_use_mem) · [Load/save](#loadsave-x16_use_load) · [DOS](#dos-x16_use_dos) · [BMX](#bmx-x16_use_bmx)
    - [Math](#math-x16_use_math) · [Collision](#collision-x16_use_collide) · [Bits](#bits-x16_use_bits) · [Number](#number-x16_use_number) · [Fixed point](#fixed-point-x16_use_fixed)
-   - [Integers 16/32](#integers-x16_use_int16-x16_use_int32) · [Float](#float-x16_use_float) · [Double](#double-x16_use_double) · [Clip](#clip-x16_use_clip) · [Buffers](#buffers-x16_use_buffers) · [Compression](#compression-x16_use_zx0-x16_use_tsc)
+   - [Integers 16/32](#integers-x16_use_int16-x16_use_int32) · [Float](#float-x16_use_float) · [Double](#double-x16_use_double) · [Clip](#clip-x16_use_clip) · [Buffers](#buffers-x16_use_buffers) · [Compression](#compression-x16_use_zx0-x16_use_tsc) · [Strings](#strings-x16_use_string-and-friends)
 6. [Worked examples](#worked-examples)
 7. [Other assemblers](#other-assemblers)
 
@@ -343,6 +343,42 @@ Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
 | `+xm_mouse_show cursor` / `+xm_mouse_hide` / `+xm_mouse_get` | mouse (→ P0/1 = x, P2/3 = y, A = buttons) |
 | `+xm_key_get` / `+xm_key_wait` / `+xm_key_peek` | keyboard (→ A = PETSCII) |
 
+### Serial (`X16_USE_SERIAL`)
+
+The serial / WiFi card's 16C550 UARTs. `base` is a UART address (from
+`ser_detect`, or `$9F60`); `divisor` is a `SER_BAUD_*` constant.
+
+| Macro | Does |
+|---|---|
+| `+xm_ser_detect` | scan for UARTs (→ A = count, `ser_u0`/`ser_u1` = bases) |
+| `+xm_ser_init base, divisor` | 8N1, FIFOs, auto-flow; selects that UART |
+| `+xm_ser_avail` | → carry set if a byte is waiting |
+| `+xm_ser_get` | non-blocking read (→ carry set = empty, else A = byte) |
+| `+xm_ser_get_wait` | blocking read (→ A = byte) |
+| `+xm_ser_put byte` | send one byte |
+| `+xm_ser_puts addr` | send a NUL-terminated string |
+| `+xm_ser_write addr, len` | send `len` bytes (binary-safe) |
+| `+xm_ser_read_until match, buffer, max` | read into buffer until `match` (→ P4/5 = count) |
+| `+xm_ser_discard_until match` | read and discard until `match` |
+
+### ZiModem (`X16_USE_SERIAL_ZIMODEM`)
+
+The ESP32 WiFi modem on top of Serial. Most of these block on the board's
+reply, so they are for real hardware; `+xm_zi_hexdecode` is pure and
+handy on its own.
+
+| Macro | Does |
+|---|---|
+| `+xm_zi_init base, divisor` | reset the modem to a known state |
+| `+xm_zi_cmd addr` | send an `AT…` command line (+ CR/LF) |
+| `+xm_zi_wait_ok` | read/discard the reply up to `OK\r\n` |
+| `+xm_zi_reset` | `ATZ` |
+| `+xm_zi_get_ip buffer` | IPv4 address into buffer (via `ATI2`) |
+| `+xm_zi_hex_open filename` | begin a hex-mode download (→ carry set = not found) |
+| `+xm_zi_hex_chunk buffer` | next payload chunk (→ A = bytes, 0 = done) |
+| `+xm_zi_hex_close` | swallow the trailing `OK` |
+| `+xm_zi_hexdecode src, digits, dest` | pack ASCII hex → bytes (→ A = `digits`/2) |
+
 ### Banked RAM (`X16_USE_BANK`)
 
 | Macro | Does |
@@ -458,6 +494,35 @@ Ring buffer: `+xm_rb_init`, `+xm_rb_put byte` (→ carry = full), `+xm_rb_get`
 
 `+xm_zx0_decompress src, dst` and `+xm_tsc_decompress src, dst` — both
 → A/X = one past the last output byte.
+
+### Strings (`X16_USE_STRING` and friends)
+
+Each of the five string gates has its own macros; set the gates you use.
+`str`/`src`/`dst` are string addresses; `ch` and lengths are immediates.
+
+| Macro | Does |
+|---|---|
+| `+xm_str_length str` | → Y = length |
+| `+xm_str_copy src, dst` | copy (→ Y = length) |
+| `+xm_str_ncopy src, dst, max` | copy, capped |
+| `+xm_str_append tgt, suffix` | → A = new length |
+| `+xm_str_nappend tgt, suffix, max` | append, capped |
+| `+xm_str_compare s1, s2` | → A = −1 / 0 / 1 |
+| `+xm_str_hash str` | → A = hash |
+| `+xm_str_lower str` / `+xm_str_lower_iso str` | lower-case in place |
+| `+xm_str_upper str` / `+xm_str_upper_iso str` | upper-case in place |
+| `+xm_str_compare_nocase s1, s2` (+ `_iso`) | case-insensitive compare |
+| `+xm_str_find str, ch` / `+xm_str_rfind str, ch` | → carry + A = index |
+| `+xm_str_find_eol str` | first CR/LF |
+| `+xm_str_contains str, ch` | → carry set if present |
+| `+xm_str_pattern_match str, pattern` | `?`/`*` match → carry |
+| `+xm_str_left src, dst, len` / `+xm_str_right …` | copy an end |
+| `+xm_str_slice src, dst, start, len` | copy a middle run |
+| `+xm_str_ltrim str` / `+xm_str_rtrim str` / `+xm_str_trim str` | trim whitespace in place |
+
+The single-character predicates (`str_isdigit` …) and char folders
+(`str_lowerchar` …) take the character in `A` already, so call them
+directly rather than through a macro.
 
 ---
 

@@ -2152,3 +2152,407 @@
     jsr tsc_decompress
     ENDM
     ENDIF
+
+; =====================================================================
+; comms/serial
+; =====================================================================
+; -> A = count (0-2), carry clear if any found, ser_u0/ser_u1 = bases
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_detect
+    jsr ser_detect
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_init
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr ser_init
+    ENDM
+    ENDIF
+; -> carry set if a received byte is waiting
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_avail
+    jsr ser_avail
+    ENDM
+    ENDIF
+; -> carry clear + A = byte, or carry set if the RX FIFO was empty
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_get
+    jsr ser_get
+    ENDM
+    ENDIF
+; -> A = byte (blocks until one arrives)
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_get_wait
+    jsr ser_get_wait
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_put
+    lda #({1})
+    jsr ser_put
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_puts
+    lda #<({1})
+    ldx #>({1})
+    jsr ser_puts
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_write
+    ldy #({2})
+    lda #<({1})
+    ldx #>({1})
+    jsr ser_write
+    ENDM
+    ENDIF
+; -> X16_P4/P5 = bytes stored
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_read_until
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({3})
+    sta X16_P2
+    lda #>({3})
+    sta X16_P3
+    lda #<({1})
+    ldx #>({1})
+    jsr ser_read_until
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL
+    MAC xm_ser_discard_until
+    lda #<({1})
+    ldx #>({1})
+    jsr ser_discard_until
+    ENDM
+    ENDIF
+
+; =====================================================================
+; comms/zimodem
+; =====================================================================
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_init
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr zi_init
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_cmd
+    lda #<({1})
+    ldx #>({1})
+    jsr zi_cmd
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_wait_ok
+    jsr zi_wait_ok
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_reset
+    jsr zi_reset
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_get_ip
+    lda #<({1})
+    ldx #>({1})
+    jsr zi_get_ip
+    ENDM
+    ENDIF
+; -> carry clear if the transfer started, carry set if not found
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_hex_open
+    lda #<({1})
+    ldx #>({1})
+    jsr zi_hex_open
+    ENDM
+    ENDIF
+; -> A = bytes decoded into the buffer, 0 when the file is done
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_hex_chunk
+    lda #<({1})
+    ldx #>({1})
+    jsr zi_hex_chunk
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_hex_close
+    jsr zi_hex_close
+    ENDM
+    ENDIF
+; -> A = bytes written (sugar_digits / 2)
+    IFCONST X16_USE_SERIAL_ZIMODEM
+    MAC xm_zi_hexdecode
+    lda #<({3})
+    sta X16_P0
+    lda #>({3})
+    sta X16_P1
+    ldy #({2})
+    lda #<({1})
+    ldx #>({1})
+    jsr zi_hexdecode
+    ENDM
+    ENDIF
+
+; =====================================================================
+; string/string
+; =====================================================================
+; -> Y = length
+    IFCONST X16_USE_STRING
+    MAC xm_str_length
+    lda #<({1})
+    ldx #>({1})
+    jsr str_length
+    ENDM
+    ENDIF
+; -> Y = length copied
+    IFCONST X16_USE_STRING
+    MAC xm_str_copy
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr str_copy
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING
+    MAC xm_str_ncopy
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    ldy #({3})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_ncopy
+    ENDM
+    ENDIF
+; -> A = resulting length
+    IFCONST X16_USE_STRING
+    MAC xm_str_append
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr str_append
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING
+    MAC xm_str_nappend
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    ldy #({3})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_nappend
+    ENDM
+    ENDIF
+; -> A = -1 / 0 / 1
+    IFCONST X16_USE_STRING
+    MAC xm_str_compare
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr str_compare
+    ENDM
+    ENDIF
+; -> A = hash
+    IFCONST X16_USE_STRING
+    MAC xm_str_hash
+    lda #<({1})
+    ldx #>({1})
+    jsr str_hash
+    ENDM
+    ENDIF
+
+; =====================================================================
+; string/case
+; =====================================================================
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_lower
+    lda #<({1})
+    ldx #>({1})
+    jsr str_lower
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_lower_iso
+    lda #<({1})
+    ldx #>({1})
+    jsr str_lower_iso
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_upper
+    lda #<({1})
+    ldx #>({1})
+    jsr str_upper
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_upper_iso
+    lda #<({1})
+    ldx #>({1})
+    jsr str_upper_iso
+    ENDM
+    ENDIF
+; -> A = -1 / 0 / 1
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_compare_nocase
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr str_compare_nocase
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_compare_nocase_iso
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr str_compare_nocase_iso
+    ENDM
+    ENDIF
+
+; =====================================================================
+; string/find
+; =====================================================================
+; -> carry set + A = index if found
+    IFCONST X16_USE_STRING_FIND
+    MAC xm_str_find
+    ldy #({2})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_find
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_FIND
+    MAC xm_str_rfind
+    ldy #({2})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_rfind
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_FIND
+    MAC xm_str_find_eol
+    lda #<({1})
+    ldx #>({1})
+    jsr str_find_eol
+    ENDM
+    ENDIF
+; -> carry set if the character occurs
+    IFCONST X16_USE_STRING_FIND
+    MAC xm_str_contains
+    ldy #({2})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_contains
+    ENDM
+    ENDIF
+; -> carry set (A = 1) if it matches
+    IFCONST X16_USE_STRING_FIND
+    MAC xm_str_pattern_match
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #<({1})
+    ldx #>({1})
+    jsr str_pattern_match
+    ENDM
+    ENDIF
+
+; =====================================================================
+; string/slice
+; =====================================================================
+    IFCONST X16_USE_STRING_SLICE
+    MAC xm_str_left
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    ldy #({3})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_left
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_SLICE
+    MAC xm_str_right
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    ldy #({3})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_right
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_SLICE
+    MAC xm_str_slice
+    lda #<({2})
+    sta X16_P0
+    lda #>({2})
+    sta X16_P1
+    lda #({3})
+    sta X16_P2
+    ldy #({4})
+    lda #<({1})
+    ldx #>({1})
+    jsr str_slice
+    ENDM
+    ENDIF
+; -> Y = new length
+    IFCONST X16_USE_STRING_SLICE
+    MAC xm_str_ltrim
+    lda #<({1})
+    ldx #>({1})
+    jsr str_ltrim
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_SLICE
+    MAC xm_str_rtrim
+    lda #<({1})
+    ldx #>({1})
+    jsr str_rtrim
+    ENDM
+    ENDIF
+    IFCONST X16_USE_STRING_SLICE
+    MAC xm_str_trim
+    lda #<({1})
+    ldx #>({1})
+    jsr str_trim
+    ENDM
+    ENDIF

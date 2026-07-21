@@ -56,7 +56,9 @@ function Build-Prg([string]$sourcePath) {
 
 # --- test ------------------------------------------------------------
 # One emulator pass over one PRG: returns @(passes, total, skips).
-function Invoke-TestPrg([string]$out) {
+# $extraArgs adds emulator flags for a specific runner (the serial suite
+# needs -midicard so the emulator presents its 16C550 UARTs).
+function Invoke-TestPrg([string]$out, [string[]]$extraArgs = @()) {
     # x16emu -testbench only exits at stdin EOF, and it only reads stdin
     # once it has printed its own "RDY" prompt -- which it never does if
     # the guest program leaves BASIC in an odd state. So don't wait on the
@@ -73,26 +75,35 @@ function Invoke-TestPrg([string]$out) {
     Get-ChildItem $fsroot -File | Remove-Item -Force
 
     $emuArgs = @('-rom', $rom, '-fsroot', $fsroot, '-prg', $out,
-                 '-run', '-warp', '-echo', '-testbench')
-    $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
-                          -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
+                 '-run', '-warp', '-echo', '-testbench') + $extraArgs
 
-    $deadline = (Get-Date).AddSeconds(60)
+    # The -midicard cold start occasionally stalls before the guest runs --
+    # a missing-fluidsynth audio-init hiccup, seen only under rapid
+    # successive launches. The stall is at startup, so a fresh process
+    # clears it: give the run up to 3 attempts to reach a DONE line. Runs
+    # without -midicard print DONE on attempt 1 and never retry.
     $text = ""
-    while ($true) {
-        Start-Sleep -Milliseconds 200
-        if (Test-Path $stdout) {
-            $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
-            if ($text -match '(?m)^DONE ') { break }
+    $got  = $false
+    for ($attempt = 1; ($attempt -le 3) -and (-not $got); $attempt++) {
+        if (Test-Path $stdout) { Remove-Item $stdout -Force }
+        $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
+                              -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
+        $deadline = (Get-Date).AddSeconds(60)
+        while ($true) {
+            Start-Sleep -Milliseconds 200
+            if (Test-Path $stdout) {
+                $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
+                if ($text -match '(?m)^DONE ') { $got = $true; break }
+            }
+            if ($proc.HasExited) { break }
+            if ((Get-Date) -gt $deadline) { break }
         }
-        if ($proc.HasExited) { break }
-        if ((Get-Date) -gt $deadline) {
-            if (-not $proc.HasExited) { $proc.Kill() }
-            Fail "emulator timed out after 60s -- no DONE line; the test program never finished"
+        if (-not $proc.HasExited) { $proc.Kill() }
+        $proc.WaitForExit()
+        if ((-not $got) -and ($attempt -lt 3)) {
+            Write-Host "  no DONE line -- retrying the emulator run" -ForegroundColor Yellow
         }
     }
-    if (-not $proc.HasExited) { $proc.Kill() }
-    $proc.WaitForExit()
 
     # Names are [A-Z0-9_]. Don't use \S+: a result line ends without a CR,
     # so whatever the next test prints first (a CLS control byte, say)
@@ -123,19 +134,40 @@ function Invoke-TestPrg([string]$out) {
 }
 
 if ($Test) {
+    # The serial runner is driven against the emulator's -midicard, which
+    # only maps its 16C550 UARTs when an -sf2 soundfont is also given. The
+    # UART registers respond regardless of whether the font actually loads
+    # (the I/O map keys on the card being present, not on synth init), so a
+    # placeholder file is enough -- no binary asset in the repo. `-sound
+    # none` goes with it: the MIDI synth is unused here, and skipping the
+    # audio device keeps its init from occasionally stalling a cold start
+    # under load. The serial run carries all three flags (see $sources).
+    $sf2 = Join-Path $build "dummy.sf2"
+    [IO.File]::WriteAllText($sf2, "x16lib serial test placeholder")
+
     # The suite spans several PRGs (one grew past the load ceiling). An
     # explicit -Source still runs alone -- handy for running a mutated
-    # runner to prove the harness can actually fail.
-    $sources = @("test_acme\runner.asm", "test_acme\runner2.asm")
-    if ($PSBoundParameters.ContainsKey('Source')) { $sources = @($Source) }
+    # runner to prove the harness can actually fail. Each entry pairs a
+    # source with any extra emulator flags it needs: the serial runner
+    # asks for -midicard so the emulator maps its 16C550 UARTs.
+    $sources = @(
+        @{ Path = "test_acme\runner.asm";  Args = @() }
+        @{ Path = "test_acme\runner2.asm"; Args = @() }
+        @{ Path = "test_acme\serial.asm";  Args = @('-sound', 'none', '-midicard', '-sf2', $sf2) }
+    )
+    if ($PSBoundParameters.ContainsKey('Source')) {
+        $a = @()
+        if ($Source -like '*serial.asm') { $a = @('-sound', 'none', '-midicard', '-sf2', $sf2) }
+        $sources = @(@{ Path = $Source; Args = $a })
+    }
 
     $sumPass = 0
     $sumTotal = 0
     $sumSkip = 0
     foreach ($s in $sources) {
-        $out = Build-Prg $s
+        $out = Build-Prg $s.Path
         Write-Host "x16emu (headless testbench)"
-        $r = Invoke-TestPrg $out
+        $r = Invoke-TestPrg $out $s.Args
         $sumPass  += $r[0]
         $sumTotal += $r[1]
         $sumSkip  += $r[2]

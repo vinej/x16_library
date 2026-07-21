@@ -19,6 +19,14 @@ X16_USE_SHAPES_ARC = 1          ; + arcs (pulls MATH + SHP_LINE)
 X16_USE_SHAPES_PIE = 1          ; + filled pies (pulls SHAPES_ARC)
 X16_USE_SHAPES_BEZIER = 1       ; + cubic Bezier curves (pulls SHP_LINE)
 X16_USE_COLLIDE = 1             ; for the xm_collide16 macro test
+X16_USE_BCD = 1                 ; packed-BCD decimal add/subtract
+X16_USE_STACK = 1               ; 8 KB LIFO stack in a HIRAM bank
+X16_USE_RINGBUFFER = 1          ; 8 KB FIFO ring in a HIRAM bank
+X16_USE_STRING = 1              ; string fundamentals
+X16_USE_STRING_CTYPE = 1        ; character classification
+X16_USE_STRING_CASE = 1         ; case folding
+X16_USE_STRING_FIND = 1         ; searching
+X16_USE_STRING_SLICE = 1        ; substrings
 
     icl "core/sugar.asm"        ; optional friendly xm_* macros (gated; tested below)
 
@@ -80,6 +88,26 @@ main
     jsr test_shape_bezier
     jsr test_sugar
     jsr test_sugar_collide
+    jsr test_bcd16
+    jsr test_bcd8
+    jsr test_bcd_add32
+    jsr test_bcd_ptr
+    jsr test_stack
+    jsr test_stack_word
+    jsr test_ring
+    jsr test_ring_word
+    jsr test_ring_wrap
+    jsr test_str_core
+    jsr test_str_cmp
+    jsr test_str_edit
+    jsr test_str_ctype
+    jsr test_str_case
+    jsr test_str_lower
+    jsr test_str_find
+    jsr test_str_pat
+    jsr test_str_slice
+    jsr test_str_trim
+    jsr test_str_sugar
     jsr test_g2_clear
     jsr test_g2_init
 
@@ -1588,6 +1616,766 @@ test_sugar_collide__done
     ldy #>test_sugar_collide__name
     jmp t_result
 test_sugar_collide__name dta c'SUGAR_COLLIDE', 0
+
+; Packed-BCD decimal add/subtract. Hex bytes ARE the decimal digits, low
+; byte first: $0987 is nine-hundred-eighty-seven. Split across a few short
+; tests so every branch to test_sugar_collide__fail stays in range.
+test_bcd16                      ; 16-bit add then subtract
+    lda #$87                    ; 987 + 1111 = 2098
+    sta bcd_a
+    lda #$09
+    sta bcd_a+1
+    lda #$11
+    sta bcd_b
+    lda #$11
+    sta bcd_b+1
+    jsr bcd_add16
+    lda bcd_a
+    cmp #$98
+    bne test_bcd16__fail
+    lda bcd_a+1
+    cmp #$20
+    bne test_bcd16__fail
+    lda #$98                    ; 2098 - 1111 = 987
+    sta bcd_a
+    lda #$20
+    sta bcd_a+1
+    lda #$11
+    sta bcd_b
+    lda #$11
+    sta bcd_b+1
+    jsr bcd_sub16
+    lda bcd_a
+    cmp #$87
+    bne test_bcd16__fail
+    lda bcd_a+1
+    cmp #$09
+    bne test_bcd16__fail
+    lda #0
+    bra test_bcd16__report
+test_bcd16__fail
+    lda #1
+test_bcd16__report
+    ldx #<test_bcd16__name
+    ldy #>test_bcd16__name
+    jmp t_result
+test_bcd16__name dta c'BCD16', 0
+
+test_bcd8                       ; 8-bit carry out and borrow
+    lda #$99                    ; 99 + 01 = 00, carry set
+    sta bcd_a
+    lda #$01
+    sta bcd_b
+    jsr bcd_add8
+    bcc test_bcd8__fail
+    lda bcd_a
+    bne test_bcd8__fail
+    lda #$00                    ; 00 - 01 = 99, carry clear (borrow)
+    sta bcd_a
+    lda #$01
+    sta bcd_b
+    jsr bcd_sub8
+    bcs test_bcd8__fail
+    lda bcd_a
+    cmp #$99
+    bne test_bcd8__fail
+    lda #0
+    bra test_bcd8__report
+test_bcd8__fail
+    lda #1
+test_bcd8__report
+    ldx #<test_bcd8__name
+    ldy #>test_bcd8__name
+    jmp t_result
+test_bcd8__name dta c'BCD8', 0
+
+test_bcd_add32                  ; 32-bit add across bytes, and overflow
+    i32_const bcd_a,$00009999  ; 9999 + 1 = 10000
+    i32_const bcd_b,$00000001
+    jsr bcd_add32
+    lda bcd_a
+    bne test_bcd_add32__fail
+    lda bcd_a+1
+    bne test_bcd_add32__fail
+    lda bcd_a+2
+    cmp #$01
+    bne test_bcd_add32__fail
+    lda bcd_a+3
+    bne test_bcd_add32__fail
+    i32_const bcd_a,$99999999  ; 99999999 + 1 = 0, carry set
+    i32_const bcd_b,$00000001
+    jsr bcd_add32
+    bcc test_bcd_add32__fail
+    lda bcd_a
+    ora bcd_a+1
+    ora bcd_a+2
+    ora bcd_a+3
+    bne test_bcd_add32__fail
+    lda #0
+    bra test_bcd_add32__report
+test_bcd_add32__fail
+    lda #1
+test_bcd_add32__report
+    ldx #<test_bcd_add32__name
+    ldy #>test_bcd_add32__name
+    jmp t_result
+test_bcd_add32__name dta c'BCD_ADD32', 0
+
+test_bcd_ptr                    ; 32-bit subtract, then the in-place pair
+    i32_const bcd_a,$00010000  ; 10000 - 1 = 9999
+    i32_const bcd_b,$00000001
+    jsr bcd_sub32
+    lda bcd_a
+    cmp #$99
+    bne test_bcd_ptr__fail
+    lda bcd_a+1
+    cmp #$99
+    bne test_bcd_ptr__fail
+    lda bcd_a+2
+    ora bcd_a+3
+    bne test_bcd_ptr__fail
+    i32_const bcdval32,$00000042  ; in place: 42 + 58 = 100
+    i32_const bcd_b,$00000058
+    lda #<bcdval32
+    ldx #>bcdval32
+    jsr bcd_addto
+    lda bcdval32
+    bne test_bcd_ptr__fail
+    lda bcdval32+1
+    cmp #$01
+    bne test_bcd_ptr__fail
+    i32_const bcd_b,$00000001  ; in place: 100 - 1 = 99
+    lda #<bcdval32
+    ldx #>bcdval32
+    jsr bcd_subfrom
+    lda bcdval32
+    cmp #$99
+    bne test_bcd_ptr__fail
+    lda bcdval32+1
+    bne test_bcd_ptr__fail
+    lda #0
+    bra test_bcd_ptr__report
+test_bcd_ptr__fail
+    lda #1
+test_bcd_ptr__report
+    ldx #<test_bcd_ptr__name
+    ldy #>test_bcd_ptr__name
+    jmp t_result
+test_bcd_ptr__name  dta c'BCD_PTR', 0
+bcdval32 .byte 0, 0, 0, 0
+
+; 8 KB banked LIFO stack. Uses bank 5 (the bank tests already prove banks
+; round-trip); we check push/pop order and the empty flag through it.
+test_stack
+    lda #5
+    jsr stack_init
+    jsr stack_isempty
+    bcc test_stack__fail                   ; empty right after init
+    lda #42
+    jsr stack_push
+    lda #7
+    jsr stack_push
+    lda #99
+    jsr stack_push
+    jsr stack_size
+    cmp #3
+    bne test_stack__fail
+    cpx #0
+    bne test_stack__fail
+    jsr stack_isempty
+    bcs test_stack__fail                   ; not empty with three bytes on it
+    jsr stack_pop
+    cmp #99                     ; LIFO: last in, first out
+    bne test_stack__fail
+    jsr stack_pop
+    cmp #7
+    bne test_stack__fail
+    jsr stack_pop
+    cmp #42
+    bne test_stack__fail
+    jsr stack_isempty
+    bcc test_stack__fail                   ; empty again
+    lda #0
+    bra test_stack__report
+test_stack__fail
+    lda #1
+test_stack__report
+    ldx #<test_stack__name
+    ldy #>test_stack__name
+    jmp t_result
+test_stack__name dta c'STACK', 0
+
+test_stack_word
+    lda #5
+    jsr stack_init
+    lda #<1000
+    ldx #>1000
+    jsr stack_pushw
+    lda #<50
+    ldx #>50
+    jsr stack_pushw
+    jsr stack_popw              ; LIFO: 50 comes back first
+    cmp #<50
+    bne test_stack_word__fail
+    cpx #>50
+    bne test_stack_word__fail
+    jsr stack_popw
+    cmp #<1000
+    bne test_stack_word__fail
+    cpx #>1000
+    bne test_stack_word__fail
+    jsr stack_isempty
+    bcc test_stack_word__fail
+    lda #0
+    bra test_stack_word__report
+test_stack_word__fail
+    lda #1
+test_stack_word__report
+    ldx #<test_stack_word__name
+    ldy #>test_stack_word__name
+    jmp t_result
+test_stack_word__name dta c'STACK_WORD', 0
+
+; 8 KB banked FIFO ring. Bank 6.
+test_ring
+    lda #6
+    jsr ring_init
+    jsr ring_isempty
+    bcc test_ring__fail
+    lda #10
+    jsr ring_put
+    lda #20
+    jsr ring_put
+    lda #30
+    jsr ring_put
+    jsr ring_size
+    cmp #3
+    bne test_ring__fail
+    cpx #0
+    bne test_ring__fail
+    jsr ring_get               ; FIFO: 10 comes out first
+    cmp #10
+    bne test_ring__fail
+    jsr ring_get
+    cmp #20
+    bne test_ring__fail
+    jsr ring_get
+    cmp #30
+    bne test_ring__fail
+    jsr ring_isempty
+    bcc test_ring__fail
+    lda #0
+    bra test_ring__report
+test_ring__fail
+    lda #1
+test_ring__report
+    ldx #<test_ring__name
+    ldy #>test_ring__name
+    jmp t_result
+test_ring__name dta c'RING', 0
+
+test_ring_word
+    lda #6
+    jsr ring_init
+    lda #<777
+    ldx #>777
+    jsr ring_putw
+    lda #<258
+    ldx #>258
+    jsr ring_putw
+    jsr ring_getw              ; FIFO: 777 first
+    cmp #<777
+    bne test_ring_word__fail
+    cpx #>777
+    bne test_ring_word__fail
+    jsr ring_getw
+    cmp #<258
+    bne test_ring_word__fail
+    cpx #>258
+    bne test_ring_word__fail
+    lda #0
+    bra test_ring_word__report
+test_ring_word__fail
+    lda #1
+test_ring_word__report
+    ldx #<test_ring_word__name
+    ldy #>test_ring_word__name
+    jmp t_result
+test_ring_word__name dta c'RING_WORD', 0
+
+; Drive the head/tail past the top of the bank to prove the wrap. Preset a
+; consistent empty state near offset 8191, then queue across the boundary.
+test_ring_wrap
+    lda #6
+    jsr ring_init
+    lda #<8190
+    sta ring_head
+    lda #>8190
+    sta ring_head+1
+    lda #<8189
+    sta ring_tail
+    lda #>8189
+    sta ring_tail+1
+    stz ring_fill
+    stz ring_fill+1
+    lda #11                     ; @8190
+    jsr ring_put
+    lda #22                     ; @8191
+    jsr ring_put
+    lda #33                     ; head wrapped -> @0
+    jsr ring_put
+    lda #44                     ; @1
+    jsr ring_put
+    jsr ring_get
+    cmp #11
+    bne test_ring_wrap__fail
+    jsr ring_get
+    cmp #22
+    bne test_ring_wrap__fail
+    jsr ring_get               ; tail wrapped -> reads @0
+    cmp #33
+    bne test_ring_wrap__fail
+    jsr ring_get
+    cmp #44
+    bne test_ring_wrap__fail
+    jsr ring_isempty
+    bcc test_ring_wrap__fail
+    lda #0
+    bra test_ring_wrap__report
+test_ring_wrap__fail
+    lda #1
+test_ring_wrap__report
+    ldx #<test_ring_wrap__name
+    ldy #>test_ring_wrap__name
+    jmp t_result
+test_ring_wrap__name dta c'RING_WRAP', 0
+
+; ---------------------------------------------------------------------
+; String library. Small focused tests keep every branch to test_ring_wrap__fail in range.
+test_str_core
+    lda #<sd_hello
+    ldx #>sd_hello
+    jsr str_length
+    cpy #5
+    bne test_str_core__fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello
+    ldx #>sd_hello
+    jsr str_copy
+    cpy #5
+    bne test_str_core__fail
+    lda sd_buf
+    cmp #'h'
+    bne test_str_core__fail
+    lda sd_buf+4
+    cmp #'o'
+    bne test_str_core__fail
+    lda sd_buf+5
+    bne test_str_core__fail
+    lda #0
+    bra test_str_core__report
+test_str_core__fail
+    lda #1
+test_str_core__report
+    ldx #<test_str_core__name
+    ldy #>test_str_core__name
+    jmp t_result
+test_str_core__name dta c'STR_CORE', 0
+
+test_str_cmp
+    lda #<sd_abc2
+    sta X16_P0
+    lda #>sd_abc2
+    sta X16_P1
+    lda #<sd_abc                ; "abc" vs "abc" = 0
+    ldx #>sd_abc
+    jsr str_compare
+    bne test_str_cmp__fail
+    lda #<sd_abd
+    sta X16_P0
+    lda #>sd_abd
+    sta X16_P1
+    lda #<sd_abc                ; "abc" vs "abd" = -1
+    ldx #>sd_abc
+    jsr str_compare
+    cmp #$FF
+    bne test_str_cmp__fail
+    lda #<sd_abc
+    sta X16_P0
+    lda #>sd_abc
+    sta X16_P1
+    lda #<sd_abd                ; "abd" vs "abc" = 1
+    ldx #>sd_abd
+    jsr str_compare
+    cmp #1
+    bne test_str_cmp__fail
+    lda #0
+    bra test_str_cmp__report
+test_str_cmp__fail
+    lda #1
+test_str_cmp__report
+    ldx #<test_str_cmp__name
+    ldy #>test_str_cmp__name
+    jmp t_result
+test_str_cmp__name dta c'STR_CMP', 0
+
+test_str_edit
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello              ; buf = copy of "hello"
+    ldx #>sd_hello
+    jsr str_copy
+    lda #<sd_bang
+    sta X16_P0
+    lda #>sd_bang
+    sta X16_P1
+    lda #<sd_buf                ; append "!!" -> "hello!!", A=7
+    ldx #>sd_buf
+    jsr str_append
+    cmp #7
+    bne test_str_edit__fail
+    lda sd_buf+6
+    cmp #'!'
+    bne test_str_edit__fail
+    lda sd_buf+7
+    bne test_str_edit__fail
+    lda #<sd_hi                 ; hash("hi") = $74
+    ldx #>sd_hi
+    jsr str_hash
+    cmp #$74
+    bne test_str_edit__fail
+    lda #0
+    bra test_str_edit__report
+test_str_edit__fail
+    lda #1
+test_str_edit__report
+    ldx #<test_str_edit__name
+    ldy #>test_str_edit__name
+    jmp t_result
+test_str_edit__name dta c'STR_EDIT', 0
+
+test_str_ctype
+    lda #'5'
+    jsr str_isdigit
+    bcc test_str_ctype__fail
+    lda #'a'
+    jsr str_isdigit
+    bcs test_str_ctype__fail
+    lda #'F'
+    jsr str_isxdigit
+    bcc test_str_ctype__fail
+    lda #'g'
+    jsr str_isxdigit
+    bcs test_str_ctype__fail
+    lda #'a'                    ; PETSCII isupper: 97-122
+    jsr str_isupper
+    bcc test_str_ctype__fail
+    lda #'A'                    ; 65 is not upper in PETSCII
+    jsr str_isupper
+    bcs test_str_ctype__fail
+    lda #'A'                    ; but it is in ISO
+    jsr str_isupper_iso
+    bcc test_str_ctype__fail
+    lda #32
+    jsr str_isspace
+    bcc test_str_ctype__fail
+    lda #150                    ; 128-159 not printable
+    jsr str_isprint
+    bcs test_str_ctype__fail
+    lda #0
+    bra test_str_ctype__report
+test_str_ctype__fail
+    lda #1
+test_str_ctype__report
+    ldx #<test_str_ctype__name
+    ldy #>test_str_ctype__name
+    jmp t_result
+test_str_ctype__name dta c'STR_CTYPE', 0
+
+test_str_case
+    lda #'a'                    ; PETSCII lowerchar('a'=97) -> 65
+    jsr str_lowerchar
+    cmp #65
+    bne test_str_case__fail
+    lda #'A'                    ; PETSCII upperchar('A'=65) -> 97
+    jsr str_upperchar
+    cmp #97
+    bne test_str_case__fail
+    lda #'A'                    ; ISO lowerchar('A'=65) -> 97
+    jsr str_lowerchar_iso
+    cmp #97
+    bne test_str_case__fail
+    lda #'a'                    ; ISO upperchar('a'=97) -> 65
+    jsr str_upperchar_iso
+    cmp #65
+    bne test_str_case__fail
+    lda #0
+    bra test_str_case__report
+test_str_case__fail
+    lda #1
+test_str_case__report
+    ldx #<test_str_case__name
+    ldy #>test_str_case__name
+    jmp t_result
+test_str_case__name dta c'STR_CASE', 0
+
+test_str_lower
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_HELLO             ; buf = "HELLO", then lower_iso -> "hello"
+    ldx #>sd_HELLO
+    jsr str_copy
+    lda #<sd_buf
+    ldx #>sd_buf
+    jsr str_lower_iso
+    lda sd_buf
+    cmp #'h'
+    bne test_str_lower__fail
+    lda #<sd_buf               ; upper_iso -> "HELLO"
+    ldx #>sd_buf
+    jsr str_upper_iso
+    lda sd_buf
+    cmp #'H'
+    bne test_str_lower__fail
+    lda #<sd_hello
+    sta X16_P0
+    lda #>sd_hello
+    sta X16_P1
+    lda #<sd_Hello             ; compare_nocase("Hello","hello") = 0
+    ldx #>sd_Hello
+    jsr str_compare_nocase
+    bne test_str_lower__fail
+    lda #0
+    bra test_str_lower__report
+test_str_lower__fail
+    lda #1
+test_str_lower__report
+    ldx #<test_str_lower__name
+    ldy #>test_str_lower__name
+    jmp t_result
+test_str_lower__name dta c'STR_LOWER', 0
+
+test_str_find
+    lda #<sd_hello             ; find 'l' -> index 2
+    ldx #>sd_hello
+    ldy #'l'
+    jsr str_find
+    bcc test_str_find__fail
+    cmp #2
+    bne test_str_find__fail
+    lda #<sd_hello             ; rfind 'l' -> index 3
+    ldx #>sd_hello
+    ldy #'l'
+    jsr str_rfind
+    bcc test_str_find__fail
+    cmp #3
+    bne test_str_find__fail
+    lda #<sd_hello             ; find 'z' -> not found
+    ldx #>sd_hello
+    ldy #'z'
+    jsr str_find
+    bcs test_str_find__fail
+    lda #<sd_line              ; find_eol -> index 2 (the CR)
+    ldx #>sd_line
+    jsr str_find_eol
+    bcc test_str_find__fail
+    cmp #2
+    bne test_str_find__fail
+    lda #0
+    bra test_str_find__report
+test_str_find__fail
+    lda #1
+test_str_find__report
+    ldx #<test_str_find__name
+    ldy #>test_str_find__name
+    jmp t_result
+test_str_find__name dta c'STR_FIND', 0
+
+test_str_pat
+    lda #<sd_pat
+    sta X16_P0
+    lda #>sd_pat
+    sta X16_P1
+    lda #<sd_hello             ; "hello" matches "he*o"
+    ldx #>sd_hello
+    jsr str_pattern_match
+    bcc test_str_pat__fail
+    lda #<sd_patq
+    sta X16_P0
+    lda #>sd_patq
+    sta X16_P1
+    lda #<sd_hello             ; "hello" matches "h?llo"
+    ldx #>sd_hello
+    jsr str_pattern_match
+    bcc test_str_pat__fail
+    lda #<sd_patx
+    sta X16_P0
+    lda #>sd_patx
+    sta X16_P1
+    lda #<sd_hello             ; "hello" does NOT match "he*x"
+    ldx #>sd_hello
+    jsr str_pattern_match
+    bcs test_str_pat__fail
+    lda #0
+    bra test_str_pat__report
+test_str_pat__fail
+    lda #1
+test_str_pat__report
+    ldx #<test_str_pat__name
+    ldy #>test_str_pat__name
+    jmp t_result
+test_str_pat__name dta c'STR_PAT', 0
+
+test_str_slice
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello             ; left 3 -> "hel"
+    ldx #>sd_hello
+    ldy #3
+    jsr str_left
+    lda sd_buf
+    cmp #'h'
+    bne test_str_slice__fail
+    lda sd_buf+2
+    cmp #'l'
+    bne test_str_slice__fail
+    lda sd_buf+3
+    bne test_str_slice__fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello             ; right 2 -> "lo"
+    ldx #>sd_hello
+    ldy #2
+    jsr str_right
+    lda sd_buf
+    cmp #'l'
+    bne test_str_slice__fail
+    lda sd_buf+1
+    cmp #'o'
+    bne test_str_slice__fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #1                     ; slice start 1 len 3 -> "ell"
+    sta X16_P2
+    lda #<sd_hello
+    ldx #>sd_hello
+    ldy #3
+    jsr str_slice
+    lda sd_buf
+    cmp #'e'
+    bne test_str_slice__fail
+    lda sd_buf+2
+    cmp #'l'
+    bne test_str_slice__fail
+    lda sd_buf+3
+    bne test_str_slice__fail
+    lda #0
+    bra test_str_slice__report
+test_str_slice__fail
+    lda #1
+test_str_slice__report
+    ldx #<test_str_slice__name
+    ldy #>test_str_slice__name
+    jmp t_result
+test_str_slice__name dta c'STR_SLICE', 0
+
+test_str_trim
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_pad               ; buf = "  hi  "
+    ldx #>sd_pad
+    jsr str_copy
+    lda #<sd_buf               ; trim both ends -> "hi"
+    ldx #>sd_buf
+    jsr str_trim
+    lda sd_buf
+    cmp #'h'
+    bne test_str_trim__fail
+    lda sd_buf+1
+    cmp #'i'
+    bne test_str_trim__fail
+    lda sd_buf+2
+    bne test_str_trim__fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_pad2              ; buf = "ab  "
+    ldx #>sd_pad2
+    jsr str_copy
+    lda #<sd_buf               ; rtrim only -> "ab"
+    ldx #>sd_buf
+    jsr str_rtrim
+    lda sd_buf+2
+    bne test_str_trim__fail
+    lda sd_buf+1
+    cmp #'b'
+    bne test_str_trim__fail
+    lda #0
+    bra test_str_trim__report
+test_str_trim__fail
+    lda #1
+test_str_trim__report
+    ldx #<test_str_trim__name
+    ldy #>test_str_trim__name
+    jmp t_result
+test_str_trim__name dta c'STR_TRIM', 0
+
+; The xm_str_* macros expand to the same setup + jsr, so this proves they
+; work and (via the 7-way hash) that they convert byte-identically.
+test_str_sugar
+    xm_str_copy sd_hello,sd_buf  ; buf = "hello"
+    xm_str_upper_iso sd_buf  ; buf = "HELLO"
+    lda sd_buf
+    cmp #'H'
+    bne test_str_sugar__fail
+    xm_str_find sd_hello,'l'  ; find 'l' -> index 2, carry set
+    bcc test_str_sugar__fail
+    cmp #2
+    bne test_str_sugar__fail
+    xm_str_pattern_match sd_hello,sd_pat  ; "hello" matches "he*o"
+    bcc test_str_sugar__fail
+    lda #0
+    bra test_str_sugar__report
+test_str_sugar__fail
+    lda #1
+test_str_sugar__report
+    ldx #<test_str_sugar__name
+    ldy #>test_str_sugar__name
+    jmp t_result
+test_str_sugar__name dta c'STR_SUGAR', 0
+
+sd_hello dta c'hello', 0
+sd_hi    dta c'hi', 0
+sd_bang  dta c'!!', 0
+sd_abc   dta c'abc', 0
+sd_abc2  dta c'abc', 0
+sd_abd   dta c'abd', 0
+sd_HELLO dta c'HELLO', 0
+sd_Hello dta c'Hello', 0
+sd_line  dta c'ab', 13, c'cd', 0
+sd_pat   dta c'he*o', 0
+sd_patq  dta c'h?llo', 0
+sd_patx  dta c'he*x', 0
+sd_pad   dta c'  hi  ', 0
+sd_pad2  dta c'ab  ', 0
+sd_buf
+    :(24) dta 0
 
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0

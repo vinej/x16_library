@@ -334,8 +334,12 @@ treated as caller-save scratch.
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
 | `X16_USE_PCM_STREAM` | `pcm_stream_start`/`start_bank`/`stop`/`active`, `pcm_str_loop` — AFLOW-interrupt streaming beyond the 4 KB FIFO, from low or banked RAM, looping (pulls in PCM and IRQ) |
 | `X16_USE_INPUT` | `joy_scan`, `joy_get`, `mouse_show`/`hide`/`get`, `key_get`, `key_wait`, `key_peek` |
+| `X16_USE_SERIAL` | The serial / WiFi card's 16C550 UARTs (up to two, at `$9F60`/`$9F68`): `ser_detect` (scan the expansion window, `ser_u0`/`ser_u1` = the bases found), `ser_init` (8N1, FIFOs, auto-flow, no IRQ; takes the base in `A`/`X` and a `SER_BAUD_*` divisor in `P0`/`P1`), `ser_avail`, `ser_get` (non-blocking, carry set = nothing waiting), `ser_get_wait`, `ser_put`, `ser_puts`, `ser_write` (counted, binary-safe), `ser_read_until`/`ser_discard_until` (blocking, match a needle). Self-contained (no other module). It drives a specific add-on card, so — like `DOUBLE` — it is pay-per-use: **not** in `X16_USE_ALL` or the prebuilt blob; set the gate to pull it in. |
+| `X16_USE_SERIAL_ZIMODEM` | The WiFi half — an ESP32 running ZiModem, driven as an AT-command modem over UART 0: `zi_init` (reset the board to a known state), `zi_cmd` (send an `AT…` line + CR/LF), `zi_wait_ok`, `zi_reset`, `zi_get_ip` (IPv4 via ATI2), hex-mode file download (`zi_hex_open` → `zi_hex_chunk` → `zi_hex_close`), and `zi_hexdecode` (the payload decoder). A thin AT-framing skin over the `ser_*` primitives. Pulls in `X16_USE_SERIAL`; pay-per-use (not in `X16_USE_ALL`). |
 | `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem`, `bank_copy_far` |
 | `X16_USE_BANKALLOC` | `bank_alloc_init`, `bank_alloc`, `bank_free`, `bank_reserve` |
+| `X16_USE_STACK` | An 8 KB LIFO stack living in one HIRAM bank: `stack_init` (takes the bank in `A`), `stack_push`/`stack_pushw`, `stack_pop`/`stack_popw` (byte and word), `stack_size`/`stack_free`, `stack_isempty`/`stack_isfull`. Saves/restores `RAM_BANK`. The 256-byte version that needs no bank is `stk_*` in `X16_USE_BUFFERS`. Pay-per-use (not in `X16_USE_ALL`). |
+| `X16_USE_RINGBUFFER` | An 8 KB FIFO ring living in one HIRAM bank: `ring_init` (bank in `A`), `ring_put`/`ring_putw`, `ring_get`/`ring_getw`, `ring_size`/`ring_free`, `ring_isempty`/`ring_isfull`. Saves/restores `RAM_BANK`. The 256-byte version is `rb_*` in `X16_USE_BUFFERS`. Pay-per-use. |
 | `X16_USE_MEM` | `mem_fill`, `mem_copy`, `mem_crc`, `mem_decompress` (KERNAL block ops, LZSA2) |
 | `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
 | `X16_USE_DOS` | `dos_cmd`, `dos_status`, `dos_delete`, `dos_rename`, `dos_mkdir`, `dos_rmdir`, `dos_chdir` — the command channel, so a failed save can say *why* |
@@ -347,6 +351,7 @@ treated as caller-save scratch.
 | `X16_USE_ZX0` | `zx0_decompress` — ZX0 v2 (salvador/zx0 output); packs tighter than the ROM's LZSA2 |
 | `X16_USE_TSC` | `tsc_decompress` — TSCrunch; unpacks faster than either, packs a little looser |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
+| `X16_USE_BCD` | Packed-BCD (decimal-mode) arithmetic on `bcd_a`/`bcd_b` registers: `bcd_add8`/`16`/`32`, `bcd_sub8`/`16`/`32` (carry out = overflow/borrow), and `bcd_addto`/`bcd_subfrom` (32-bit, in place through a pointer). `$0987 + $1111 = $2098` — the hex digits *are* the decimal digits, so a score or clock stays print-ready without binary→decimal conversion. Pay-per-use (not in `X16_USE_ALL`). |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
 | `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
@@ -354,6 +359,11 @@ treated as caller-save scratch.
 | `X16_USE_INT32` | 32-bit integers: `i32_add`/`sub`/`neg`/`abs`/`mul`/`divmod`, `i32_cmps`/`cmpu`, `i32_shl`/`shr`/`asr`, `i32_from_u16`/`s16`, `i32_to_s16`, `i32_to_dec`, `+i32_const` |
 | `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` — the ROM's 5-byte float (~9 digits) |
 | `X16_USE_DOUBLE` | Software IEEE-754 **binary64** (~15-16 digits) where the ROM float is too coarse — a `d_ac` accumulator like FLOAT's `FAC`: `d_load`/`store`, `d_from_s16`/`s32`, `d_to_s32`, `d_neg`/`abs`, `d_cmp`, `d_add`/`sub`/`mul`/`div`, `d_sqrt`, `d_exp`, `d_ln`, `d_pow`, `d_sin`/`cos`/`tan`/`atan`, `d_sinh`/`cosh`/`tanh`, `d_from_str`/`d_to_str` (decimal I/O). A full scientific-calculator core in software. Self-contained (no ROM), so it is not in `X16_USE_ALL` / the prebuilt blob — enable the gate to use it. |
+| `X16_USE_STRING` | NUL-terminated string fundamentals (`string/string.asm`): `str_length`, `str_copy`, `str_ncopy`, `str_append`, `str_nappend`, `str_compare`, `str_hash`. Strings passed by pointer in `A`/`X`, a second string in `X16_P0/P1`; lengths are bytes (≤ 255). |
+| `X16_USE_STRING_CTYPE` | Character predicates (`string/ctype.asm`), char in `A` → carry: `str_isdigit`, `str_isxdigit`, `str_islower`, `str_isspace` (encoding-agnostic) and `str_isupper`/`str_isletter`/`str_isprint` with `_iso` variants for the letters PETSCII and ISO place differently. |
+| `X16_USE_STRING_CASE` | Case folding (`string/case.asm`): `str_lower`/`str_upper` (whole string, in place) and `str_lowerchar`/`str_upperchar` (one char), each with an `_iso` variant, plus `str_compare_nocase`/`_iso`. |
+| `X16_USE_STRING_FIND` | Searching (`string/find.asm`): `str_find`, `str_rfind`, `str_find_eol`, `str_contains` (character in `Y`), and `str_pattern_match` (`?`/`*` wildcards, self-modifying + recursive). |
+| `X16_USE_STRING_SLICE` | Substrings (`string/slice.asm`): `str_left`, `str_right`, `str_slice` (into a target in `X16_P0/P1`), and in-place `str_ltrim`/`str_rtrim`/`str_trim`. |
 
 Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
 asking for a module twice is not an error.
@@ -491,6 +501,95 @@ de Casteljau at a size-adaptive sample count and joined with the same
 line helper — the P0/P3 anchors land exactly on the curve. Arc and bézier
 clip like `shape_circle` (they draw through `SHP_PSET`); the pie draws
 with `SHP_HLINE`, so keep it on screen like `shape_disc`.
+
+`comms/serial.asm` (`X16_USE_SERIAL`) drives the serial / WiFi card's
+16C550 UARTs — up to two, on 8-byte boundaries in the expansion window,
+the standard card at `$9F60` and `$9F68`. The WiFi half is an ESP32
+running ZiModem, an AT-command modem you talk to as bytes over UART 0;
+this module is that byte layer, not the modem protocol. `ser_detect`
+fingerprints each candidate base by the three registers a bare bus does
+not fake — the top nibble of IER always reads 0, the top two bits of MCR
+always read 0, and the scratch register holds two different patterns you
+write it — with interrupts held off across the probe. `ser_init` sets
+8N1, turns on the FIFOs and auto-flow control, programs the baud divisor
+(a `SER_BAUD_*` constant: `14745600 / (16 × baud)`) and remembers the
+UART, so `ser_put`/`ser_get`/… need no address after it. Receiving is
+non-blocking by default: `ser_get` returns carry-set when the FIFO is
+empty rather than spinning (`ser_get_wait` is the blocking twin, for when
+a device is known to be there). Byte writes go to THR through `sta (ptr)`
+with no index, because an indexed store's dummy read would land on RHR
+and pop a byte off the receive FIFO.
+
+Its test story differs from the rest of the library, and the header says
+so. The bundled emulator models these UARTs under `-midicard` (with an
+`-sf2` placeholder — the registers answer whether or not the soundfont
+loads), so **detection and the whole of `ser_init` are checked against a
+real register-readback oracle**, exactly like the VERA tests read the
+data port back. What the emulator cannot do is feed the receive FIFO or
+route transmitted bytes back (its MCR-loopback only wires the modem
+status bits), so a genuine byte round-trip is a real-hardware test: the
+suite covers the RX path only for its empty / non-blocking behaviour and
+TX for liveness. The serial runner builds and passes byte-identically on
+all seven assemblers, like everything else.
+
+`comms/zimodem.asm` (`X16_USE_SERIAL_ZIMODEM`) puts the WiFi half to
+work. The card's ESP32 runs ZiModem firmware, a Hayes-style modem you
+drive with `AT` commands over UART 0 — `zi_init` settles the board and
+applies the standard config (echo off, stream mode), `zi_cmd` frames a
+command line, `zi_wait_ok` reads back the `OK`, `zi_get_ip` returns the
+IPv4 address, and `zi_hex_open`/`zi_hex_chunk`/`zi_hex_close` pull a file
+down in ZiModem's hex-transfer mode. It is a thin AT-framing skin over
+the `ser_*` primitives, nothing more. Its testing is necessarily thinner
+than the base module's: ZiModem is *interactive*, and almost every
+routine blocks reading the ESP32's reply — which the emulator, with no
+board attached, never sends. So those flows are hardware-verified, and
+the suite pins only what it can run headless: `zi_hexdecode` (the
+hex-payload decoder — pure computation, checked against a known vector),
+`zi_cmd`'s transmit path, and 7-way byte parity. The code says as much
+in its header.
+
+`util/bcd.asm` (`X16_USE_BCD`) does decimal add and subtract through the
+65C02's BCD mode. Values sit in `bcd_a` (accumulator) and `bcd_b` (operand),
+the same shape as the integer modules, and each byte holds two decimal digits
+low-first — so `$0987 + $1111` really is `$2098`, not the binary `$1A98`.
+There is one routine per width (`bcd_add8`/`16`/`32`, `bcd_sub8`/`16`/`32`):
+decimal `ADC`/`SBC` does not distinguish signed from unsigned, exactly as
+two's-complement add/sub does not in `int16`/`int32`. `bcd_addto`/`bcd_subfrom`
+add or subtract `bcd_b` into a 32-bit value in place through a pointer, to skip
+copying it through the accumulator. The point is a score or clock that stays
+print-ready: keep it in BCD and print the hex form, which already reads as
+decimal, instead of paying a binary→decimal conversion every frame. These run
+in decimal mode across the operation; the KERNAL IRQ is decimal-safe, but a
+custom IRQ handler that does its own `ADC`/`SBC` must `cld` first.
+
+`storage/stack.asm` (`X16_USE_STACK`) and `storage/ringbuffer.asm`
+(`X16_USE_RINGBUFFER`) are the big siblings of the 256-byte `stk_*`/`rb_*` in
+`X16_USE_BUFFERS`: each keeps up to 8 KB of data in one whole HIRAM bank
+(`$A000-$BFFF`) instead of low RAM. Hand the bank number to `stack_init` /
+`ring_init`; the pointers and counters stay in low RAM, so only the data
+lives in the bank, and every call saves and restores `RAM_BANK` — a stack in
+bank 5 and your own use of bank 7 in between never collide. Both take and
+return bytes or words (`stack_pushw`/`popw`, `ring_putw`/`getw`), and the
+ring wraps at the 8 KB boundary. There are no over/underflow guards (like the
+small ones): the cap is 8191 bytes, so consult `*_isfull`/`*_isempty` and
+`*_free`/`*_size` yourself.
+
+The `string/` modules are the NUL-terminated string toolkit, split five ways
+so you pay only for what you use — the gates are independent, set whichever
+ones you want. `X16_USE_STRING` is the core (measure, copy, append, compare,
+hash); `X16_USE_STRING_CTYPE` classifies single characters; `X16_USE_STRING_CASE`
+folds case; `X16_USE_STRING_FIND` searches (including `?`/`*` pattern matching);
+`X16_USE_STRING_SLICE` copies `left`/`right`/`slice` pieces and trims whitespace
+off either end. Strings are passed by pointer in `A`/`X` with a second string
+in `X16_P0/P1`, the same convention as `screen_puts`, and are at most 255 bytes.
+The case and classification routines come in a PETSCII form and an `_iso` form
+because the two encodings place the letters at different codes — PETSCII
+"lower" is numerically ISO "upper", which is the charset, not a bug.
+**Number ↔ string conversion is deliberately *not* here**: it already lives
+where the numbers do — `u16_to_dec`/`hex` and `dec_to_u16` in `NUMBER`,
+`i16_to_dec`/`i32_to_dec` in the integer modules, `f_to_str`/`from_str` in
+`FLOAT`, `d_to_str`/`from_str` in `DOUBLE`. All five string gates are
+pay-per-use (out of `X16_USE_ALL`).
 
 The compression picture, complete: the ROM's LZSA2 (`mem_decompress`) is
 free and can stream into VRAM; `zx0_decompress` (the modern ZX0 v2 that
@@ -783,6 +882,22 @@ separately and excluded from the pass/total, so they can never be mistaken for
 passes. Run the suite windowed (`-run -warp -echo`, no `-testbench`) and
 `VSYNC_COUNTER` passes.
 
+**The serial runner** (`test_<tree>/serial.asm`) needs a UART to answer, so
+`build_*.ps1 -Test` runs it under the emulator's serial-MIDI card
+(`-midicard -sf2 <placeholder>`), which models two 16C550s at `$9F60`/`$9F68`.
+The card's registers respond whether or not the soundfont loads, so the
+harness writes a throwaway `build/dummy.sf2` — no binary asset in the repo,
+and the "Could not load MIDI synth library" line the emulator prints is
+expected. The same independent-oracle rule holds: the tests drive `ser_detect`
+and `ser_init`, then read the raw UART registers straight back through absolute
+addresses. Detection and register programming are verified this way; the
+receive path is checked only for its empty / non-blocking behaviour (nothing
+feeds the RX FIFO headless) and transmit for liveness (sent bytes leave for the
+synth and cannot be read back). A real byte round-trip is a hardware test. The
+same runner also pins the ZiModem layer's one headless-testable piece —
+`zi_hexdecode`, the hex-payload decoder — against a known vector, and `zi_cmd`'s
+transmit path; the interactive AT-command flows are hardware-verified.
+
 ## Layout
 
 ```
@@ -804,9 +919,11 @@ src_acme/    THE REFERENCE IMPLEMENTATION
   gfx/           bitmap, verafx
   audio/         psg, ym, pcm, adpcm
   input/         input
+  comms/         serial, zimodem
   system/        irq
-  storage/       bank, bankalloc, mem, load, dos, bmx
-  util/          fixed, collide, bits, number, int16, int32, float,
+  storage/       bank, bankalloc, stack, ringbuffer, mem, load, dos, bmx
+  string/        string, ctype, case, find, slice
+  util/          fixed, bcd, collide, bits, number, int16, int32, float,
                  math, clip, buffers, zx0, tscrunch
 src_ca65/    native ca65 port        } generated + a few hand files;
 src_64tass/  native 64tass port      } byte-identical output, same
@@ -816,13 +933,16 @@ src_mads/    native MADS port        }
 src_vasm/    native vasm port        }
 examples/    hello.asm, bounce.asm, numbers.asm, hello-mads.asm,
              hello-vasm.asm
-test_acme/   runner.asm, testlib.asm, blobsmoke.asm (132 tests)
-test_ca65/   the converted runner + runner.cfg (same 132 tests)
-test_64tass/ the converted runner (same 132 tests)
-test_kick/   the converted runner (same 132 tests)
-test_dasm/   the converted runner (same 132 tests)
-test_mads/   the converted runner (same 132 tests)
-test_vasm/   the converted runner (same 132 tests)
+test_acme/   runner.asm, runner2.asm, serial.asm, testlib.asm,
+             blobsmoke.asm (189 tests; runner2 covers BCD, the banked
+             buffers and the string library; serial.asm covers SERIAL +
+             ZIMODEM and runs under the emulator's -midicard UART card)
+test_ca65/   the converted runners + runner.cfg (same suite)
+test_64tass/ the converted runners (same suite)
+test_kick/   the converted runners (same suite)
+test_dasm/   the converted runners (same suite)
+test_mads/   the converted runners (same suite)
+test_vasm/   the converted runners (same suite)
 tools/       acme2ca65.py, acme2tass.py, acme2kick.py, acme2dasm.py,
              acme2mads.py, acme2vasm.py -- the converters
 dist/        the prebuilt-binary + bindings pipeline (dist.ps1)

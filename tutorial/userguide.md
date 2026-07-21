@@ -31,23 +31,25 @@ parameters, behaviour) applies to all four unchanged.
 14. [PCM audio (`X16_USE_PCM`, `X16_USE_PCM_STREAM`)](#pcm-audio)
 15. [ADPCM decoding (`X16_USE_ADPCM`)](#adpcm-decoding)
 16. [Input (`X16_USE_INPUT`)](#input)
-17. [Banked RAM (`X16_USE_BANK`)](#banked-ram)
-18. [Bank allocator (`X16_USE_BANKALLOC`)](#bank-allocator)
-19. [Block memory operations (`X16_USE_MEM`)](#block-memory-operations)
-20. [Loading and saving (`X16_USE_LOAD`)](#loading-and-saving)
-21. [DOS commands (`X16_USE_DOS`)](#dos-commands)
-22. [BMX images (`X16_USE_BMX`)](#bmx-images)
-23. [Game math (`X16_USE_MATH`)](#game-math)
-24. [Line clipping (`X16_USE_CLIP`)](#line-clipping)
-25. [Ring buffer and stack (`X16_USE_BUFFERS`)](#ring-buffer-and-stack)
-26. [Compression (`X16_USE_ZX0`, `X16_USE_TSC`)](#compression)
-27. [Fixed point (`X16_USE_FIXED`)](#fixed-point)
-28. [Collision (`X16_USE_COLLIDE`)](#collision)
-29. [Bit helpers (`X16_USE_BITS`)](#bit-helpers)
-30. [Number formatting (`X16_USE_NUMBER`)](#number-formatting)
-31. [16-bit integers (`X16_USE_INT16`)](#16-bit-integers)
-32. [32-bit integers (`X16_USE_INT32`)](#32-bit-integers)
-33. [Floating point (`X16_USE_FLOAT`)](#floating-point)
+17. [Serial and WiFi (`X16_USE_SERIAL`, `X16_USE_SERIAL_ZIMODEM`)](#serial-and-wifi)
+18. [Banked RAM (`X16_USE_BANK`)](#banked-ram)
+19. [Bank allocator (`X16_USE_BANKALLOC`)](#bank-allocator)
+20. [Block memory operations (`X16_USE_MEM`)](#block-memory-operations)
+21. [Loading and saving (`X16_USE_LOAD`)](#loading-and-saving)
+22. [DOS commands (`X16_USE_DOS`)](#dos-commands)
+23. [BMX images (`X16_USE_BMX`)](#bmx-images)
+24. [Game math (`X16_USE_MATH`)](#game-math)
+25. [Line clipping (`X16_USE_CLIP`)](#line-clipping)
+26. [Ring buffer and stack (`X16_USE_BUFFERS`)](#ring-buffer-and-stack)
+27. [Compression (`X16_USE_ZX0`, `X16_USE_TSC`)](#compression)
+28. [Fixed point (`X16_USE_FIXED`)](#fixed-point)
+29. [Collision (`X16_USE_COLLIDE`)](#collision)
+30. [Bit helpers (`X16_USE_BITS`)](#bit-helpers)
+31. [Number formatting (`X16_USE_NUMBER`)](#number-formatting)
+32. [16-bit integers (`X16_USE_INT16`)](#16-bit-integers)
+33. [32-bit integers (`X16_USE_INT32`)](#32-bit-integers)
+34. [Floating point (`X16_USE_FLOAT`)](#floating-point)
+35. [Strings (`X16_USE_STRING` and friends)](#strings)
 
 ---
 
@@ -1393,6 +1395,122 @@ poll
 
 ---
 
+## Serial and WiFi
+
+`X16_USE_SERIAL` — `comms/serial.asm`. The serial / WiFi card carries up to
+two 16C550 UARTs in the expansion window; the standard card sits at `$9F60`
+(UART 0) and `$9F68` (UART 1). Pay-per-use: set the gate to pull it in (it
+is not in `X16_USE_ALL`). `ser_init` remembers the UART you hand it, so the
+byte routines take no address afterwards. Receiving is non-blocking by
+default. Baud rates are `SER_BAUD_*` constants (`SER_BAUD_300` …
+`SER_BAUD_921600`).
+
+### `ser_detect` — find the UART chips
+
+- **Out:** `A` = number found (0–2), carry clear if any; `ser_u0`/`ser_u1` =
+  the two base addresses (0 if absent)
+
+Fingerprints each candidate by registers a bare bus cannot fake, with
+interrupts held off across the probe.
+
+### `ser_init` — program a UART for 8N1
+
+- **In:** `A` = base low, `X` = base high; `X16_P0/P1` = baud divisor
+
+8 data bits, no parity, 1 stop; FIFOs and auto-flow on; interrupts off. The
+UART becomes the current one for every routine below.
+
+```asm
+    jsr ser_detect
+    lda ser_u0 : ldx ser_u0+1        ; the first UART found
+    lda #<SER_BAUD_9600 : sta X16_P0
+    lda #>SER_BAUD_9600 : sta X16_P1
+    jsr ser_init
+    lda #<hello : ldx #>hello
+    jsr ser_puts
+poll:
+    jsr ser_get                      ; carry set = nothing waiting
+    bcs poll
+    ; A = the received byte
+hello !text "hello, world", $0d, $0a, 0
+```
+
+### `ser_avail` / `ser_get` / `ser_get_wait` — receive
+
+- `ser_avail` → carry set if a byte is ready
+- `ser_get` → carry clear + `A` = byte, or carry set if the FIFO was empty
+  (never blocks)
+- `ser_get_wait` → `A` = byte, blocking until one arrives (for a known device)
+
+### `ser_put` / `ser_puts` / `ser_write` — transmit
+
+- `ser_put` — **In:** `A` = byte
+- `ser_puts` — **In:** `A`/`X` = NUL-terminated string
+- `ser_write` — **In:** `A`/`X` = data, `Y` = length (binary-safe)
+
+Each waits for room in the transmit FIFO.
+
+### `ser_read_until` / `ser_discard_until` — match a needle
+
+- `ser_read_until` — **In:** `A`/`X` = needle (NUL-terminated), `X16_P0/P1` =
+  buffer, `X16_P2/P3` = max bytes. **Out:** `X16_P4/P5` = bytes stored
+- `ser_discard_until` — **In:** `A`/`X` = needle
+
+Both read until the needle is seen (it is included) or, for `read_until`, the
+buffer is full. They block on the UART, so they are for a connected device.
+
+### ZiModem (WiFi) — `X16_USE_SERIAL_ZIMODEM`
+
+`comms/zimodem.asm`. The card's WiFi half is an ESP32 running ZiModem
+firmware, a Hayes-style modem you drive with `AT` commands over UART 0. This
+layer frames the commands and matches the replies on top of the `ser_*`
+primitives (it pulls `X16_USE_SERIAL` in). It is *interactive*: most routines
+block reading the board's reply, so they only do something useful with a real
+card attached.
+
+- `zi_init` — **In:** `A`/`X` = UART base, `X16_P0/P1` = baud divisor. Settle
+  the board, abort any stream, apply the standard config, wait for `OK`.
+- `zi_cmd` — **In:** `A`/`X` = `AT…` string. Send it with the CR/LF the
+  firmware expects (transmit only; follow with `zi_wait_ok`).
+- `zi_wait_ok` — read and discard the reply up to `OK\r\n`.
+- `zi_reset` — issue `ATZ`.
+- `zi_get_ip` — **In:** `A`/`X` = buffer (≥ 25 bytes). The IPv4 address as a
+  NUL-terminated string (via `ATI2`).
+- `zi_hex_open` — **In:** `A`/`X` = filename/URL. **Out:** carry clear =
+  transfer started, carry set = not found. Begin a hex-mode download.
+- `zi_hex_chunk` — **In:** `A`/`X` = buffer (≥ 44 bytes). **Out:** `A` = bytes
+  decoded, 0 when the file is done. Pull it in a loop until it returns 0.
+- `zi_hex_close` — swallow the trailing `OK` after the payload.
+- `zi_hexdecode` — **In:** `A`/`X` = ASCII-hex source, `Y` = digit count,
+  `X16_P0/P1` = destination. **Out:** `A` = bytes written (`Y`/2). The one
+  piece of ZiModem you can use standalone.
+
+```asm
+    lda #<uart : ldx #>uart              ; a base from ser_detect
+    lda #<SER_BAUD_115200 : sta X16_P0
+    lda #>SER_BAUD_115200 : sta X16_P1
+    jsr zi_init
+    lda #<url : ldx #>url
+    jsr zi_hex_open
+    bcs not_found
+next:
+    lda #<buf : ldx #>buf
+    jsr zi_hex_chunk                     ; A = bytes this chunk
+    beq done
+    ; ...consume A bytes from buf...
+    bra next
+done:
+    jsr zi_hex_close
+```
+
+A note on testing: because ZiModem talks to a board the emulator does not
+provide, its command/response flows are verified on real hardware. The test
+suite pins what it can run headless — `zi_hexdecode` against a known vector,
+`zi_cmd`'s transmit path, and byte-for-byte identical output across all seven
+assemblers.
+
+---
+
 ## Banked RAM
 
 `X16_USE_BANK` — `storage/bank.asm`. `RAM_BANK` (`$00`) selects which
@@ -2198,6 +2316,88 @@ A complete calculation — the hypotenuse of (30, 40):
 fa !fill 5, 0
 fb !fill 5, 0
 ```
+
+---
+
+## Strings
+
+Five independent, pay-per-use gates over `string/`. NUL-terminated strings
+are passed by pointer in `A` (low) / `X` (high); a second string (a copy
+target, the other side of a compare) goes in `X16_P0/P1`; a character to
+find or classify goes in `A` or `Y`. Lengths are bytes, so strings are at
+most 255 characters. Number ↔ string conversion is *not* here — it lives in
+`NUMBER`, `INT16`/`INT32`, `FLOAT` and `DOUBLE`, next to the numbers.
+
+### `X16_USE_STRING` — the fundamentals
+
+- `str_length` — **in:** `A`/`X`. **out:** `Y` = length.
+- `str_copy` — **in:** `A`/`X` = source, `X16_P0/P1` = target. **out:** `Y` = length.
+- `str_ncopy` — as `str_copy` plus `Y` = maximum length.
+- `str_append` — **in:** `A`/`X` = target, `X16_P0/P1` = suffix. **out:** `A` = new length.
+- `str_nappend` — as `str_append` plus `Y` = maximum length (leaves the target
+  untouched if the suffix would overflow it).
+- `str_compare` — **in:** `A`/`X` = string1, `X16_P0/P1` = string2. **out:**
+  `A` = `$FF` (−1) / `0` / `1` for string1 sorting before / equal to / after.
+- `str_hash` — **in:** `A`/`X`. **out:** `A` = an 8-bit rolling hash.
+
+```asm
+    lda #<src : ldx #>src
+    lda #<dst : sta X16_P0
+    lda #>dst : sta X16_P1
+    jsr str_copy                  ; dst = src, Y = length
+    lda #<dst : ldx #>dst
+    lda #<"!" : sta X16_P0
+    lda #>"!" : sta X16_P1
+    jsr str_append                ; dst = "...!" , A = new length
+```
+
+### `X16_USE_STRING_CTYPE` — character classification
+
+Each takes the character in `A` and answers in the carry (set = yes):
+`str_isdigit`, `str_isxdigit`, `str_islower`, `str_isspace` are the same in
+either encoding; `str_isupper`, `str_isletter`, `str_isprint` classify for
+PETSCII, and `str_isupper_iso` / `str_isletter_iso` / `str_isprint_iso` for
+ISO. (In PETSCII the letter codes overlap, so `str_isupper` accepts both
+97–122 and 193–218, and `str_isupper('A')` is *false* — 65 is an ISO code.)
+
+### `X16_USE_STRING_CASE` — case folding
+
+`str_lower` / `str_upper` fold a whole string in place (returning `Y` = length);
+`str_lowerchar` / `str_upperchar` fold the one character in `A`. Each has an
+`_iso` sibling. `str_compare_nocase` / `_iso` compare like `str_compare` but
+fold both sides first. Because PETSCII and ISO swap the letter ranges,
+PETSCII `str_lower` is numerically ISO `str_upper` — pick the pair that
+matches the encoding your text is in.
+
+### `X16_USE_STRING_FIND` — searching
+
+- `str_find` — **in:** `A`/`X` = string, `Y` = character. **out:** carry set +
+  `A` = index if found, else carry clear + `A` = 255.
+- `str_rfind` — the same, scanning from the right.
+- `str_find_eol` — index of the first CR (13) or LF (10).
+- `str_contains` — carry set if the character occurs.
+- `str_pattern_match` — **in:** `A`/`X` = string, `X16_P0/P1` = pattern. `?`
+  matches any one character, `*` any run (including none); case-sensitive.
+  **out:** carry set (and `A` = 1) on a match.
+
+```asm
+    lda #<path : ldx #>path
+    ldy #'/'
+    jsr str_rfind                 ; index of the last '/', carry set if any
+```
+
+### `X16_USE_STRING_SLICE` — substrings and trimming
+
+- `str_left` / `str_right` — **in:** `A`/`X` = source, `X16_P0/P1` = target,
+  `Y` = length. Copy that many characters off the given end.
+- `str_slice` — as above plus `X16_P2` = start index.
+- `str_ltrim` / `str_rtrim` / `str_trim` — **in:** `A`/`X` = string. Drop
+  whitespace off the left / right / both ends, in place, returning `Y` = the
+  new length. Whitespace is the `str_isspace` set (space, TAB, CR, LF and the
+  two shifted forms).
+
+You must size target buffers yourself and keep lengths within the source —
+like the rest of the library, these routines trust their arguments.
 
 ---
 

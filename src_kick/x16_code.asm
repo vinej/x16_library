@@ -83,10 +83,24 @@
 //                     pulls in PCM and IRQ)
 //   X16_USE_INPUT     joy_scan, joy_get, mouse_show/hide/get,
 //                     key_get, key_wait, key_peek
+//   X16_USE_SERIAL    ser_detect, ser_init, ser_avail, ser_get,
+//                     ser_get_wait, ser_put, ser_puts, ser_write,
+//                     ser_read_until, ser_discard_until -- the serial /
+//                     WiFi card's 16C550 UARTs at $9F60/$9F68
+//   X16_USE_SERIAL_ZIMODEM  + zi_init, zi_cmd, zi_wait_ok, zi_reset,
+//                     zi_get_ip, zi_hex_open/chunk/close, zi_hexdecode --
+//                     the ESP32 WiFi modem (ZiModem AT commands) on top of
+//                     SERIAL
 //   X16_USE_BANK      bank_set/get, bank_peek/poke, mem_to_bank,
 //                     bank_to_mem, bank_copy_far
 //   X16_USE_BANKALLOC bank_alloc_init, bank_alloc, bank_free,
 //                     bank_reserve
+//   X16_USE_STACK     stack_init(bank), stack_push/pushw/pop/popw,
+//                     stack_size/free/isempty/isfull -- an 8 KB LIFO in a
+//                     HIRAM bank (the 256-byte stk_* live in BUFFERS)
+//   X16_USE_RINGBUFFER ring_init(bank), ring_put/putw/get/getw,
+//                     ring_size/free/isempty/isfull -- an 8 KB FIFO in a
+//                     HIRAM bank (the 256-byte rb_* live in BUFFERS)
 //   X16_USE_MEM       mem_fill, mem_copy, mem_crc, mem_decompress
 //                     (KERNAL block ops; they stream to/from VERA too)
 //   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
@@ -102,6 +116,8 @@
 //   X16_USE_ZX0       zx0_decompress (tighter than the ROM's LZSA2)
 //   X16_USE_TSC       tsc_decompress (TSCrunch: faster unpack)
 //   X16_USE_FIXED     umul16, mul88
+//   X16_USE_BCD       bcd_add8/16/32, bcd_sub8/16/32, bcd_addto,
+//                     bcd_subfrom -- packed-BCD (decimal-mode) arithmetic
 //   X16_USE_COLLIDE   collide8, collide16
 //   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
 //   X16_USE_NUMBER    u16_to_dec, u16_to_hex, dec_to_u16
@@ -120,6 +136,19 @@
 //                     d_neg/abs, d_cmp, d_add/sub/mul/div, d_from_str,
 //                     d_to_str, d_sqrt, d_exp, d_ln, d_pow, d_sin, d_cos,
 //                     d_tan, d_atan, d_sinh, d_cosh, d_tanh
+//   X16_USE_STRING    str_length, str_copy, str_ncopy, str_append,
+//                     str_nappend, str_compare, str_hash -- NUL-terminated
+//                     string fundamentals (string/string.asm)
+//   X16_USE_STRING_CTYPE  str_isdigit/isxdigit/islower/isspace and
+//                     isupper/isletter/isprint (+ _iso) -- char predicates
+//   X16_USE_STRING_CASE   str_lower/upper/lowerchar/upperchar (+ _iso),
+//                     str_compare_nocase (+ _iso) -- case folding
+//   X16_USE_STRING_FIND   str_find, str_rfind, str_find_eol, str_contains,
+//                     str_pattern_match -- searching
+//   X16_USE_STRING_SLICE  str_left, str_right, str_slice -- substrings
+//                     (the five string gates are independent; set what you
+//                      use. Number<->string conversion stays in NUMBER,
+//                      INT16/INT32, FLOAT, DOUBLE.)
 // =====================================================================
 
 // Gates are set with !ifndef so that asking for a module twice -- say via
@@ -316,6 +345,42 @@
 // !source lines below. DOUBLE is deliberately kept OUT of X16_USE_ALL so
 // the dist blob stays under the $9EFF low-RAM ceiling.
 #if X16_USE_DOUBLE
+#endif
+// comms/serial.asm stands alone too -- same empty-block trick to register
+// xuse_serial in the 64tass gate model. Kept OUT of X16_USE_ALL / the dist
+// blob: it drives a specific add-on card, so you enable the gate to pay for
+// it, and a program that never talks serial carries none of it.
+#if X16_USE_SERIAL
+#endif
+// comms/zimodem.asm layers the ESP32 WiFi AT-command protocol over SERIAL.
+// Also pay-per-use (out of X16_USE_ALL); pulls SERIAL in.
+#if X16_USE_SERIAL_ZIMODEM
+    #if !X16_USE_SERIAL
+    #define X16_USE_SERIAL
+    #endif
+#endif
+// util/bcd.asm stands alone (decimal-mode add/sub). Empty block registers
+// xuse_bcd in the 64tass gate model; kept OUT of X16_USE_ALL (pay-per-use).
+#if X16_USE_BCD
+#endif
+// storage/stack.asm and storage/ringbuffer.asm each own an 8 KB HIRAM bank.
+// Standalone; empty blocks register xuse_stack / xuse_ringbuffer in the
+// 64tass gate model. Both pay-per-use (out of X16_USE_ALL).
+#if X16_USE_STACK
+#endif
+#if X16_USE_RINGBUFFER
+#endif
+// The five string/ modules are independent and self-contained; these empty
+// blocks register their gates in the 64tass gate model. All pay-per-use.
+#if X16_USE_STRING
+#endif
+#if X16_USE_STRING_CTYPE
+#endif
+#if X16_USE_STRING_CASE
+#endif
+#if X16_USE_STRING_FIND
+#endif
+#if X16_USE_STRING_SLICE
 #endif
 #if X16_USE_BITMAP2
     #if !X16_USE_VERA
@@ -554,11 +619,23 @@
 #if X16_USE_INPUT_ANY
 #import "input/input.asm"
 #endif
+#if X16_USE_SERIAL
+#import "comms/serial.asm"
+#endif
+#if X16_USE_SERIAL_ZIMODEM
+#import "comms/zimodem.asm"
+#endif
 #if X16_USE_BANK
 #import "storage/bank.asm"
 #endif
 #if X16_USE_BANKALLOC
 #import "storage/bankalloc.asm"
+#endif
+#if X16_USE_STACK
+#import "storage/stack.asm"
+#endif
+#if X16_USE_RINGBUFFER
+#import "storage/ringbuffer.asm"
 #endif
 #if X16_USE_MEM
 #import "storage/mem.asm"
@@ -593,6 +670,9 @@
 #if X16_USE_FIXED
 #import "util/fixed.asm"
 #endif
+#if X16_USE_BCD
+#import "util/bcd.asm"
+#endif
 #if X16_USE_COLLIDE
 #import "util/collide.asm"
 #endif
@@ -613,4 +693,19 @@
 #endif
 #if X16_USE_DOUBLE
 #import "util/double.asm"
+#endif
+#if X16_USE_STRING
+#import "string/string.asm"
+#endif
+#if X16_USE_STRING_CTYPE
+#import "string/ctype.asm"
+#endif
+#if X16_USE_STRING_CASE
+#import "string/case.asm"
+#endif
+#if X16_USE_STRING_FIND
+#import "string/find.asm"
+#endif
+#if X16_USE_STRING_SLICE
+#import "string/slice.asm"
 #endif

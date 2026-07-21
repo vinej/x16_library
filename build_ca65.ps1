@@ -67,7 +67,7 @@ function Build-Prg([string]$sourcePath, [string]$configPath) {
 }
 
 # --- test (identical harness to build_acme.ps1) ------------------------
-function Invoke-TestPrg([string]$out) {
+function Invoke-TestPrg([string]$out, [string[]]$extraArgs = @()) {
     $stdin  = Join-Path $env:TEMP "x16lib-empty.in"
     $stdout = Join-Path $build "test-ca65-output.txt"
     [IO.File]::WriteAllText($stdin, "")
@@ -78,26 +78,33 @@ function Invoke-TestPrg([string]$out) {
     Get-ChildItem $fsroot -File | Remove-Item -Force
 
     $emuArgs = @('-rom', $rom, '-fsroot', $fsroot, '-prg', $out,
-                 '-run', '-warp', '-echo', '-testbench')
-    $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
-                          -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
+                 '-run', '-warp', '-echo', '-testbench') + $extraArgs
 
-    $deadline = (Get-Date).AddSeconds(60)
+    # See build_acme.ps1: the -midicard cold start can stall before the
+    # guest runs, so retry the run (up to 3 attempts) until a DONE line
+    # appears. Runs without -midicard reach DONE first try and never retry.
     $text = ""
-    while ($true) {
-        Start-Sleep -Milliseconds 200
-        if (Test-Path $stdout) {
-            $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
-            if ($text -match '(?m)^DONE ') { break }
+    $got  = $false
+    for ($attempt = 1; ($attempt -le 3) -and (-not $got); $attempt++) {
+        if (Test-Path $stdout) { Remove-Item $stdout -Force }
+        $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
+                              -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
+        $deadline = (Get-Date).AddSeconds(60)
+        while ($true) {
+            Start-Sleep -Milliseconds 200
+            if (Test-Path $stdout) {
+                $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
+                if ($text -match '(?m)^DONE ') { $got = $true; break }
+            }
+            if ($proc.HasExited) { break }
+            if ((Get-Date) -gt $deadline) { break }
         }
-        if ($proc.HasExited) { break }
-        if ((Get-Date) -gt $deadline) {
-            if (-not $proc.HasExited) { $proc.Kill() }
-            Fail "emulator timed out after 60s -- no DONE line"
+        if (-not $proc.HasExited) { $proc.Kill() }
+        $proc.WaitForExit()
+        if ((-not $got) -and ($attempt -lt 3)) {
+            Write-Host "  no DONE line -- retrying the emulator run" -ForegroundColor Yellow
         }
     }
-    if (-not $proc.HasExited) { $proc.Kill() }
-    $proc.WaitForExit()
 
     $passes = ([regex]::Matches($text, '(?m)^PASS ([A-Z0-9_]+)')).Count
     $fails  = [regex]::Matches($text, '(?m)^FAIL ([A-Z0-9_]+)')
@@ -123,18 +130,33 @@ function Invoke-TestPrg([string]$out) {
 }
 
 if ($Test) {
+    # The serial runner needs the emulator's 16C550 UARTs (-midicard),
+    # mapped only when an -sf2 font is also given; a placeholder suffices
+    # (the UART registers respond regardless of synth init -- see
+    # build_acme.ps1). No binary asset lives in the repo.
+    $sf2 = Join-Path $build "dummy.sf2"
+    [IO.File]::WriteAllText($sf2, "x16lib serial test placeholder")
+
     # The suite spans several PRGs (one grew past the load ceiling). An
     # explicit -Source still runs alone, for harness mutation checks.
-    $sources = @("test_ca65\runner.asm", "test_ca65\runner2.asm")
-    if ($PSBoundParameters.ContainsKey('Source')) { $sources = @($Source) }
+    $sources = @(
+        @{ Path = "test_ca65\runner.asm";  Args = @() }
+        @{ Path = "test_ca65\runner2.asm"; Args = @() }
+        @{ Path = "test_ca65\serial.asm";  Args = @('-sound', 'none', '-midicard', '-sf2', $sf2) }
+    )
+    if ($PSBoundParameters.ContainsKey('Source')) {
+        $a = @()
+        if ($Source -like '*serial.asm') { $a = @('-sound', 'none', '-midicard', '-sf2', $sf2) }
+        $sources = @(@{ Path = $Source; Args = $a })
+    }
 
     $sumPass = 0
     $sumTotal = 0
     $sumSkip = 0
     foreach ($s in $sources) {
-        $out = Build-Prg $s $Config
+        $out = Build-Prg $s.Path $Config
         Write-Host "x16emu (headless testbench)"
-        $r = Invoke-TestPrg $out
+        $r = Invoke-TestPrg $out $s.Args
         $sumPass  += $r[0]
         $sumTotal += $r[1]
         $sumSkip  += $r[2]

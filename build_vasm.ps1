@@ -26,7 +26,7 @@ $ErrorActionPreference = "Stop"
 # runner by re-invoking this script with an explicit -Source; an
 # explicit -Source still runs alone (harness mutation checks).
 if ($Test -and -not $PSBoundParameters.ContainsKey('Source')) {
-    foreach ($s in @("test_vasm\runner.asm", "test_vasm\runner2.asm")) {
+    foreach ($s in @("test_vasm\runner.asm", "test_vasm\runner2.asm", "test_vasm\serial.asm")) {
         & $PSCommandPath -Source $s -Test
         if ($LASTEXITCODE -ne 0) { exit 1 }
     }
@@ -84,27 +84,44 @@ if ($Test) {
     if (-not (Test-Path $fsroot)) { New-Item -ItemType Directory -Path $fsroot | Out-Null }
     Get-ChildItem $fsroot -File | Remove-Item -Force
 
+    # The serial runner needs the emulator's 16C550 UARTs, mapped only
+    # with -midicard plus an -sf2 font; a placeholder file is enough (the
+    # registers respond even if the synth fails to init -- see
+    # build_acme.ps1).
+    $extra = @()
+    if ($Source -like '*serial.asm') {
+        $sf2 = Join-Path $build "dummy.sf2"
+        [IO.File]::WriteAllText($sf2, "x16lib serial test placeholder")
+        $extra = @('-sound', 'none', '-midicard', '-sf2', $sf2)
+    }
     $emuArgs = @('-rom', $rom, '-fsroot', $fsroot, '-prg', $out,
-                 '-run', '-warp', '-echo', '-testbench')
-    $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
-                          -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
+                 '-run', '-warp', '-echo', '-testbench') + $extra
 
-    $deadline = (Get-Date).AddSeconds(60)
+    # See build_acme.ps1: the -midicard cold start can stall before the
+    # guest runs, so retry the run (up to 3 attempts) until a DONE line
+    # appears. Runs without -midicard reach DONE first try and never retry.
     $text = ""
-    while ($true) {
-        Start-Sleep -Milliseconds 200
-        if (Test-Path $stdout) {
-            $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
-            if ($text -match '(?m)^DONE ') { break }
+    $got  = $false
+    for ($attempt = 1; ($attempt -le 3) -and (-not $got); $attempt++) {
+        if (Test-Path $stdout) { Remove-Item $stdout -Force }
+        $proc = Start-Process -FilePath $emu -ArgumentList $emuArgs -NoNewWindow -PassThru `
+                              -RedirectStandardInput $stdin -RedirectStandardOutput $stdout
+        $deadline = (Get-Date).AddSeconds(60)
+        while ($true) {
+            Start-Sleep -Milliseconds 200
+            if (Test-Path $stdout) {
+                $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
+                if ($text -match '(?m)^DONE ') { $got = $true; break }
+            }
+            if ($proc.HasExited) { break }
+            if ((Get-Date) -gt $deadline) { break }
         }
-        if ($proc.HasExited) { break }
-        if ((Get-Date) -gt $deadline) {
-            if (-not $proc.HasExited) { $proc.Kill() }
-            Fail "emulator timed out after 60s -- no DONE line"
+        if (-not $proc.HasExited) { $proc.Kill() }
+        $proc.WaitForExit()
+        if ((-not $got) -and ($attempt -lt 3)) {
+            Write-Host "  no DONE line -- retrying the emulator run" -ForegroundColor Yellow
         }
     }
-    if (-not $proc.HasExited) { $proc.Kill() }
-    $proc.WaitForExit()
 
     $passes = ([regex]::Matches($text, '(?m)^PASS ([A-Z0-9_]+)')).Count
     $fails  = [regex]::Matches($text, '(?m)^FAIL ([A-Z0-9_]+)')

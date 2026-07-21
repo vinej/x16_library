@@ -52,6 +52,16 @@ X16_USE_SHP_LINE = 0
 X16_USE_SHAPES_RRECT = 0
 X16_USE_SHAPES_BEZIER = 0
 X16_USE_DOUBLE = 0
+X16_USE_SERIAL = 0
+X16_USE_SERIAL_ZIMODEM = 0
+X16_USE_BCD = 0
+X16_USE_STACK = 0
+X16_USE_RINGBUFFER = 0
+X16_USE_STRING = 0
+X16_USE_STRING_CTYPE = 0
+X16_USE_STRING_CASE = 0
+X16_USE_STRING_FIND = 0
+X16_USE_STRING_SLICE = 0
 X16_USE_VERAFX_FILL = 0
 X16_USE_VERAFX_MULT = 0
 X16_USE_VERAFX_COPY = 0
@@ -106,11 +116,21 @@ xuse_shapes_pie = X16_USE_SHAPES_PIE != 0
 xuse_shapes_rrect = X16_USE_SHAPES_RRECT != 0
 xuse_shapes_bezier = X16_USE_SHAPES_BEZIER != 0
 xuse_double = X16_USE_DOUBLE != 0
+xuse_serial_zimodem = X16_USE_SERIAL_ZIMODEM != 0
+xuse_bcd = X16_USE_BCD != 0
+xuse_stack = X16_USE_STACK != 0
+xuse_ringbuffer = X16_USE_RINGBUFFER != 0
+xuse_string = X16_USE_STRING != 0
+xuse_string_ctype = X16_USE_STRING_CTYPE != 0
+xuse_string_case = X16_USE_STRING_CASE != 0
+xuse_string_find = X16_USE_STRING_FIND != 0
+xuse_string_slice = X16_USE_STRING_SLICE != 0
 xuse_screen = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
 xuse_irq = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
 xuse_pcm = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
 xuse_number = xuse_all || X16_USE_NUMBER != 0 || xuse_int16
 xuse_shapes_arc = xuse_shapes_pie || X16_USE_SHAPES_ARC != 0
+xuse_serial = xuse_serial_zimodem || X16_USE_SERIAL != 0
 xuse_verafx_mult = xuse_verafx || X16_USE_VERAFX_MULT != 0
 xuse_verafx_copy = xuse_verafx || X16_USE_VERAFX_COPY != 0
 xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
@@ -183,11 +203,23 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .if xuse_input_any
 .include "input/input.asm"
 .endif
+.if xuse_serial
+.include "comms/serial.asm"
+.endif
+.if xuse_serial_zimodem
+.include "comms/zimodem.asm"
+.endif
 .if xuse_bank
 .include "storage/bank.asm"
 .endif
 .if xuse_bankalloc
 .include "storage/bankalloc.asm"
+.endif
+.if xuse_stack
+.include "storage/stack.asm"
+.endif
+.if xuse_ringbuffer
+.include "storage/ringbuffer.asm"
 .endif
 .if xuse_mem
 .include "storage/mem.asm"
@@ -222,6 +254,9 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .if xuse_fixed
 .include "util/fixed.asm"
 .endif
+.if xuse_bcd
+.include "util/bcd.asm"
+.endif
 .if xuse_collide
 .include "util/collide.asm"
 .endif
@@ -242,4 +277,19 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .endif
 .if xuse_double
 .include "util/double.asm"
+.endif
+.if xuse_string
+.include "string/string.asm"
+.endif
+.if xuse_string_ctype
+.include "string/ctype.asm"
+.endif
+.if xuse_string_case
+.include "string/case.asm"
+.endif
+.if xuse_string_find
+.include "string/find.asm"
+.endif
+.if xuse_string_slice
+.include "string/slice.asm"
 .endif

@@ -2152,3 +2152,407 @@
     jsr tsc_decompress
     .endm
 .endif
+
+; =====================================================================
+; comms/serial
+; =====================================================================
+; -> A = count (0-2), carry clear if any found, ser_u0/ser_u1 = bases
+.if .def X16_USE_SERIAL
+.macro xm_ser_detect
+    jsr ser_detect
+    .endm
+.endif
+.if .def X16_USE_SERIAL
+.macro xm_ser_init base, divisor
+    lda #<(:divisor)
+    sta X16_P0
+    lda #>(:divisor)
+    sta X16_P1
+    lda #<(:base)
+    ldx #>(:base)
+    jsr ser_init
+    .endm
+.endif
+; -> carry set if a received byte is waiting
+.if .def X16_USE_SERIAL
+.macro xm_ser_avail
+    jsr ser_avail
+    .endm
+.endif
+; -> carry clear + A = byte, or carry set if the RX FIFO was empty
+.if .def X16_USE_SERIAL
+.macro xm_ser_get
+    jsr ser_get
+    .endm
+.endif
+; -> A = byte (blocks until one arrives)
+.if .def X16_USE_SERIAL
+.macro xm_ser_get_wait
+    jsr ser_get_wait
+    .endm
+.endif
+.if .def X16_USE_SERIAL
+.macro xm_ser_put byte
+    lda #(:byte)
+    jsr ser_put
+    .endm
+.endif
+.if .def X16_USE_SERIAL
+.macro xm_ser_puts addr
+    lda #<(:addr)
+    ldx #>(:addr)
+    jsr ser_puts
+    .endm
+.endif
+.if .def X16_USE_SERIAL
+.macro xm_ser_write addr, len
+    ldy #(:len)
+    lda #<(:addr)
+    ldx #>(:addr)
+    jsr ser_write
+    .endm
+.endif
+; -> X16_P4/P5 = bytes stored
+.if .def X16_USE_SERIAL
+.macro xm_ser_read_until match, buffer, max
+    lda #<(:buffer)
+    sta X16_P0
+    lda #>(:buffer)
+    sta X16_P1
+    lda #<(:max)
+    sta X16_P2
+    lda #>(:max)
+    sta X16_P3
+    lda #<(:match)
+    ldx #>(:match)
+    jsr ser_read_until
+    .endm
+.endif
+.if .def X16_USE_SERIAL
+.macro xm_ser_discard_until match
+    lda #<(:match)
+    ldx #>(:match)
+    jsr ser_discard_until
+    .endm
+.endif
+
+; =====================================================================
+; comms/zimodem
+; =====================================================================
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_init base, divisor
+    lda #<(:divisor)
+    sta X16_P0
+    lda #>(:divisor)
+    sta X16_P1
+    lda #<(:base)
+    ldx #>(:base)
+    jsr zi_init
+    .endm
+.endif
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_cmd addr
+    lda #<(:addr)
+    ldx #>(:addr)
+    jsr zi_cmd
+    .endm
+.endif
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_wait_ok
+    jsr zi_wait_ok
+    .endm
+.endif
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_reset
+    jsr zi_reset
+    .endm
+.endif
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_get_ip buffer
+    lda #<(:buffer)
+    ldx #>(:buffer)
+    jsr zi_get_ip
+    .endm
+.endif
+; -> carry clear if the transfer started, carry set if not found
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_hex_open filename
+    lda #<(:filename)
+    ldx #>(:filename)
+    jsr zi_hex_open
+    .endm
+.endif
+; -> A = bytes decoded into the buffer, 0 when the file is done
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_hex_chunk buffer
+    lda #<(:buffer)
+    ldx #>(:buffer)
+    jsr zi_hex_chunk
+    .endm
+.endif
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_hex_close
+    jsr zi_hex_close
+    .endm
+.endif
+; -> A = bytes written (sugar_digits / 2)
+.if .def X16_USE_SERIAL_ZIMODEM
+.macro xm_zi_hexdecode src, digits, dest
+    lda #<(:dest)
+    sta X16_P0
+    lda #>(:dest)
+    sta X16_P1
+    ldy #(:digits)
+    lda #<(:src)
+    ldx #>(:src)
+    jsr zi_hexdecode
+    .endm
+.endif
+
+; =====================================================================
+; string/string
+; =====================================================================
+; -> Y = length
+.if .def X16_USE_STRING
+.macro xm_str_length str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_length
+    .endm
+.endif
+; -> Y = length copied
+.if .def X16_USE_STRING
+.macro xm_str_copy src, dst
+    lda #<(:dst)
+    sta X16_P0
+    lda #>(:dst)
+    sta X16_P1
+    lda #<(:src)
+    ldx #>(:src)
+    jsr str_copy
+    .endm
+.endif
+.if .def X16_USE_STRING
+.macro xm_str_ncopy src, dst, max
+    lda #<(:dst)
+    sta X16_P0
+    lda #>(:dst)
+    sta X16_P1
+    ldy #(:max)
+    lda #<(:src)
+    ldx #>(:src)
+    jsr str_ncopy
+    .endm
+.endif
+; -> A = resulting length
+.if .def X16_USE_STRING
+.macro xm_str_append tgt, suffix
+    lda #<(:suffix)
+    sta X16_P0
+    lda #>(:suffix)
+    sta X16_P1
+    lda #<(:tgt)
+    ldx #>(:tgt)
+    jsr str_append
+    .endm
+.endif
+.if .def X16_USE_STRING
+.macro xm_str_nappend tgt, suffix, max
+    lda #<(:suffix)
+    sta X16_P0
+    lda #>(:suffix)
+    sta X16_P1
+    ldy #(:max)
+    lda #<(:tgt)
+    ldx #>(:tgt)
+    jsr str_nappend
+    .endm
+.endif
+; -> A = -1 / 0 / 1
+.if .def X16_USE_STRING
+.macro xm_str_compare s1, s2
+    lda #<(:s2)
+    sta X16_P0
+    lda #>(:s2)
+    sta X16_P1
+    lda #<(:s1)
+    ldx #>(:s1)
+    jsr str_compare
+    .endm
+.endif
+; -> A = hash
+.if .def X16_USE_STRING
+.macro xm_str_hash str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_hash
+    .endm
+.endif
+
+; =====================================================================
+; string/case
+; =====================================================================
+.if .def X16_USE_STRING_CASE
+.macro xm_str_lower str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_lower
+    .endm
+.endif
+.if .def X16_USE_STRING_CASE
+.macro xm_str_lower_iso str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_lower_iso
+    .endm
+.endif
+.if .def X16_USE_STRING_CASE
+.macro xm_str_upper str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_upper
+    .endm
+.endif
+.if .def X16_USE_STRING_CASE
+.macro xm_str_upper_iso str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_upper_iso
+    .endm
+.endif
+; -> A = -1 / 0 / 1
+.if .def X16_USE_STRING_CASE
+.macro xm_str_compare_nocase s1, s2
+    lda #<(:s2)
+    sta X16_P0
+    lda #>(:s2)
+    sta X16_P1
+    lda #<(:s1)
+    ldx #>(:s1)
+    jsr str_compare_nocase
+    .endm
+.endif
+.if .def X16_USE_STRING_CASE
+.macro xm_str_compare_nocase_iso s1, s2
+    lda #<(:s2)
+    sta X16_P0
+    lda #>(:s2)
+    sta X16_P1
+    lda #<(:s1)
+    ldx #>(:s1)
+    jsr str_compare_nocase_iso
+    .endm
+.endif
+
+; =====================================================================
+; string/find
+; =====================================================================
+; -> carry set + A = index if found
+.if .def X16_USE_STRING_FIND
+.macro xm_str_find str, ch
+    ldy #(:ch)
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_find
+    .endm
+.endif
+.if .def X16_USE_STRING_FIND
+.macro xm_str_rfind str, ch
+    ldy #(:ch)
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_rfind
+    .endm
+.endif
+.if .def X16_USE_STRING_FIND
+.macro xm_str_find_eol str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_find_eol
+    .endm
+.endif
+; -> carry set if the character occurs
+.if .def X16_USE_STRING_FIND
+.macro xm_str_contains str, ch
+    ldy #(:ch)
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_contains
+    .endm
+.endif
+; -> carry set (A = 1) if it matches
+.if .def X16_USE_STRING_FIND
+.macro xm_str_pattern_match str, pattern
+    lda #<(:pattern)
+    sta X16_P0
+    lda #>(:pattern)
+    sta X16_P1
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_pattern_match
+    .endm
+.endif
+
+; =====================================================================
+; string/slice
+; =====================================================================
+.if .def X16_USE_STRING_SLICE
+.macro xm_str_left src, dst, len
+    lda #<(:dst)
+    sta X16_P0
+    lda #>(:dst)
+    sta X16_P1
+    ldy #(:len)
+    lda #<(:src)
+    ldx #>(:src)
+    jsr str_left
+    .endm
+.endif
+.if .def X16_USE_STRING_SLICE
+.macro xm_str_right src, dst, len
+    lda #<(:dst)
+    sta X16_P0
+    lda #>(:dst)
+    sta X16_P1
+    ldy #(:len)
+    lda #<(:src)
+    ldx #>(:src)
+    jsr str_right
+    .endm
+.endif
+.if .def X16_USE_STRING_SLICE
+.macro xm_str_slice src, dst, start, len
+    lda #<(:dst)
+    sta X16_P0
+    lda #>(:dst)
+    sta X16_P1
+    lda #(:start)
+    sta X16_P2
+    ldy #(:len)
+    lda #<(:src)
+    ldx #>(:src)
+    jsr str_slice
+    .endm
+.endif
+; -> Y = new length
+.if .def X16_USE_STRING_SLICE
+.macro xm_str_ltrim str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_ltrim
+    .endm
+.endif
+.if .def X16_USE_STRING_SLICE
+.macro xm_str_rtrim str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_rtrim
+    .endm
+.endif
+.if .def X16_USE_STRING_SLICE
+.macro xm_str_trim str
+    lda #<(:str)
+    ldx #>(:str)
+    jsr str_trim
+    .endm
+.endif

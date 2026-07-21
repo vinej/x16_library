@@ -20,6 +20,14 @@ X16_USE_SHAPES_ARC = 1          ; + arcs (pulls MATH + SHP_LINE)
 X16_USE_SHAPES_PIE = 1          ; + filled pies (pulls SHAPES_ARC)
 X16_USE_SHAPES_BEZIER = 1       ; + cubic Bezier curves (pulls SHP_LINE)
 X16_USE_COLLIDE = 1             ; for the xm_collide16 macro test
+X16_USE_BCD = 1                 ; packed-BCD decimal add/subtract
+X16_USE_STACK = 1               ; 8 KB LIFO stack in a HIRAM bank
+X16_USE_RINGBUFFER = 1          ; 8 KB FIFO ring in a HIRAM bank
+X16_USE_STRING = 1              ; string fundamentals
+X16_USE_STRING_CTYPE = 1        ; character classification
+X16_USE_STRING_CASE = 1         ; case folding
+X16_USE_STRING_FIND = 1         ; searching
+X16_USE_STRING_SLICE = 1        ; substrings
 
     include "core/sugar.asm"        ; optional friendly xm_* macros (gated; tested below)
 
@@ -81,6 +89,26 @@ main
     jsr test_shape_bezier
     jsr test_sugar
     jsr test_sugar_collide
+    jsr test_bcd16
+    jsr test_bcd8
+    jsr test_bcd_add32
+    jsr test_bcd_ptr
+    jsr test_stack
+    jsr test_stack_word
+    jsr test_ring
+    jsr test_ring_word
+    jsr test_ring_wrap
+    jsr test_str_core
+    jsr test_str_cmp
+    jsr test_str_edit
+    jsr test_str_ctype
+    jsr test_str_case
+    jsr test_str_lower
+    jsr test_str_find
+    jsr test_str_pat
+    jsr test_str_slice
+    jsr test_str_trim
+    jsr test_str_sugar
     jsr test_g2_clear
     jsr test_g2_init
 
@@ -1589,6 +1617,765 @@ test_sugar_collide
     ldy #>.name
     jmp t_result
 .name byte "SUGAR_COLLIDE", 0
+
+; Packed-BCD decimal add/subtract. Hex bytes ARE the decimal digits, low
+; byte first: $0987 is nine-hundred-eighty-seven. Split across a few short
+; tests so every branch to .fail stays in range.
+test_bcd16                      ; 16-bit add then subtract
+    lda #$87                    ; 987 + 1111 = 2098
+    sta bcd_a
+    lda #$09
+    sta bcd_a+1
+    lda #$11
+    sta bcd_b
+    lda #$11
+    sta bcd_b+1
+    jsr bcd_add16
+    lda bcd_a
+    cmp #$98
+    bne .fail
+    lda bcd_a+1
+    cmp #$20
+    bne .fail
+    lda #$98                    ; 2098 - 1111 = 987
+    sta bcd_a
+    lda #$20
+    sta bcd_a+1
+    lda #$11
+    sta bcd_b
+    lda #$11
+    sta bcd_b+1
+    jsr bcd_sub16
+    lda bcd_a
+    cmp #$87
+    bne .fail
+    lda bcd_a+1
+    cmp #$09
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "BCD16", 0
+
+test_bcd8                       ; 8-bit carry out and borrow
+    lda #$99                    ; 99 + 01 = 00, carry set
+    sta bcd_a
+    lda #$01
+    sta bcd_b
+    jsr bcd_add8
+    bcc .fail
+    lda bcd_a
+    bne .fail
+    lda #$00                    ; 00 - 01 = 99, carry clear (borrow)
+    sta bcd_a
+    lda #$01
+    sta bcd_b
+    jsr bcd_sub8
+    bcs .fail
+    lda bcd_a
+    cmp #$99
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "BCD8", 0
+
+test_bcd_add32                  ; 32-bit add across bytes, and overflow
+    i32_const bcd_a, $00009999 ; 9999 + 1 = 10000
+    i32_const bcd_b, $00000001
+    jsr bcd_add32
+    lda bcd_a
+    bne .fail
+    lda bcd_a+1
+    bne .fail
+    lda bcd_a+2
+    cmp #$01
+    bne .fail
+    lda bcd_a+3
+    bne .fail
+    i32_const bcd_a, $99999999 ; 99999999 + 1 = 0, carry set
+    i32_const bcd_b, $00000001
+    jsr bcd_add32
+    bcc .fail
+    lda bcd_a
+    ora bcd_a+1
+    ora bcd_a+2
+    ora bcd_a+3
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "BCD_ADD32", 0
+
+test_bcd_ptr                    ; 32-bit subtract, then the in-place pair
+    i32_const bcd_a, $00010000 ; 10000 - 1 = 9999
+    i32_const bcd_b, $00000001
+    jsr bcd_sub32
+    lda bcd_a
+    cmp #$99
+    bne .fail
+    lda bcd_a+1
+    cmp #$99
+    bne .fail
+    lda bcd_a+2
+    ora bcd_a+3
+    bne .fail
+    i32_const bcdval32, $00000042  ; in place: 42 + 58 = 100
+    i32_const bcd_b, $00000058
+    lda #<bcdval32
+    ldx #>bcdval32
+    jsr bcd_addto
+    lda bcdval32
+    bne .fail
+    lda bcdval32+1
+    cmp #$01
+    bne .fail
+    i32_const bcd_b, $00000001     ; in place: 100 - 1 = 99
+    lda #<bcdval32
+    ldx #>bcdval32
+    jsr bcd_subfrom
+    lda bcdval32
+    cmp #$99
+    bne .fail
+    lda bcdval32+1
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name  byte "BCD_PTR", 0
+bcdval32 byte 0, 0, 0, 0
+
+; 8 KB banked LIFO stack. Uses bank 5 (the bank tests already prove banks
+; round-trip); we check push/pop order and the empty flag through it.
+test_stack
+    lda #5
+    jsr stack_init
+    jsr stack_isempty
+    bcc .fail                   ; empty right after init
+    lda #42
+    jsr stack_push
+    lda #7
+    jsr stack_push
+    lda #99
+    jsr stack_push
+    jsr stack_size
+    cmp #3
+    bne .fail
+    cpx #0
+    bne .fail
+    jsr stack_isempty
+    bcs .fail                   ; not empty with three bytes on it
+    jsr stack_pop
+    cmp #99                     ; LIFO: last in, first out
+    bne .fail
+    jsr stack_pop
+    cmp #7
+    bne .fail
+    jsr stack_pop
+    cmp #42
+    bne .fail
+    jsr stack_isempty
+    bcc .fail                   ; empty again
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STACK", 0
+
+test_stack_word
+    lda #5
+    jsr stack_init
+    lda #<1000
+    ldx #>1000
+    jsr stack_pushw
+    lda #<50
+    ldx #>50
+    jsr stack_pushw
+    jsr stack_popw              ; LIFO: 50 comes back first
+    cmp #<50
+    bne .fail
+    cpx #>50
+    bne .fail
+    jsr stack_popw
+    cmp #<1000
+    bne .fail
+    cpx #>1000
+    bne .fail
+    jsr stack_isempty
+    bcc .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STACK_WORD", 0
+
+; 8 KB banked FIFO ring. Bank 6.
+test_ring
+    lda #6
+    jsr ring_init
+    jsr ring_isempty
+    bcc .fail
+    lda #10
+    jsr ring_put
+    lda #20
+    jsr ring_put
+    lda #30
+    jsr ring_put
+    jsr ring_size
+    cmp #3
+    bne .fail
+    cpx #0
+    bne .fail
+    jsr ring_get               ; FIFO: 10 comes out first
+    cmp #10
+    bne .fail
+    jsr ring_get
+    cmp #20
+    bne .fail
+    jsr ring_get
+    cmp #30
+    bne .fail
+    jsr ring_isempty
+    bcc .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "RING", 0
+
+test_ring_word
+    lda #6
+    jsr ring_init
+    lda #<777
+    ldx #>777
+    jsr ring_putw
+    lda #<258
+    ldx #>258
+    jsr ring_putw
+    jsr ring_getw              ; FIFO: 777 first
+    cmp #<777
+    bne .fail
+    cpx #>777
+    bne .fail
+    jsr ring_getw
+    cmp #<258
+    bne .fail
+    cpx #>258
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "RING_WORD", 0
+
+; Drive the head/tail past the top of the bank to prove the wrap. Preset a
+; consistent empty state near offset 8191, then queue across the boundary.
+test_ring_wrap
+    lda #6
+    jsr ring_init
+    lda #<8190
+    sta ring_head
+    lda #>8190
+    sta ring_head+1
+    lda #<8189
+    sta ring_tail
+    lda #>8189
+    sta ring_tail+1
+    stz ring_fill
+    stz ring_fill+1
+    lda #11                     ; @8190
+    jsr ring_put
+    lda #22                     ; @8191
+    jsr ring_put
+    lda #33                     ; head wrapped -> @0
+    jsr ring_put
+    lda #44                     ; @1
+    jsr ring_put
+    jsr ring_get
+    cmp #11
+    bne .fail
+    jsr ring_get
+    cmp #22
+    bne .fail
+    jsr ring_get               ; tail wrapped -> reads @0
+    cmp #33
+    bne .fail
+    jsr ring_get
+    cmp #44
+    bne .fail
+    jsr ring_isempty
+    bcc .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "RING_WRAP", 0
+
+; ---------------------------------------------------------------------
+; String library. Small focused tests keep every branch to .fail in range.
+test_str_core
+    lda #<sd_hello
+    ldx #>sd_hello
+    jsr str_length
+    cpy #5
+    bne .fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello
+    ldx #>sd_hello
+    jsr str_copy
+    cpy #5
+    bne .fail
+    lda sd_buf
+    cmp #'h'
+    bne .fail
+    lda sd_buf+4
+    cmp #'o'
+    bne .fail
+    lda sd_buf+5
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_CORE", 0
+
+test_str_cmp
+    lda #<sd_abc2
+    sta X16_P0
+    lda #>sd_abc2
+    sta X16_P1
+    lda #<sd_abc                ; "abc" vs "abc" = 0
+    ldx #>sd_abc
+    jsr str_compare
+    bne .fail
+    lda #<sd_abd
+    sta X16_P0
+    lda #>sd_abd
+    sta X16_P1
+    lda #<sd_abc                ; "abc" vs "abd" = -1
+    ldx #>sd_abc
+    jsr str_compare
+    cmp #$FF
+    bne .fail
+    lda #<sd_abc
+    sta X16_P0
+    lda #>sd_abc
+    sta X16_P1
+    lda #<sd_abd                ; "abd" vs "abc" = 1
+    ldx #>sd_abd
+    jsr str_compare
+    cmp #1
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_CMP", 0
+
+test_str_edit
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello              ; buf = copy of "hello"
+    ldx #>sd_hello
+    jsr str_copy
+    lda #<sd_bang
+    sta X16_P0
+    lda #>sd_bang
+    sta X16_P1
+    lda #<sd_buf                ; append "!!" -> "hello!!", A=7
+    ldx #>sd_buf
+    jsr str_append
+    cmp #7
+    bne .fail
+    lda sd_buf+6
+    cmp #'!'
+    bne .fail
+    lda sd_buf+7
+    bne .fail
+    lda #<sd_hi                 ; hash("hi") = $74
+    ldx #>sd_hi
+    jsr str_hash
+    cmp #$74
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_EDIT", 0
+
+test_str_ctype
+    lda #'5'
+    jsr str_isdigit
+    bcc .fail
+    lda #'a'
+    jsr str_isdigit
+    bcs .fail
+    lda #'F'
+    jsr str_isxdigit
+    bcc .fail
+    lda #'g'
+    jsr str_isxdigit
+    bcs .fail
+    lda #'a'                    ; PETSCII isupper: 97-122
+    jsr str_isupper
+    bcc .fail
+    lda #'A'                    ; 65 is not upper in PETSCII
+    jsr str_isupper
+    bcs .fail
+    lda #'A'                    ; but it is in ISO
+    jsr str_isupper_iso
+    bcc .fail
+    lda #32
+    jsr str_isspace
+    bcc .fail
+    lda #150                    ; 128-159 not printable
+    jsr str_isprint
+    bcs .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_CTYPE", 0
+
+test_str_case
+    lda #'a'                    ; PETSCII lowerchar('a'=97) -> 65
+    jsr str_lowerchar
+    cmp #65
+    bne .fail
+    lda #'A'                    ; PETSCII upperchar('A'=65) -> 97
+    jsr str_upperchar
+    cmp #97
+    bne .fail
+    lda #'A'                    ; ISO lowerchar('A'=65) -> 97
+    jsr str_lowerchar_iso
+    cmp #97
+    bne .fail
+    lda #'a'                    ; ISO upperchar('a'=97) -> 65
+    jsr str_upperchar_iso
+    cmp #65
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_CASE", 0
+
+test_str_lower
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_HELLO             ; buf = "HELLO", then lower_iso -> "hello"
+    ldx #>sd_HELLO
+    jsr str_copy
+    lda #<sd_buf
+    ldx #>sd_buf
+    jsr str_lower_iso
+    lda sd_buf
+    cmp #'h'
+    bne .fail
+    lda #<sd_buf               ; upper_iso -> "HELLO"
+    ldx #>sd_buf
+    jsr str_upper_iso
+    lda sd_buf
+    cmp #'H'
+    bne .fail
+    lda #<sd_hello
+    sta X16_P0
+    lda #>sd_hello
+    sta X16_P1
+    lda #<sd_Hello             ; compare_nocase("Hello","hello") = 0
+    ldx #>sd_Hello
+    jsr str_compare_nocase
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_LOWER", 0
+
+test_str_find
+    lda #<sd_hello             ; find 'l' -> index 2
+    ldx #>sd_hello
+    ldy #'l'
+    jsr str_find
+    bcc .fail
+    cmp #2
+    bne .fail
+    lda #<sd_hello             ; rfind 'l' -> index 3
+    ldx #>sd_hello
+    ldy #'l'
+    jsr str_rfind
+    bcc .fail
+    cmp #3
+    bne .fail
+    lda #<sd_hello             ; find 'z' -> not found
+    ldx #>sd_hello
+    ldy #'z'
+    jsr str_find
+    bcs .fail
+    lda #<sd_line              ; find_eol -> index 2 (the CR)
+    ldx #>sd_line
+    jsr str_find_eol
+    bcc .fail
+    cmp #2
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_FIND", 0
+
+test_str_pat
+    lda #<sd_pat
+    sta X16_P0
+    lda #>sd_pat
+    sta X16_P1
+    lda #<sd_hello             ; "hello" matches "he*o"
+    ldx #>sd_hello
+    jsr str_pattern_match
+    bcc .fail
+    lda #<sd_patq
+    sta X16_P0
+    lda #>sd_patq
+    sta X16_P1
+    lda #<sd_hello             ; "hello" matches "h?llo"
+    ldx #>sd_hello
+    jsr str_pattern_match
+    bcc .fail
+    lda #<sd_patx
+    sta X16_P0
+    lda #>sd_patx
+    sta X16_P1
+    lda #<sd_hello             ; "hello" does NOT match "he*x"
+    ldx #>sd_hello
+    jsr str_pattern_match
+    bcs .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_PAT", 0
+
+test_str_slice
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello             ; left 3 -> "hel"
+    ldx #>sd_hello
+    ldy #3
+    jsr str_left
+    lda sd_buf
+    cmp #'h'
+    bne .fail
+    lda sd_buf+2
+    cmp #'l'
+    bne .fail
+    lda sd_buf+3
+    bne .fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_hello             ; right 2 -> "lo"
+    ldx #>sd_hello
+    ldy #2
+    jsr str_right
+    lda sd_buf
+    cmp #'l'
+    bne .fail
+    lda sd_buf+1
+    cmp #'o'
+    bne .fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #1                     ; slice start 1 len 3 -> "ell"
+    sta X16_P2
+    lda #<sd_hello
+    ldx #>sd_hello
+    ldy #3
+    jsr str_slice
+    lda sd_buf
+    cmp #'e'
+    bne .fail
+    lda sd_buf+2
+    cmp #'l'
+    bne .fail
+    lda sd_buf+3
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_SLICE", 0
+
+test_str_trim
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_pad               ; buf = "  hi  "
+    ldx #>sd_pad
+    jsr str_copy
+    lda #<sd_buf               ; trim both ends -> "hi"
+    ldx #>sd_buf
+    jsr str_trim
+    lda sd_buf
+    cmp #'h'
+    bne .fail
+    lda sd_buf+1
+    cmp #'i'
+    bne .fail
+    lda sd_buf+2
+    bne .fail
+    lda #<sd_buf
+    sta X16_P0
+    lda #>sd_buf
+    sta X16_P1
+    lda #<sd_pad2              ; buf = "ab  "
+    ldx #>sd_pad2
+    jsr str_copy
+    lda #<sd_buf               ; rtrim only -> "ab"
+    ldx #>sd_buf
+    jsr str_rtrim
+    lda sd_buf+2
+    bne .fail
+    lda sd_buf+1
+    cmp #'b'
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_TRIM", 0
+
+; The xm_str_* macros expand to the same setup + jsr, so this proves they
+; work and (via the 7-way hash) that they convert byte-identically.
+test_str_sugar
+    xm_str_copy sd_hello, sd_buf     ; buf = "hello"
+    xm_str_upper_iso sd_buf          ; buf = "HELLO"
+    lda sd_buf
+    cmp #'H'
+    bne .fail
+    xm_str_find sd_hello, 'l'        ; find 'l' -> index 2, carry set
+    bcc .fail
+    cmp #2
+    bne .fail
+    xm_str_pattern_match sd_hello, sd_pat   ; "hello" matches "he*o"
+    bcc .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "STR_SUGAR", 0
+
+sd_hello byte "hello", 0
+sd_hi    byte "hi", 0
+sd_bang  byte "!!", 0
+sd_abc   byte "abc", 0
+sd_abc2  byte "abc", 0
+sd_abd   byte "abd", 0
+sd_HELLO byte "HELLO", 0
+sd_Hello byte "Hello", 0
+sd_line  byte "ab", 13, "cd", 0
+sd_pat   byte "he*o", 0
+sd_patq  byte "h?llo", 0
+sd_patx  byte "he*x", 0
+sd_pad   byte "  hi  ", 0
+sd_pad2  byte "ab  ", 0
+sd_buf   blk 24, 0
 
 shp_rd                          ; read (A, X), both bytes
     sta X16_P0

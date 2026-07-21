@@ -2152,3 +2152,407 @@ xm_tsc_decompress .macro src, dst
     jsr tsc_decompress
     .endm
 .endif
+
+; =====================================================================
+; comms/serial
+; =====================================================================
+; -> A = count (0-2), carry clear if any found, ser_u0/ser_u1 = bases
+.if xuse_serial
+xm_ser_detect .macro 
+    jsr ser_detect
+    .endm
+.endif
+.if xuse_serial
+xm_ser_init .macro base, divisor
+    lda #<(\divisor)
+    sta X16_P0
+    lda #>(\divisor)
+    sta X16_P1
+    lda #<(\base)
+    ldx #>(\base)
+    jsr ser_init
+    .endm
+.endif
+; -> carry set if a received byte is waiting
+.if xuse_serial
+xm_ser_avail .macro 
+    jsr ser_avail
+    .endm
+.endif
+; -> carry clear + A = byte, or carry set if the RX FIFO was empty
+.if xuse_serial
+xm_ser_get .macro 
+    jsr ser_get
+    .endm
+.endif
+; -> A = byte (blocks until one arrives)
+.if xuse_serial
+xm_ser_get_wait .macro 
+    jsr ser_get_wait
+    .endm
+.endif
+.if xuse_serial
+xm_ser_put .macro byte
+    lda #\byte
+    jsr ser_put
+    .endm
+.endif
+.if xuse_serial
+xm_ser_puts .macro addr
+    lda #<(\addr)
+    ldx #>(\addr)
+    jsr ser_puts
+    .endm
+.endif
+.if xuse_serial
+xm_ser_write .macro addr, len
+    ldy #\len
+    lda #<(\addr)
+    ldx #>(\addr)
+    jsr ser_write
+    .endm
+.endif
+; -> X16_P4/P5 = bytes stored
+.if xuse_serial
+xm_ser_read_until .macro match, buffer, max
+    lda #<(\buffer)
+    sta X16_P0
+    lda #>(\buffer)
+    sta X16_P1
+    lda #<(\max)
+    sta X16_P2
+    lda #>(\max)
+    sta X16_P3
+    lda #<(\match)
+    ldx #>(\match)
+    jsr ser_read_until
+    .endm
+.endif
+.if xuse_serial
+xm_ser_discard_until .macro match
+    lda #<(\match)
+    ldx #>(\match)
+    jsr ser_discard_until
+    .endm
+.endif
+
+; =====================================================================
+; comms/zimodem
+; =====================================================================
+.if xuse_serial_zimodem
+xm_zi_init .macro base, divisor
+    lda #<(\divisor)
+    sta X16_P0
+    lda #>(\divisor)
+    sta X16_P1
+    lda #<(\base)
+    ldx #>(\base)
+    jsr zi_init
+    .endm
+.endif
+.if xuse_serial_zimodem
+xm_zi_cmd .macro addr
+    lda #<(\addr)
+    ldx #>(\addr)
+    jsr zi_cmd
+    .endm
+.endif
+.if xuse_serial_zimodem
+xm_zi_wait_ok .macro 
+    jsr zi_wait_ok
+    .endm
+.endif
+.if xuse_serial_zimodem
+xm_zi_reset .macro 
+    jsr zi_reset
+    .endm
+.endif
+.if xuse_serial_zimodem
+xm_zi_get_ip .macro buffer
+    lda #<(\buffer)
+    ldx #>(\buffer)
+    jsr zi_get_ip
+    .endm
+.endif
+; -> carry clear if the transfer started, carry set if not found
+.if xuse_serial_zimodem
+xm_zi_hex_open .macro filename
+    lda #<(\filename)
+    ldx #>(\filename)
+    jsr zi_hex_open
+    .endm
+.endif
+; -> A = bytes decoded into the buffer, 0 when the file is done
+.if xuse_serial_zimodem
+xm_zi_hex_chunk .macro buffer
+    lda #<(\buffer)
+    ldx #>(\buffer)
+    jsr zi_hex_chunk
+    .endm
+.endif
+.if xuse_serial_zimodem
+xm_zi_hex_close .macro 
+    jsr zi_hex_close
+    .endm
+.endif
+; -> A = bytes written (sugar_digits / 2)
+.if xuse_serial_zimodem
+xm_zi_hexdecode .macro src, digits, dest
+    lda #<(\dest)
+    sta X16_P0
+    lda #>(\dest)
+    sta X16_P1
+    ldy #\digits
+    lda #<(\src)
+    ldx #>(\src)
+    jsr zi_hexdecode
+    .endm
+.endif
+
+; =====================================================================
+; string/string
+; =====================================================================
+; -> Y = length
+.if xuse_string
+xm_str_length .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_length
+    .endm
+.endif
+; -> Y = length copied
+.if xuse_string
+xm_str_copy .macro src, dst
+    lda #<(\dst)
+    sta X16_P0
+    lda #>(\dst)
+    sta X16_P1
+    lda #<(\src)
+    ldx #>(\src)
+    jsr str_copy
+    .endm
+.endif
+.if xuse_string
+xm_str_ncopy .macro src, dst, max
+    lda #<(\dst)
+    sta X16_P0
+    lda #>(\dst)
+    sta X16_P1
+    ldy #\max
+    lda #<(\src)
+    ldx #>(\src)
+    jsr str_ncopy
+    .endm
+.endif
+; -> A = resulting length
+.if xuse_string
+xm_str_append .macro tgt, suffix
+    lda #<(\suffix)
+    sta X16_P0
+    lda #>(\suffix)
+    sta X16_P1
+    lda #<(\tgt)
+    ldx #>(\tgt)
+    jsr str_append
+    .endm
+.endif
+.if xuse_string
+xm_str_nappend .macro tgt, suffix, max
+    lda #<(\suffix)
+    sta X16_P0
+    lda #>(\suffix)
+    sta X16_P1
+    ldy #\max
+    lda #<(\tgt)
+    ldx #>(\tgt)
+    jsr str_nappend
+    .endm
+.endif
+; -> A = -1 / 0 / 1
+.if xuse_string
+xm_str_compare .macro s1, s2
+    lda #<(\s2)
+    sta X16_P0
+    lda #>(\s2)
+    sta X16_P1
+    lda #<(\s1)
+    ldx #>(\s1)
+    jsr str_compare
+    .endm
+.endif
+; -> A = hash
+.if xuse_string
+xm_str_hash .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_hash
+    .endm
+.endif
+
+; =====================================================================
+; string/case
+; =====================================================================
+.if xuse_string_case
+xm_str_lower .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_lower
+    .endm
+.endif
+.if xuse_string_case
+xm_str_lower_iso .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_lower_iso
+    .endm
+.endif
+.if xuse_string_case
+xm_str_upper .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_upper
+    .endm
+.endif
+.if xuse_string_case
+xm_str_upper_iso .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_upper_iso
+    .endm
+.endif
+; -> A = -1 / 0 / 1
+.if xuse_string_case
+xm_str_compare_nocase .macro s1, s2
+    lda #<(\s2)
+    sta X16_P0
+    lda #>(\s2)
+    sta X16_P1
+    lda #<(\s1)
+    ldx #>(\s1)
+    jsr str_compare_nocase
+    .endm
+.endif
+.if xuse_string_case
+xm_str_compare_nocase_iso .macro s1, s2
+    lda #<(\s2)
+    sta X16_P0
+    lda #>(\s2)
+    sta X16_P1
+    lda #<(\s1)
+    ldx #>(\s1)
+    jsr str_compare_nocase_iso
+    .endm
+.endif
+
+; =====================================================================
+; string/find
+; =====================================================================
+; -> carry set + A = index if found
+.if xuse_string_find
+xm_str_find .macro str, ch
+    ldy #\ch
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_find
+    .endm
+.endif
+.if xuse_string_find
+xm_str_rfind .macro str, ch
+    ldy #\ch
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_rfind
+    .endm
+.endif
+.if xuse_string_find
+xm_str_find_eol .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_find_eol
+    .endm
+.endif
+; -> carry set if the character occurs
+.if xuse_string_find
+xm_str_contains .macro str, ch
+    ldy #\ch
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_contains
+    .endm
+.endif
+; -> carry set (A = 1) if it matches
+.if xuse_string_find
+xm_str_pattern_match .macro str, pattern
+    lda #<(\pattern)
+    sta X16_P0
+    lda #>(\pattern)
+    sta X16_P1
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_pattern_match
+    .endm
+.endif
+
+; =====================================================================
+; string/slice
+; =====================================================================
+.if xuse_string_slice
+xm_str_left .macro src, dst, len
+    lda #<(\dst)
+    sta X16_P0
+    lda #>(\dst)
+    sta X16_P1
+    ldy #\len
+    lda #<(\src)
+    ldx #>(\src)
+    jsr str_left
+    .endm
+.endif
+.if xuse_string_slice
+xm_str_right .macro src, dst, len
+    lda #<(\dst)
+    sta X16_P0
+    lda #>(\dst)
+    sta X16_P1
+    ldy #\len
+    lda #<(\src)
+    ldx #>(\src)
+    jsr str_right
+    .endm
+.endif
+.if xuse_string_slice
+xm_str_slice .macro src, dst, start, len
+    lda #<(\dst)
+    sta X16_P0
+    lda #>(\dst)
+    sta X16_P1
+    lda #\start
+    sta X16_P2
+    ldy #\len
+    lda #<(\src)
+    ldx #>(\src)
+    jsr str_slice
+    .endm
+.endif
+; -> Y = new length
+.if xuse_string_slice
+xm_str_ltrim .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_ltrim
+    .endm
+.endif
+.if xuse_string_slice
+xm_str_rtrim .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_rtrim
+    .endm
+.endif
+.if xuse_string_slice
+xm_str_trim .macro str
+    lda #<(\str)
+    ldx #>(\str)
+    jsr str_trim
+    .endm
+.endif
