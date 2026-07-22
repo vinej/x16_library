@@ -598,8 +598,15 @@
 #if X16_USE_BITMAP2
 #import "gfx/bitmap2.asm"
 #endif
+// X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
+// modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
+// dependency like X16_USE_SHAPES_POLY -> X16_USE_SHAPES/MATH -- defines the
+// matching skip symbol to keep this wrapper's flat include quiet, so the
+// module's symbols are not defined twice.
 #if X16_USE_SHAPES
+#if !X16_SKIP_SHAPES
 #import "gfx/shapes.asm"
+#endif
 #endif
 #if X16_USE_VERAFX_ANY
 #import "gfx/verafx.asm"
@@ -650,7 +657,9 @@
 #import "storage/bmx.asm"
 #endif
 #if X16_USE_MATH
+#if !X16_SKIP_MATH
 #import "util/math.asm"
+#endif
 #endif
 #if X16_USE_CLIP
 #import "util/clip.asm"

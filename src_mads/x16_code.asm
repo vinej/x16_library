@@ -598,8 +598,15 @@
 .if .def X16_USE_BITMAP2
     icl "gfx/bitmap2.asm"
 .endif
+; X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
+; modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
+; dependency like X16_USE_SHAPES_POLY -> X16_USE_SHAPES/MATH -- defines the
+; matching skip symbol to keep this wrapper's flat include quiet, so the
+; module's symbols are not defined twice.
 .if .def X16_USE_SHAPES
-    icl "gfx/shapes.asm"
+    .if !.def X16_SKIP_SHAPES
+        icl "gfx/shapes.asm"
+.endif
 .endif
 .if .def X16_USE_VERAFX_ANY
     icl "gfx/verafx.asm"
@@ -650,7 +657,9 @@
     icl "storage/bmx.asm"
 .endif
 .if .def X16_USE_MATH
-    icl "util/math.asm"
+    .if !.def X16_SKIP_MATH
+        icl "util/math.asm"
+.endif
 .endif
 .if .def X16_USE_CLIP
     icl "util/clip.asm"

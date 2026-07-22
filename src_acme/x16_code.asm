@@ -354,7 +354,12 @@
 !ifdef X16_USE_SPRITE  { !source "sprite/sprite.asm" }
 !ifdef X16_USE_BITMAP  { !source "gfx/bitmap.asm" }
 !ifdef X16_USE_BITMAP2 { !source "gfx/bitmap2.asm" }
-!ifdef X16_USE_SHAPES { !source "gfx/shapes.asm" }
+; X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
+; modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
+; dependency like X16_USE_SHAPES_POLY -> X16_USE_SHAPES/MATH -- defines the
+; matching skip symbol to keep this wrapper's flat include quiet, so the
+; module's symbols are not defined twice.
+!ifdef X16_USE_SHAPES { !ifndef X16_SKIP_SHAPES { !source "gfx/shapes.asm" } }
 !ifdef X16_USE_VERAFX_ANY { !source "gfx/verafx.asm" }
 !ifdef X16_USE_IRQ_ANY { !source "system/irq.asm" }
 !ifdef X16_USE_PSG     { !source "audio/psg.asm" }
@@ -371,7 +376,7 @@
 !ifdef X16_USE_LOAD    { !source "storage/load.asm" }
 !ifdef X16_USE_DOS     { !source "storage/dos.asm" }
 !ifdef X16_USE_BMX     { !source "storage/bmx.asm" }
-!ifdef X16_USE_MATH    { !source "util/math.asm" }
+!ifdef X16_USE_MATH    { !ifndef X16_SKIP_MATH { !source "util/math.asm" } }
 !ifdef X16_USE_CLIP    { !source "util/clip.asm" }
 !ifdef X16_USE_BUFFERS { !source "util/buffers.asm" }
 !ifdef X16_USE_ADPCM   { !source "audio/adpcm.asm" }

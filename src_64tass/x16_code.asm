@@ -81,6 +81,8 @@ X16_USE_INPUT_KEYWAIT = 0
 X16_USE_SCREEN_CORE = 0
 X16_USE_SCREEN_EXTRA = 0
 X16_BITMAP_MIN = 0
+X16_SKIP_MATH = 0
+X16_SKIP_SHAPES = 0
 .endweak
 
 ; --- the dependency closure (generated from the ACME gates) ---
@@ -182,7 +184,7 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .if xuse_bitmap2
 .include "gfx/bitmap2.asm"
 .endif
-.if xuse_shapes
+.if xuse_shapes && X16_SKIP_SHAPES == 0
 .include "gfx/shapes.asm"
 .endif
 .if xuse_verafx_any
@@ -233,7 +235,7 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .if xuse_bmx
 .include "storage/bmx.asm"
 .endif
-.if xuse_math
+.if xuse_math && X16_SKIP_MATH == 0
 .include "util/math.asm"
 .endif
 .if xuse_clip

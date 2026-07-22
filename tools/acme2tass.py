@@ -360,9 +360,19 @@ def gen_x16_code(src, include_map):
             terms = ["xuse_all", f"{g} != 0"]
         out.append(f"{xn(g)} = " + " || ".join(terms))
     out += ["", "; --- modules (the ACME tree's order) ---"]
-    for m in re.finditer(r'!ifdef\s+(\w+)\s*\{\s*!source\s+"([^"]+)"\s*\}', mod_text):
-        out.append(f".if {gate_expr(m.group(1))}")
-        out.append(f'.include "{include_map(m.group(2))}"')
+    # A module include is `!ifdef X16_USE_X { !source "f" }`, optionally wrapped
+    # in an inner `!ifndef X16_SKIP_X { ... }` so a program that places the
+    # module itself can opt out. The skip symbol is a config gate (.weak 0),
+    # so it folds into the .if as a value test.
+    for m in re.finditer(r'!ifdef\s+(\w+)\s*\{\s*'
+                         r'(?:!ifndef\s+(\w+)\s*\{\s*)?'
+                         r'!source\s+"([^"]+)"', mod_text):
+        gate, skip, path = m.group(1), m.group(2), m.group(3)
+        expr = gate_expr(gate)
+        if skip:
+            expr = f"{expr} && {skip} == 0"
+        out.append(f".if {expr}")
+        out.append(f'.include "{include_map(path)}"')
         out.append(".endif")
     return "\n".join(out) + "\n"
 

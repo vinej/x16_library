@@ -598,8 +598,15 @@ X16_USE_SCREEN_ANY = 1
     IFCONST X16_USE_BITMAP2
     include "gfx/bitmap2.asm"
     ENDIF
+; X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
+; modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
+; dependency like X16_USE_SHAPES_POLY -> X16_USE_SHAPES/MATH -- defines the
+; matching skip symbol to keep this wrapper's flat include quiet, so the
+; module's symbols are not defined twice.
     IFCONST X16_USE_SHAPES
+    IFNCONST X16_SKIP_SHAPES
     include "gfx/shapes.asm"
+    ENDIF
     ENDIF
     IFCONST X16_USE_VERAFX_ANY
     include "gfx/verafx.asm"
@@ -650,7 +657,9 @@ X16_USE_SCREEN_ANY = 1
     include "storage/bmx.asm"
     ENDIF
     IFCONST X16_USE_MATH
+    IFNCONST X16_SKIP_MATH
     include "util/math.asm"
+    ENDIF
     ENDIF
     IFCONST X16_USE_CLIP
     include "util/clip.asm"
