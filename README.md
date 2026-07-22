@@ -107,7 +107,7 @@ that takes the arguments in order and calls it. So
 +xm_sprite_pos 0, 100, 50                       ; sprite 0 to (100,50)
 ```
 
-replaces the setup blocks entirely. It is the same idea as the CXGEOS `asmsdk`
+replaces the setup blocks entirely. It is the same idea as the CXRF `asmsdk`
 `cxm_*` layer, adapted to this repo and generated the same way as everything
 else (written for ACME; the six ports come out of `tools/acme2*.py`). Set your
 gates, then source it — each module's macros are wrapped in that module's

@@ -875,7 +875,7 @@ bitmap2_k2
 ; supplies data already shifted for this x's pixel phase (x & 3) --
 ; pre-shifted glyph caches are the whole point: at 833 cycles per 8x8
 ; glyph this is what makes proportional text affordable (spike-proven;
-; see the CXGEOS project). No clipping.
+; see the CXRF project). No clipping.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx2_blitm

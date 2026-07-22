@@ -22,7 +22,7 @@ is exactly
     jsr shape_frrect
 ```
 
-This is the same idea as the CXGEOS `asmsdk` `cxm_*` layer, adapted to x16lib.
+This is the same idea as the CXRF `asmsdk` `cxm_*` layer, adapted to x16lib.
 It is **optional** — it changes nothing about the library, and this guide is a
 companion to the [User Guide](userguide.md), which documents the routines
 themselves. If a macro's behaviour is unclear, read its routine there; the macro
