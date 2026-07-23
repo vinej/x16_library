@@ -2891,6 +2891,74 @@
 }
 
 ; =====================================================================
+; comms/i2c
+; =====================================================================
+; -> A = value, carry set on NAK/error
+!ifdef X16_USE_I2C {
+!macro xm_i2c_read_byte .device, .offset {
+    ldx #(.device)
+    ldy #(.offset)
+    jsr i2c_read_byte
+}
+}
+; -> carry set on NAK/error
+!ifdef X16_USE_I2C {
+!macro xm_i2c_write_byte .value, .device, .offset {
+    lda #(.value)
+    ldx #(.device)
+    ldy #(.offset)
+    jsr i2c_write_byte
+}
+}
+; -> carry set on NAK/error
+!ifdef X16_USE_I2C {
+!macro xm_i2c_batch_read .device, .buffer, .count {
+    lda #<(.buffer)
+    sta r0
+    lda #>(.buffer)
+    sta r0+1
+    lda #<(.count)
+    sta r1
+    lda #>(.count)
+    sta r1+1
+    ldx #(.device)
+    clc
+    jsr i2c_batch_read
+}
+}
+; -> carry set on NAK/error; reads repeatedly into the same address
+!ifdef X16_USE_I2C {
+!macro xm_i2c_batch_read_fixed .device, .buffer, .count {
+    lda #<(.buffer)
+    sta r0
+    lda #>(.buffer)
+    sta r0+1
+    lda #<(.count)
+    sta r1
+    lda #>(.count)
+    sta r1+1
+    ldx #(.device)
+    sec
+    jsr i2c_batch_read
+}
+}
+; -> r2 = bytes written, carry set on NAK/error
+!ifdef X16_USE_I2C {
+!macro xm_i2c_batch_write .device, .buffer, .count {
+    lda #<(.buffer)
+    sta r0
+    lda #>(.buffer)
+    sta r0+1
+    lda #<(.count)
+    sta r1
+    lda #>(.count)
+    sta r1+1
+    ldx #(.device)
+    jsr i2c_batch_write
+}
+}
+
+; =====================================================================
 ; comms/serial
 ; =====================================================================
 ; -> A = count (0-2), carry clear if any found, ser_u0/ser_u1 = bases

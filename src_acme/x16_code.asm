@@ -112,6 +112,8 @@
 ;                     pulls in PCM and IRQ)
 ;   X16_USE_INPUT     joy_scan, joy_get, mouse_show/hide/get,
 ;                     key_get, key_wait, key_peek
+;   X16_USE_I2C       i2c_read_byte/write_byte,
+;                     i2c_batch_read/write
 ;   X16_USE_SERIAL    ser_detect, ser_init, ser_avail, ser_get,
 ;                     ser_get_wait, ser_put, ser_puts, ser_write,
 ;                     ser_read_until, ser_discard_until -- the serial /
@@ -269,6 +271,9 @@
 ; it, and a program that never talks serial carries none of it.
 !ifdef X16_USE_SERIAL {
 }
+; comms/i2c.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_I2C {
+}
 ; comms/zimodem.asm layers the ESP32 WiFi AT-command protocol over SERIAL.
 ; Also pay-per-use (out of X16_USE_ALL); pulls SERIAL in.
 !ifdef X16_USE_SERIAL_ZIMODEM {
@@ -408,6 +413,7 @@
 !ifdef X16_USE_YM      { !source "audio/ym.asm" }
 !ifdef X16_USE_PCM     { !source "audio/pcm.asm" }
 !ifdef X16_USE_INPUT_ANY { !source "input/input.asm" }
+!ifdef X16_USE_I2C     { !source "comms/i2c.asm" }
 !ifdef X16_USE_SERIAL  { !source "comms/serial.asm" }
 !ifdef X16_USE_SERIAL_ZIMODEM { !source "comms/zimodem.asm" }
 !ifdef X16_USE_BANK    { !source "storage/bank.asm" }
