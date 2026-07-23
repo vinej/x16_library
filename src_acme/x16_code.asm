@@ -28,17 +28,46 @@
 ;   X16_USE_SPRITE    sprites_on/off, sprite_pos, sprite_get_pos,
 ;                     sprite_image, sprite_flags, sprite_z, sprite_size,
 ;                     sprite_init_all
-;   X16_USE_BITMAP    gfx_init, gfx_clear, gfx_read, gfx_pset,
-;                     gfx_pattern_set, gfx_pattern_rect, gfx_blit,
-;                     gfx_blitm (colour-key), gfx_hline,
-;                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
-;                     gfx_char, gfx_text (circle/disc/flood are in
-;                     X16_USE_SHAPES now, shared with gfx2)
-;   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
-;                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
-;                     gfx2_frame, gfx2_line, gfx2_pattern_set,
-;                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
+;   X16_USE_BITMAP8L  gfx8l_init, gfx8l_clear, gfx8l_read,
+;                     gfx8l_pset, gfx8l_pattern_set,
+;                     gfx8l_pattern_rect, gfx8l_blit,
+;                     gfx8l_blitm (colour-key), gfx8l_hline,
+;                     gfx8l_vline, gfx8l_rect, gfx8l_frame,
+;                     gfx8l_line, gfx8l_char, gfx8l_text
+;   X16_USE_BITMAP8H  gfx8h_has, gfx8h_init/off,
+;                     gfx8h_passthru_on/off, gfx8h_pal_set/load,
+;                     gfx8h_clear, gfx8h_setptr, gfx8h_pset,
+;                     gfx8h_read, gfx8h_hline, gfx8h_vline,
+;                     gfx8h_rect, gfx8h_frame, gfx8h_line,
+;                     gfx8h_pattern_set, gfx8h_pattern_rect,
+;                     gfx8h_blit, gfx8h_blitm, gfx8h_copy
+;                     (640x480@8bpp; MiSTer VERA_2 SDRAM layer)
+;   X16_USE_BITMAP2H  gfx2h_init, gfx2h_clear, gfx2h_setptr,
+;                     gfx2h_pset, gfx2h_read, gfx2h_hline,
+;                     gfx2h_vline, gfx2h_rect, gfx2h_frame,
+;                     gfx2h_line, gfx2h_pattern_set,
+;                     gfx2h_pattern_rect, gfx2h_blit, gfx2h_blitm
 ;                     (640x480@2bpp; pulls in VERA and VERAFX)
+;   X16_USE_BITMAP2L  gfx2l_init, gfx2l_clear, gfx2l_setptr,
+;                     gfx2l_pset, gfx2l_read, gfx2l_hline,
+;                     gfx2l_vline, gfx2l_rect, gfx2l_frame,
+;                     gfx2l_line, gfx2l_pattern_set,
+;                     gfx2l_pattern_rect, gfx2l_blit, gfx2l_blitm
+;                     (320x240@2bpp; pulls in VERA and VERAFX)
+;   X16_USE_BITMAP4L  gfx4l_init, gfx4l_clear, gfx4l_read,
+;                     gfx4l_pset, gfx4l_pattern_set,
+;                     gfx4l_pattern_rect, gfx4l_blit,
+;                     gfx4l_blitm, gfx4l_hline, gfx4l_vline,
+;                     gfx4l_rect, gfx4l_frame, gfx4l_line,
+;                     gfx4l_char, gfx4l_text
+;   X16_USE_BITMAP4H  gfx4h_has, gfx4h_init/off,
+;                     gfx4h_passthru_on/off, gfx4h_pal_set/load,
+;                     gfx4h_clear, gfx4h_setptr, gfx4h_pset,
+;                     gfx4h_read, gfx4h_hline, gfx4h_vline,
+;                     gfx4h_rect, gfx4h_frame, gfx4h_line,
+;                     gfx4h_pattern_set, gfx4h_pattern_rect,
+;                     gfx4h_blit, gfx4h_blitm, gfx4h_copy
+;                     (640x480@4bpp; MiSTer VERA_2 SDRAM layer)
 ;   X16_USE_SHAPES    shape_circle, shape_disc, shape_ellipse,
 ;                     shape_fellipse, shape_flood -- engine-
 ;                     agnostic: they draw through SHP_PSET/SHP_READ/
@@ -110,7 +139,7 @@
 ;                     format: header + palette + pixels)
 ;   X16_USE_MATH      rnd_seed/rnd8/rnd16, sin8/cos8 (+u), atan2, lerp8
 ;   X16_USE_CLIP      clip_set, clip_line (Cohen-Sutherland, feeds
-;                     gfx_line/fx_line's parameter block)
+;                     gfx8l_line/fx_line's parameter block)
 ;   X16_USE_BUFFERS   rb_init/put/get/count, stk_init/push/pop/depth
 ;   X16_USE_ADPCM     adpcm_init, adpcm_nibble, adpcm_block (IMA 4:1)
 ;   X16_USE_ZX0       zx0_decompress (tighter than the ROM's LZSA2)
@@ -160,8 +189,6 @@
     !ifndef X16_USE_PALETTE { X16_USE_PALETTE = 1 }
     !ifndef X16_USE_TILE    { X16_USE_TILE    = 1 }
     !ifndef X16_USE_SPRITE  { X16_USE_SPRITE  = 1 }
-    !ifndef X16_USE_BITMAP  { X16_USE_BITMAP  = 1 }
-    !ifndef X16_USE_BITMAP2 { X16_USE_BITMAP2 = 1 }
     !ifndef X16_USE_VERAFX  { X16_USE_VERAFX  = 1 }
     !ifndef X16_USE_IRQ     { X16_USE_IRQ     = 1 }
     !ifndef X16_USE_PSG     { X16_USE_PSG     = 1 }
@@ -191,13 +218,13 @@
 }
 
 ; --- dependencies ----------------------------------------------------
-; sprite_init_all, psg_init, gfx_clear and gfx_hline all call vera_fill.
-; gfx_init calls screen_set_mode. The PCM streamer's AFLOW service runs
+; sprite_init_all, psg_init, gfx8l_clear and gfx8l_hline all call vera_fill.
+; gfx8l_init calls screen_set_mode. The PCM streamer's AFLOW service runs
 ; inside irq_handler, so it needs the IRQ module (and PCM itself).
 !ifdef X16_USE_SPRITE { !ifndef X16_USE_VERA { X16_USE_VERA = 1 } }
 !ifdef X16_USE_PSG    { !ifndef X16_USE_VERA { X16_USE_VERA = 1 } }
 !ifdef X16_USE_INT16  { !ifndef X16_USE_NUMBER { X16_USE_NUMBER = 1 } }
-!ifdef X16_USE_BITMAP {
+!ifdef X16_USE_BITMAP8L {
     !ifndef X16_USE_VERA   { X16_USE_VERA   = 1 }
     !ifndef X16_USE_SCREEN { X16_USE_SCREEN = 1 }
 }
@@ -226,7 +253,7 @@
 !ifdef X16_USE_SHP_LINE { !ifndef X16_USE_SHAPES { X16_USE_SHAPES = 1 } }
 !ifdef X16_USE_SHAPES {
     !ifndef SHP_PSET {
-        !ifndef X16_USE_BITMAP2 { X16_USE_BITMAP2 = 1 }
+        !ifndef X16_USE_BITMAP2H { X16_USE_BITMAP2H = 1 }
     }
 }
 ; util/double.asm stands alone (no module dependencies). This otherwise
@@ -270,15 +297,26 @@
 }
 !ifdef X16_USE_STRING_SLICE {
 }
-!ifdef X16_USE_BITMAP2 {
+!ifdef X16_USE_BITMAP2H {
     !ifndef X16_USE_VERA        { X16_USE_VERA        = 1 }
     !ifndef X16_USE_VERAFX_FILL { X16_USE_VERAFX_FILL = 1 }
+}
+!ifdef X16_USE_BITMAP2L {
+    !ifndef X16_USE_VERA        { X16_USE_VERA        = 1 }
+    !ifndef X16_USE_VERAFX_FILL { X16_USE_VERAFX_FILL = 1 }
+}
+!ifdef X16_USE_BITMAP4L {
+    !ifndef X16_USE_VERA        { X16_USE_VERA        = 1 }
+}
+!ifdef X16_USE_BITMAP8H {
+}
+!ifdef X16_USE_BITMAP4H {
 }
 
 ; --- VERAFX's parts --------------------------------------------------
 ; X16_USE_VERAFX still means all of it, so nothing that exists breaks.
 ; The sub-gates are for programs that want one part and not 2.5 KB of
-; the others: gfx2 asks for FILL alone and saves 2,162 bytes by it.
+; the others: bitmap2h/bitmap2l ask for FILL alone and save 2,162 bytes by it.
 ; Every part leaves FX through fx_off, so _ANY carries it.
 !ifdef X16_USE_VERAFX {
     !ifndef X16_USE_VERAFX_MULT   { X16_USE_VERAFX_MULT   = 1 }
@@ -352,8 +390,12 @@
 !ifdef X16_USE_PALETTE { !source "video/palette.asm" }
 !ifdef X16_USE_TILE    { !source "video/tile.asm" }
 !ifdef X16_USE_SPRITE  { !source "sprite/sprite.asm" }
-!ifdef X16_USE_BITMAP  { !source "gfx/bitmap.asm" }
-!ifdef X16_USE_BITMAP2 { !source "gfx/bitmap2.asm" }
+!ifdef X16_USE_BITMAP8L { !source "gfx/bitmap8l.asm" }
+!ifdef X16_USE_BITMAP8H { !source "gfx/bitmap8h.asm" }
+!ifdef X16_USE_BITMAP2H { !source "gfx/bitmap2h.asm" }
+!ifdef X16_USE_BITMAP2L { !source "gfx/bitmap2l.asm" }
+!ifdef X16_USE_BITMAP4L { !source "gfx/bitmap4l.asm" }
+!ifdef X16_USE_BITMAP4H { !source "gfx/bitmap4h.asm" }
 ; X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
 ; modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
 ; dependency like X16_USE_SHAPES_POLY -> X16_USE_SHAPES/MATH -- defines the

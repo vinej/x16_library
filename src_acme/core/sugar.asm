@@ -22,7 +22,7 @@
 ;
 ;       !source "x16.asm"
 ;       X16_USE_SHAPES_RRECT = 1     ; <- your gates first
-;       X16_USE_BITMAP2      = 1
+;       X16_USE_BITMAP2H     = 1
 ;       !source "core/sugar.asm"     ; <- then the (optional) macros
 ;       ... your program ...
 ;       !source "x16_code.asm"
@@ -341,21 +341,21 @@
 }
 
 ; =====================================================================
-; gfx/bitmap  (320x240 @ 8bpp)
+; gfx/bitmap8l  (320x240 @ 8bpp)
 ; =====================================================================
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_init {
-    jsr gfx_init
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_init {
+    jsr gfx8l_init
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_clear .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_clear .col {
     lda #(.col)
-    jsr gfx_clear
+    jsr gfx8l_clear
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_pset .x, .y, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_pset .x, .y, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -364,40 +364,23 @@
     sta X16_P2
     lda #(.col)
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 }
 }
 ; -> A = colour
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_read .x, .y {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_read .x, .y {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
     sta X16_P1
     lda #(.y)
     sta X16_P2
-    jsr gfx_read
+    jsr gfx8l_read
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_hline .x, .y, .len, .col {
-    lda #<(.x)
-    sta X16_P0
-    lda #>(.x)
-    sta X16_P1
-    lda #(.y)
-    sta X16_P2
-    lda #(.col)
-    sta X16_P3
-    lda #<(.len)
-    sta X16_P4
-    lda #>(.len)
-    sta X16_P5
-    jsr gfx_hline
-}
-}
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_vline .x, .y, .len, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_hline .x, .y, .len, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -410,11 +393,28 @@
     sta X16_P4
     lda #>(.len)
     sta X16_P5
-    jsr gfx_vline
+    jsr gfx8l_hline
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_rect .x, .y, .w, .h, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_vline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    jsr gfx8l_vline
+}
+}
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_rect .x, .y, .w, .h, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -429,11 +429,11 @@
     sta X16_P5
     lda #(.h)
     sta X16_P6
-    jsr gfx_rect
+    jsr gfx8l_rect
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_frame .x, .y, .w, .h, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_frame .x, .y, .w, .h, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -448,19 +448,19 @@
     sta X16_P5
     lda #(.h)
     sta X16_P6
-    jsr gfx_frame
+    jsr gfx8l_frame
 }
 }
 ; A/X = the address of an 8x8 1bpp pattern
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_pattern_set .pat {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_pattern_set .pat {
     lda #<(.pat)
     ldx #>(.pat)
-    jsr gfx_pattern_set
+    jsr gfx8l_pattern_set
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_pattern_rect .x, .y, .w, .h {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_pattern_rect .x, .y, .w, .h {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -473,11 +473,11 @@
     sta X16_P5
     lda #(.h)
     sta X16_P6
-    jsr gfx_pattern_rect
+    jsr gfx8l_pattern_rect
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_line .x0, .y0, .x1, .y1, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_line .x0, .y0, .x1, .y1, .col {
     lda #<(.x0)
     sta X16_P0
     lda #>(.x0)
@@ -492,11 +492,11 @@
     sta X16_P5
     lda #(.y1)
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 }
 }
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_char .code, .x, .y, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_char .code, .x, .y, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -506,12 +506,12 @@
     lda #(.col)
     sta X16_P3
     lda #(.code)
-    jsr gfx_char
+    jsr gfx8l_char
 }
 }
 ; str = a NUL-terminated string
-!ifdef X16_USE_BITMAP {
-!macro xm_gfx_text .str, .x, .y, .col {
+!ifdef X16_USE_BITMAP8L {
+!macro xm_gfx8l_text .str, .x, .y, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -522,26 +522,49 @@
     sta X16_P3
     lda #<(.str)
     ldx #>(.str)
-    jsr gfx_text
+    jsr gfx8l_text
 }
 }
 
 ; =====================================================================
-; gfx/bitmap2  (640x480 @ 2bpp; colour in A)
+; gfx/bitmap8h  (640x480 @ 8bpp; VERA_2 SDRAM layer)
 ; =====================================================================
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_init {
-    jsr gfx2_init
+!ifdef X16_USE_BITMAP8H {
+!macro xm_gfx8h_has {
+    jsr gfx8h_has
 }
+!macro xm_gfx8h_init {
+    jsr gfx8h_init
 }
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_clear .col {
+!macro xm_gfx8h_off {
+    jsr gfx8h_off
+}
+!macro xm_gfx8h_passthru_on {
+    jsr gfx8h_passthru_on
+}
+!macro xm_gfx8h_passthru_off {
+    jsr gfx8h_passthru_off
+}
+!macro xm_gfx8h_pal_set .index, .lo, .hi {
+    ldx #(.index)
+    lda #(.lo)
+    ldy #(.hi)
+    jsr gfx8h_pal_set
+}
+!macro xm_gfx8h_pal_load .src, .first, .count {
+    lda #<(.src)
+    sta X16_PTR0
+    lda #>(.src)
+    sta X16_PTR0+1
+    lda #(.first)
+    ldx #(.count)
+    jsr gfx8h_pal_load
+}
+!macro xm_gfx8h_clear .col {
     lda #(.col)
-    jsr gfx2_clear
+    jsr gfx8h_clear
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_pset .x, .y, .col {
+!macro xm_gfx8h_pset .x, .y, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -551,12 +574,9 @@
     lda #>(.y)
     sta X16_P3
     lda #(.col)
-    jsr gfx2_pset
+    jsr gfx8h_pset
 }
-}
-; -> A = colour, carry set if (x,y) is off screen
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_read .x, .y {
+!macro xm_gfx8h_read .x, .y {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -565,11 +585,9 @@
     sta X16_P2
     lda #>(.y)
     sta X16_P3
-    jsr gfx2_read
+    jsr gfx8h_read
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_hline .x, .y, .len, .col {
+!macro xm_gfx8h_hline .x, .y, .len, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -583,11 +601,9 @@
     lda #>(.len)
     sta X16_P5
     lda #(.col)
-    jsr gfx2_hline
+    jsr gfx8h_hline
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_vline .x, .y, .len, .col {
+!macro xm_gfx8h_vline .x, .y, .len, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -601,11 +617,9 @@
     lda #>(.len)
     sta X16_P5
     lda #(.col)
-    jsr gfx2_vline
+    jsr gfx8h_vline
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_rect .x, .y, .w, .h, .col {
+!macro xm_gfx8h_rect .x, .y, .w, .h, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -623,11 +637,9 @@
     lda #>(.h)
     sta X16_P7
     lda #(.col)
-    jsr gfx2_rect
+    jsr gfx8h_rect
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_frame .x, .y, .w, .h, .col {
+!macro xm_gfx8h_frame .x, .y, .w, .h, .col {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -645,11 +657,9 @@
     lda #>(.h)
     sta X16_P7
     lda #(.col)
-    jsr gfx2_frame
+    jsr gfx8h_frame
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_line .x0, .y0, .x1, .y1, .col {
+!macro xm_gfx8h_line .x0, .y0, .x1, .y1, .col {
     lda #<(.x0)
     sta X16_P0
     lda #>(.x0)
@@ -667,19 +677,18 @@
     lda #>(.y1)
     sta X16_P7
     lda #(.col)
-    jsr gfx2_line
+    jsr gfx8h_line
 }
-}
-; A/X = the address of an 8x8 1bpp pattern
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_pattern_set .pat {
+!macro xm_gfx8h_pattern_set .pat, .bg, .fg {
+    lda #(.bg)
+    sta X16_P4
+    lda #(.fg)
+    sta X16_P5
     lda #<(.pat)
     ldx #>(.pat)
-    jsr gfx2_pattern_set
+    jsr gfx8h_pattern_set
 }
-}
-!ifdef X16_USE_BITMAP2 {
-!macro xm_gfx2_pattern_rect .x, .y, .w, .h {
+!macro xm_gfx8h_pattern_rect .x, .y, .w, .h {
     lda #<(.x)
     sta X16_P0
     lda #>(.x)
@@ -696,7 +705,735 @@
     sta X16_P6
     lda #>(.h)
     sta X16_P7
-    jsr gfx2_pattern_rect
+    jsr gfx8h_pattern_rect
+}
+!macro xm_gfx8h_copy .src, .dst, .len {
+    lda #<(.src)
+    sta X16_P0
+    lda #>((.src) >> 8)
+    sta X16_P1
+    lda #>((.src) >> 16)
+    sta X16_P2
+    lda #<(.dst)
+    sta X16_P3
+    lda #>((.dst) >> 8)
+    sta X16_P4
+    lda #>((.dst) >> 16)
+    sta X16_P5
+    lda #<(.len)
+    ldx #>((.len) >> 8)
+    ldy #>((.len) >> 16)
+    jsr gfx8h_copy
+}
+}
+
+; =====================================================================
+; gfx/bitmap2h  (640x480 @ 2bpp; colour in A)
+; =====================================================================
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_init {
+    jsr gfx2h_init
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_clear .col {
+    lda #(.col)
+    jsr gfx2h_clear
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_pset .x, .y, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #(.col)
+    jsr gfx2h_pset
+}
+}
+; -> A = colour, carry set if (x,y) is off screen
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_read .x, .y {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    jsr gfx2h_read
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_hline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    lda #(.col)
+    jsr gfx2h_hline
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_vline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    lda #(.col)
+    jsr gfx2h_vline
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_rect .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx2h_rect
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_frame .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx2h_frame
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_line .x0, .y0, .x1, .y1, .col {
+    lda #<(.x0)
+    sta X16_P0
+    lda #>(.x0)
+    sta X16_P1
+    lda #<(.y0)
+    sta X16_P2
+    lda #>(.y0)
+    sta X16_P3
+    lda #<(.x1)
+    sta X16_P4
+    lda #>(.x1)
+    sta X16_P5
+    lda #<(.y1)
+    sta X16_P6
+    lda #>(.y1)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx2h_line
+}
+}
+; A/X = the address of an 8x8 1bpp pattern
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_pattern_set .pat {
+    lda #<(.pat)
+    ldx #>(.pat)
+    jsr gfx2h_pattern_set
+}
+}
+!ifdef X16_USE_BITMAP2H {
+!macro xm_gfx2h_pattern_rect .x, .y, .w, .h {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    jsr gfx2h_pattern_rect
+}
+}
+
+; =====================================================================
+; gfx/bitmap2l  (320x240 @ 2bpp; colour in A)
+; =====================================================================
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_init {
+    jsr gfx2l_init
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_clear .col {
+    lda #(.col)
+    jsr gfx2l_clear
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_pset .x, .y, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #(.col)
+    jsr gfx2l_pset
+}
+}
+; -> A = colour, carry set if (x,y) is off screen
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_read .x, .y {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    jsr gfx2l_read
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_hline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    lda #(.col)
+    jsr gfx2l_hline
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_vline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    lda #(.col)
+    jsr gfx2l_vline
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_rect .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx2l_rect
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_frame .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx2l_frame
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_line .x0, .y0, .x1, .y1, .col {
+    lda #<(.x0)
+    sta X16_P0
+    lda #>(.x0)
+    sta X16_P1
+    lda #<(.y0)
+    sta X16_P2
+    lda #>(.y0)
+    sta X16_P3
+    lda #<(.x1)
+    sta X16_P4
+    lda #>(.x1)
+    sta X16_P5
+    lda #<(.y1)
+    sta X16_P6
+    lda #>(.y1)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx2l_line
+}
+}
+; A/X = the address of an 8x8 1bpp pattern
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_pattern_set .pat {
+    lda #<(.pat)
+    ldx #>(.pat)
+    jsr gfx2l_pattern_set
+}
+}
+!ifdef X16_USE_BITMAP2L {
+!macro xm_gfx2l_pattern_rect .x, .y, .w, .h {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    jsr gfx2l_pattern_rect
+}
+}
+
+; =====================================================================
+; gfx/bitmap4l  (320x240 @ 4bpp)
+; =====================================================================
+!ifdef X16_USE_BITMAP4L {
+!macro xm_gfx4l_init {
+    jsr gfx4l_init
+}
+!macro xm_gfx4l_clear .col {
+    lda #(.col)
+    jsr gfx4l_clear
+}
+!macro xm_gfx4l_pset .x, .y, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    jsr gfx4l_pset
+}
+!macro xm_gfx4l_read .x, .y {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    jsr gfx4l_read
+}
+!macro xm_gfx4l_hline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    jsr gfx4l_hline
+}
+!macro xm_gfx4l_vline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #(.len)
+    sta X16_P4
+    jsr gfx4l_vline
+}
+!macro xm_gfx4l_rect .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #(.h)
+    sta X16_P6
+    jsr gfx4l_rect
+}
+!macro xm_gfx4l_frame .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #(.h)
+    sta X16_P6
+    jsr gfx4l_frame
+}
+!macro xm_gfx4l_line .x0, .y0, .x1, .y1, .col {
+    lda #<(.x0)
+    sta X16_P0
+    lda #>(.x0)
+    sta X16_P1
+    lda #(.y0)
+    sta X16_P2
+    lda #<(.x1)
+    sta X16_P3
+    lda #>(.x1)
+    sta X16_P4
+    lda #(.y1)
+    sta X16_P5
+    lda #(.col)
+    sta X16_P6
+    jsr gfx4l_line
+}
+!macro xm_gfx4l_pattern_set .pat, .bg, .fg {
+    lda #(.bg)
+    sta X16_P4
+    lda #(.fg)
+    sta X16_P5
+    lda #<(.pat)
+    ldx #>(.pat)
+    jsr gfx4l_pattern_set
+}
+!macro xm_gfx4l_pattern_rect .x, .y, .w, .h {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #(.h)
+    sta X16_P6
+    jsr gfx4l_pattern_rect
+}
+!macro xm_gfx4l_char .code, .x, .y, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #(.code)
+    jsr gfx4l_char
+}
+!macro xm_gfx4l_text .str, .x, .y, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #(.y)
+    sta X16_P2
+    lda #(.col)
+    sta X16_P3
+    lda #<(.str)
+    ldx #>(.str)
+    jsr gfx4l_text
+}
+}
+
+; =====================================================================
+; gfx/bitmap4h  (640x480 @ 4bpp; VERA_2 SDRAM layer)
+; =====================================================================
+!ifdef X16_USE_BITMAP4H {
+!macro xm_gfx4h_has {
+    jsr gfx4h_has
+}
+!macro xm_gfx4h_init {
+    jsr gfx4h_init
+}
+!macro xm_gfx4h_off {
+    jsr gfx4h_off
+}
+!macro xm_gfx4h_passthru_on {
+    jsr gfx4h_passthru_on
+}
+!macro xm_gfx4h_passthru_off {
+    jsr gfx4h_passthru_off
+}
+!macro xm_gfx4h_pal_set .index, .lo, .hi {
+    ldx #(.index)
+    lda #(.lo)
+    ldy #(.hi)
+    jsr gfx4h_pal_set
+}
+!macro xm_gfx4h_pal_load .src, .first, .count {
+    lda #<(.src)
+    sta X16_PTR0
+    lda #>(.src)
+    sta X16_PTR0+1
+    lda #(.first)
+    ldx #(.count)
+    jsr gfx4h_pal_load
+}
+!macro xm_gfx4h_clear .col {
+    lda #(.col)
+    jsr gfx4h_clear
+}
+!macro xm_gfx4h_pset .x, .y, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #(.col)
+    jsr gfx4h_pset
+}
+!macro xm_gfx4h_read .x, .y {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    jsr gfx4h_read
+}
+!macro xm_gfx4h_hline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    lda #(.col)
+    jsr gfx4h_hline
+}
+!macro xm_gfx4h_vline .x, .y, .len, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.len)
+    sta X16_P4
+    lda #>(.len)
+    sta X16_P5
+    lda #(.col)
+    jsr gfx4h_vline
+}
+!macro xm_gfx4h_rect .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx4h_rect
+}
+!macro xm_gfx4h_frame .x, .y, .w, .h, .col {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx4h_frame
+}
+!macro xm_gfx4h_line .x0, .y0, .x1, .y1, .col {
+    lda #<(.x0)
+    sta X16_P0
+    lda #>(.x0)
+    sta X16_P1
+    lda #<(.y0)
+    sta X16_P2
+    lda #>(.y0)
+    sta X16_P3
+    lda #<(.x1)
+    sta X16_P4
+    lda #>(.x1)
+    sta X16_P5
+    lda #<(.y1)
+    sta X16_P6
+    lda #>(.y1)
+    sta X16_P7
+    lda #(.col)
+    jsr gfx4h_line
+}
+!macro xm_gfx4h_pattern_set .pat, .bg, .fg {
+    lda #(.bg)
+    sta X16_P4
+    lda #(.fg)
+    sta X16_P5
+    lda #<(.pat)
+    ldx #>(.pat)
+    jsr gfx4h_pattern_set
+}
+!macro xm_gfx4h_pattern_rect .x, .y, .w, .h {
+    lda #<(.x)
+    sta X16_P0
+    lda #>(.x)
+    sta X16_P1
+    lda #<(.y)
+    sta X16_P2
+    lda #>(.y)
+    sta X16_P3
+    lda #<(.w)
+    sta X16_P4
+    lda #>(.w)
+    sta X16_P5
+    lda #<(.h)
+    sta X16_P6
+    lda #>(.h)
+    sta X16_P7
+    jsr gfx4h_pattern_rect
+}
+!macro xm_gfx4h_copy .src, .dst, .len {
+    lda #<(.src)
+    sta X16_P0
+    lda #>((.src) >> 8)
+    sta X16_P1
+    lda #>((.src) >> 16)
+    sta X16_P2
+    lda #<(.dst)
+    sta X16_P3
+    lda #>((.dst) >> 8)
+    sta X16_P4
+    lda #>((.dst) >> 16)
+    sta X16_P5
+    lda #<(.len)
+    ldx #>((.len) >> 8)
+    ldy #>((.len) >> 16)
+    jsr gfx4h_copy
 }
 }
 
