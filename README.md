@@ -1,4 +1,4 @@
-# x16lib
+# X16_Library
 
 An assembly library for the Commander X16. Write programs directly in 6502,
 without re-deriving the machine's hardware surface every time.
@@ -6,8 +6,14 @@ without re-deriving the machine's hardware surface every time.
 | Topic | Detail |
 |---|---|
 | Target | Commander X16 programs written directly in 6502 assembly. |
-| Source material | Capability list from the ForthX16 help pages in [`doc/`](doc/); hardware facts from the official VERA references and r49 ROM sources. |
 | Implementation | Fresh assembly implementation with an assembly-shaped API. No Forth code is reused. |
+| ACME tutorial | `src_acme/tutorial/` |
+| ca65 tutorial | `src_ca65/tutorial/` |
+| 64tass tutorial | `src_64tass/tutorial/` |
+| KickAssembler tutorial | `src_kick/tutorial/` |
+| dasm tutorial | `src_dasm/tutorial/` |
+| MADS tutorial | `src_mads/tutorial/` |
+| vasm tutorial | `src_vasm/tutorial/` |
 
 ## Prerequisites
 

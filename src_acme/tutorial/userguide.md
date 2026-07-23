@@ -1,6 +1,6 @@
-# x16lib User Guide
+# X16_Library User Guide
 
-x16lib is an assembly library for the Commander X16: write 6502 programs
+X16_Library is an assembly library for the Commander X16: write 6502 programs
 without re-deriving the machine's hardware surface every time. This guide
 explains every routine — its parameters, its results, and a small working
 example for each.
