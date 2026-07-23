@@ -3864,6 +3864,108 @@
 }
 
 ; =====================================================================
+; comms/spi  (VERA SPI controller)
+; =====================================================================
+; -> A = VERA_SPI_* control/status bits
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_get_ctrl {
+    jsr spi_get_ctrl
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_set_ctrl .ctrl {
+    lda #(.ctrl)
+    jsr spi_set_ctrl
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_select {
+    jsr spi_select
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_deselect {
+    jsr spi_deselect
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_slow {
+    jsr spi_slow
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_fast {
+    jsr spi_fast
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_autotx_on {
+    jsr spi_autotx_on
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_autotx_off {
+    jsr spi_autotx_off
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_wait {
+    jsr spi_wait
+}
+}
+; -> A = received byte
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_transfer .byte {
+    lda #(.byte)
+    jsr spi_transfer
+}
+}
+; -> A = received byte
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_read {
+    jsr spi_read
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_write .byte {
+    lda #(.byte)
+    jsr spi_write
+}
+}
+; -> A = received byte; starts the next Auto-TX transfer
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_autotx_read {
+    jsr spi_autotx_read
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_read_bytes .buffer, .count {
+    lda #<(.buffer)
+    sta r0L
+    lda #>(.buffer)
+    sta r0H
+    lda #<(.count)
+    sta r1L
+    lda #>(.count)
+    sta r1H
+    jsr spi_read_bytes
+}
+}
+!ifdef X16_USE_VERA_SPI {
+!macro xm_spi_write_bytes .buffer, .count {
+    lda #<(.buffer)
+    sta r0L
+    lda #>(.buffer)
+    sta r0H
+    lda #<(.count)
+    sta r1L
+    lda #>(.count)
+    sta r1H
+    jsr spi_write_bytes
+}
+}
+
+; =====================================================================
 ; comms/serial
 ; =====================================================================
 ; -> A = count (0-2), carry clear if any found, ser_u0/ser_u1 = bases

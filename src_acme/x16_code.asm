@@ -126,6 +126,9 @@
 ;                     mse_show/show_keep/hide
 ;   X16_USE_I2C       i2c_read_byte/write_byte,
 ;                     i2c_batch_read/write
+;   X16_USE_VERA_SPI  spi_get/set_ctrl, spi_select/deselect,
+;                     spi_slow/fast, spi_transfer/read/write,
+;                     spi_read/write_bytes
 ;   X16_USE_SERIAL    ser_detect, ser_init, ser_avail, ser_get,
 ;                     ser_get_wait, ser_put, ser_puts, ser_write,
 ;                     ser_read_until, ser_discard_until -- the serial /
@@ -289,6 +292,9 @@
 }
 ; comms/i2c.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_I2C {
+}
+; comms/spi.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_VERA_SPI {
 }
 ; system/clock.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_CLOCK {
@@ -460,6 +466,7 @@
 !ifdef X16_USE_KEYBOARD { !source "input/keyboard.asm" }
 !ifdef X16_USE_MOUSE   { !source "input/mouse.asm" }
 !ifdef X16_USE_I2C     { !source "comms/i2c.asm" }
+!ifdef X16_USE_VERA_SPI { !source "comms/spi.asm" }
 !ifdef X16_USE_SERIAL  { !source "comms/serial.asm" }
 !ifdef X16_USE_SERIAL_ZIMODEM { !source "comms/zimodem.asm" }
 !ifdef X16_USE_BANK    { !source "storage/bank.asm" }

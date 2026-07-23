@@ -175,6 +175,14 @@ VERA_IRQ_AFLOW    = %00001000
 VERA_ISR_COLLISION = %11110000
 
 ; ---------------------------------------------------------------------
+; SPI_CTRL bitfields.
+; ---------------------------------------------------------------------
+VERA_SPI_SELECT   = %00000001   ; 1 asserts chip-select, 0 releases it
+VERA_SPI_SLOWCLK  = %00000010   ; 1 = ~390 kHz, 0 = ~12.5 MHz
+VERA_SPI_AUTOTX   = %00000100   ; reading SPI_DATA starts a $FF transfer
+VERA_SPI_BUSY     = %10000000   ; read-only
+
+; ---------------------------------------------------------------------
 ; FX_CTRL (DCSEL=2) bitfields.
 ; ---------------------------------------------------------------------
 VERA_FX_ADDR1_NORMAL  = 0
