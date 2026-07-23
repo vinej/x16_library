@@ -70,6 +70,8 @@
 ;                     (640x480@4bpp; MiSTer VERA_2 SDRAM layer)
 ;   X16_USE_FB        fb_init/info/palette/cursor,
 ;                     fb_get/set/fill/filter/move pixels
+;   X16_USE_GRAPH     graph_init/clear/window/colors,
+;                     graph_line/rect/oval/image/text
 ;   X16_USE_CLOCK     clock_update, clock_get/set_timer,
 ;                     clock_get/set_date_time
 ;   X16_USE_SHAPES    shape_circle, shape_disc, shape_ellipse,
@@ -301,6 +303,9 @@
 ; gfx/fb.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_FB {
 }
+; gfx/graph.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_GRAPH {
+}
 ; storage/iec.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_IEC {
 }
@@ -432,6 +437,7 @@
 !ifdef X16_USE_BITMAP4L { !source "gfx/bitmap4l.asm" }
 !ifdef X16_USE_BITMAP4H { !source "gfx/bitmap4h.asm" }
 !ifdef X16_USE_FB     { !source "gfx/fb.asm" }
+!ifdef X16_USE_GRAPH  { !source "gfx/graph.asm" }
 ; X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
 ; modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
 ; dependency like X16_USE_SHAPES_POLY -> X16_USE_SHAPES/MATH -- defines the

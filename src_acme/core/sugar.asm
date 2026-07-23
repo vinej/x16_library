@@ -1438,6 +1438,270 @@
 }
 
 ; =====================================================================
+; gfx/graph  (KERNAL GRAPH API)
+; =====================================================================
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_init_default {
+    stz r0L
+    stz r0H
+    jsr graph_init
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_init .driver {
+    lda #<(.driver)
+    sta r0L
+    lda #>(.driver)
+    sta r0H
+    jsr graph_init
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_clear {
+    jsr graph_clear
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_set_window .x, .y, .w, .h {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.w)
+    sta r2L
+    lda #>(.w)
+    sta r2H
+    lda #<(.h)
+    sta r3L
+    lda #>(.h)
+    sta r3H
+    jsr graph_set_window
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_set_colors .stroke, .fill, .background {
+    lda #(.stroke)
+    ldx #(.fill)
+    ldy #(.background)
+    jsr graph_set_colors
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_draw_line .x1, .y1, .x2, .y2 {
+    lda #<(.x1)
+    sta r0L
+    lda #>(.x1)
+    sta r0H
+    lda #<(.y1)
+    sta r1L
+    lda #>(.y1)
+    sta r1H
+    lda #<(.x2)
+    sta r2L
+    lda #>(.x2)
+    sta r2H
+    lda #<(.y2)
+    sta r3L
+    lda #>(.y2)
+    sta r3H
+    jsr graph_draw_line
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_draw_rect_outline .x, .y, .w, .h, .radius {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.w)
+    sta r2L
+    lda #>(.w)
+    sta r2H
+    lda #<(.h)
+    sta r3L
+    lda #>(.h)
+    sta r3H
+    lda #<(.radius)
+    sta r4L
+    lda #>(.radius)
+    sta r4H
+    clc
+    jsr graph_draw_rect
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_draw_rect_fill .x, .y, .w, .h, .radius {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.w)
+    sta r2L
+    lda #>(.w)
+    sta r2H
+    lda #<(.h)
+    sta r3L
+    lda #>(.h)
+    sta r3H
+    lda #<(.radius)
+    sta r4L
+    lda #>(.radius)
+    sta r4H
+    sec
+    jsr graph_draw_rect
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_move_rect .sx, .sy, .tx, .ty, .w, .h {
+    lda #<(.sx)
+    sta r0L
+    lda #>(.sx)
+    sta r0H
+    lda #<(.sy)
+    sta r1L
+    lda #>(.sy)
+    sta r1H
+    lda #<(.tx)
+    sta r2L
+    lda #>(.tx)
+    sta r2H
+    lda #<(.ty)
+    sta r3L
+    lda #>(.ty)
+    sta r3H
+    lda #<(.w)
+    sta r4L
+    lda #>(.w)
+    sta r4H
+    lda #<(.h)
+    sta r5L
+    lda #>(.h)
+    sta r5H
+    jsr graph_move_rect
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_draw_oval_outline .x, .y, .w, .h {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.w)
+    sta r2L
+    lda #>(.w)
+    sta r2H
+    lda #<(.h)
+    sta r3L
+    lda #>(.h)
+    sta r3H
+    clc
+    jsr graph_draw_oval
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_draw_oval_fill .x, .y, .w, .h {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.w)
+    sta r2L
+    lda #>(.w)
+    sta r2H
+    lda #<(.h)
+    sta r3L
+    lda #>(.h)
+    sta r3H
+    sec
+    jsr graph_draw_oval
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_draw_image .x, .y, .image, .w, .h {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.image)
+    sta r2L
+    lda #>(.image)
+    sta r2H
+    lda #<(.w)
+    sta r3L
+    lda #>(.w)
+    sta r3H
+    lda #<(.h)
+    sta r4L
+    lda #>(.h)
+    sta r4H
+    jsr graph_draw_image
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_set_font_default {
+    stz r0L
+    stz r0H
+    jsr graph_set_font
+}
+}
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_set_font .font {
+    lda #<(.font)
+    sta r0L
+    lda #>(.font)
+    sta r0H
+    jsr graph_set_font
+}
+}
+; -> printable: C clear, A baseline, X width, Y height; control: C set
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_get_char_size .char, .style {
+    lda #(.char)
+    ldx #(.style)
+    jsr graph_get_char_size
+}
+}
+; -> r0/r1 updated, carry set if outside bounds
+!ifdef X16_USE_GRAPH {
+!macro xm_graph_put_char .char, .x, .y {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #(.char)
+    jsr graph_put_char
+}
+}
+
+; =====================================================================
 ; gfx/fb  (KERNAL framebuffer API)
 ; =====================================================================
 !ifdef X16_USE_FB {
