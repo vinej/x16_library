@@ -2037,6 +2037,52 @@
 }
 
 ; =====================================================================
+; input/mouse
+; =====================================================================
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_config .cursor, .width8, .height8 {
+    lda #(.cursor)
+    ldx #(.width8)
+    ldy #(.height8)
+    jsr mse_config
+}
+}
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_scan {
+    jsr mse_scan
+}
+}
+; -> P0/1 = x, P2/3 = y, A = buttons, X = wheel delta
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_get {
+    jsr mse_get
+}
+}
+; -> .zp/.zp+1 = x, .zp+2/.zp+3 = y, A = buttons, X = wheel delta
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_get_to .zp {
+    ldx #(.zp)
+    jsr mse_get_to
+}
+}
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_show .cursor {
+    lda #(.cursor)
+    jsr mse_show
+}
+}
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_show_keep {
+    jsr mse_show_keep
+}
+}
+!ifdef X16_USE_MOUSE {
+!macro xm_mse_hide {
+    jsr mse_hide
+}
+}
+
+; =====================================================================
 ; input/keyboard
 ; =====================================================================
 !ifdef X16_USE_KEYBOARD {
