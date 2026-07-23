@@ -114,6 +114,8 @@
 ;                     pulls in PCM and IRQ)
 ;   X16_USE_INPUT     joy_scan, joy_get, mouse_show/hide/get,
 ;                     key_get, key_wait, key_peek
+;   X16_USE_KEYBOARD  kbd_scan, kbd_peek/put, kbd_get_modifiers,
+;                     kbd_get/set_keymap
 ;   X16_USE_I2C       i2c_read_byte/write_byte,
 ;                     i2c_batch_read/write
 ;   X16_USE_SERIAL    ser_detect, ser_init, ser_avail, ser_get,
@@ -286,6 +288,9 @@
 ; storage/fileio.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_FILEIO {
 }
+; input/keyboard.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_KEYBOARD {
+}
 ; storage/iec.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_IEC {
 }
@@ -429,6 +434,7 @@
 !ifdef X16_USE_YM      { !source "audio/ym.asm" }
 !ifdef X16_USE_PCM     { !source "audio/pcm.asm" }
 !ifdef X16_USE_INPUT_ANY { !source "input/input.asm" }
+!ifdef X16_USE_KEYBOARD { !source "input/keyboard.asm" }
 !ifdef X16_USE_I2C     { !source "comms/i2c.asm" }
 !ifdef X16_USE_SERIAL  { !source "comms/serial.asm" }
 !ifdef X16_USE_SERIAL_ZIMODEM { !source "comms/zimodem.asm" }

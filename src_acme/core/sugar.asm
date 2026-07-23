@@ -2037,6 +2037,47 @@
 }
 
 ; =====================================================================
+; input/keyboard
+; =====================================================================
+!ifdef X16_USE_KEYBOARD {
+!macro xm_kbd_scan {
+    jsr kbd_scan
+}
+}
+; -> A = next PETSCII key, X = queued key count, Z set when empty
+!ifdef X16_USE_KEYBOARD {
+!macro xm_kbd_peek {
+    jsr kbd_peek
+}
+}
+!ifdef X16_USE_KEYBOARD {
+!macro xm_kbd_put .key {
+    lda #(.key)
+    jsr kbd_put
+}
+}
+; -> A = KBD_MOD_* bitfield
+!ifdef X16_USE_KEYBOARD {
+!macro xm_kbd_get_modifiers {
+    jsr kbd_get_modifiers
+}
+}
+; -> A = layout index, X/Y = current NUL-terminated layout string
+!ifdef X16_USE_KEYBOARD {
+!macro xm_kbd_get_keymap {
+    jsr kbd_get_keymap
+}
+}
+; -> carry clear on success, carry set on unknown layout
+!ifdef X16_USE_KEYBOARD {
+!macro xm_kbd_set_keymap .name {
+    ldx #<(.name)
+    ldy #>(.name)
+    jsr kbd_set_keymap
+}
+}
+
+; =====================================================================
 ; input/input
 ; =====================================================================
 !ifdef X16_USE_INPUT {
