@@ -2231,6 +2231,142 @@
 }
 
 ; =====================================================================
+; storage/fileio
+; =====================================================================
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_set_lfs .logical, .device, .secondary {
+    lda #(.logical)
+    ldx #(.device)
+    ldy #(.secondary)
+    jsr fio_set_lfs
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_set_name .name, .len {
+    lda #(.len)
+    ldx #<(.name)
+    ldy #>(.name)
+    jsr fio_set_name
+}
+}
+; -> carry set = KERNAL open error
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_open_named .name, .len, .logical, .device, .secondary {
+    lda #<(.name)
+    sta X16_P0
+    lda #>(.name)
+    sta X16_P1
+    lda #(.len)
+    sta X16_P2
+    lda #(.logical)
+    sta X16_P3
+    lda #(.device)
+    sta X16_P4
+    lda #(.secondary)
+    sta X16_P5
+    jsr fio_open_named
+}
+}
+; -> carry set = OPEN or CHKIN error
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_open_read .name, .len, .logical, .device, .secondary {
+    lda #<(.name)
+    sta X16_P0
+    lda #>(.name)
+    sta X16_P1
+    lda #(.len)
+    sta X16_P2
+    lda #(.logical)
+    sta X16_P3
+    lda #(.device)
+    sta X16_P4
+    lda #(.secondary)
+    sta X16_P5
+    jsr fio_open_read
+}
+}
+; -> carry set = OPEN or CHKOUT error
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_open_write .name, .len, .logical, .device, .secondary {
+    lda #<(.name)
+    sta X16_P0
+    lda #>(.name)
+    sta X16_P1
+    lda #(.len)
+    sta X16_P2
+    lda #(.logical)
+    sta X16_P3
+    lda #(.device)
+    sta X16_P4
+    lda #(.secondary)
+    sta X16_P5
+    jsr fio_open_write
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_close .logical {
+    lda #(.logical)
+    jsr fio_close
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_close_named .logical {
+    lda #(.logical)
+    sta X16_P3
+    jsr fio_close_named
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_chkin .logical {
+    ldx #(.logical)
+    jsr fio_chkin
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_chkout .logical {
+    ldx #(.logical)
+    jsr fio_chkout
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_clrchn {
+    jsr fio_clrchn
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_chrin {
+    jsr fio_chrin
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_chrout .byte {
+    lda #(.byte)
+    jsr fio_chrout
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_readst {
+    jsr fio_readst
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_getin {
+    jsr fio_getin
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_close_all {
+    jsr fio_close_all
+}
+}
+!ifdef X16_USE_FILEIO {
+!macro xm_fio_close_device .device {
+    lda #(.device)
+    jsr fio_close_device
+}
+}
+
+; =====================================================================
 ; storage/load
 ; =====================================================================
 !ifdef X16_USE_LOAD {
