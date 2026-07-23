@@ -108,6 +108,9 @@
 ;                     wants one fast fill should not carry a rotozoom
 ;                     sampler to get it: BITMAP2 asks for _FILL alone
 ;                     and is 2,162 bytes lighter for it.
+;   X16_USE_VERAFX_UTILS  fxu_* low-level FX ctrl/cache/mult/accum/
+;                     16-bit-hop/polygon primitives; separate from
+;                     X16_USE_VERAFX to keep that bundle stable
 ;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait,
 ;                     irq_line_install/remove, irq_sprcol_install/
 ;                     remove, sprite_collisions
@@ -394,6 +397,10 @@
 ; one carries them (internal gate, not meant to be set by programs).
 !ifdef X16_USE_VERAFX_LINE   { !ifndef X16_USE_VERAFX_LINETRI { X16_USE_VERAFX_LINETRI = 1 } }
 !ifdef X16_USE_VERAFX_TRI    { !ifndef X16_USE_VERAFX_LINETRI { X16_USE_VERAFX_LINETRI = 1 } }
+; gfx/verafx_utils.asm is pay-per-use and deliberately kept OUT of
+; X16_USE_VERAFX and X16_USE_ALL.
+!ifdef X16_USE_VERAFX_UTILS {
+}
 !ifdef X16_USE_PCM_STREAM {
     !ifndef X16_USE_PCM { X16_USE_PCM = 1 }
     !ifndef X16_USE_IRQ { X16_USE_IRQ = 1 }
@@ -463,6 +470,7 @@
 ; module's symbols are not defined twice.
 !ifdef X16_USE_SHAPES { !ifndef X16_SKIP_SHAPES { !source "gfx/shapes.asm" } }
 !ifdef X16_USE_VERAFX_ANY { !source "gfx/verafx.asm" }
+!ifdef X16_USE_VERAFX_UTILS { !source "gfx/verafx_utils.asm" }
 !ifdef X16_USE_CLOCK   { !source "system/clock.asm" }
 !ifdef X16_USE_IRQ_ANY { !source "system/irq.asm" }
 !ifdef X16_USE_PSG     { !source "audio/psg.asm" }

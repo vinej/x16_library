@@ -2386,6 +2386,209 @@
 }
 
 ; =====================================================================
+; gfx/verafx_utils  (low-level VERA FX primitives)
+; =====================================================================
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_off {
+    jsr fxu_off
+}
+}
+; -> A = FX_CTRL
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_get_ctrl {
+    jsr fxu_get_ctrl
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_ctrl .ctrl {
+    lda #(.ctrl)
+    jsr fxu_set_ctrl
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_ctrl_on .mask {
+    lda #(.mask)
+    jsr fxu_ctrl_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_ctrl_off .mask {
+    lda #(.mask)
+    jsr fxu_ctrl_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_addr1_mode .mode {
+    lda #(.mode)
+    jsr fxu_addr1_mode
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_write_on {
+    jsr fxu_cache_write_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_write_off {
+    jsr fxu_cache_write_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_fill_on {
+    jsr fxu_cache_fill_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_fill_off {
+    jsr fxu_cache_fill_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_cycle_on {
+    jsr fxu_cache_cycle_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_cycle_off {
+    jsr fxu_cache_cycle_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_transparent_on {
+    jsr fxu_transparent_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_transparent_off {
+    jsr fxu_transparent_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_4bit_on {
+    jsr fxu_4bit_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_4bit_off {
+    jsr fxu_4bit_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_hop_on {
+    jsr fxu_hop_on
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_hop_off {
+    jsr fxu_hop_off
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_mult .mult {
+    lda #(.mult)
+    jsr fxu_set_mult
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_cache .b0, .b1, .b2, .b3 {
+    lda #(.b0)
+    sta X16_P0
+    lda #(.b1)
+    sta X16_P1
+    lda #(.b2)
+    sta X16_P2
+    lda #(.b3)
+    sta X16_P3
+    jsr fxu_set_cache
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_reset_accum {
+    jsr fxu_reset_accum
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_accumulate {
+    jsr fxu_accumulate
+}
+}
+; -> A = DATA0 read
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_fill0 {
+    jsr fxu_cache_fill0
+}
+}
+; -> A = DATA1 read
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_fill1 {
+    jsr fxu_cache_fill1
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_write0 .mask {
+    lda #(.mask)
+    jsr fxu_cache_write0
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_cache_write1 .mask {
+    lda #(.mask)
+    jsr fxu_cache_write1
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_incr .xinc, .yinc {
+    lda #<(.xinc)
+    sta X16_P0
+    lda #>(.xinc)
+    sta X16_P1
+    lda #<(.yinc)
+    sta X16_P2
+    lda #>(.yinc)
+    sta X16_P3
+    jsr fxu_set_incr
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_pos .xpos, .ypos {
+    lda #<(.xpos)
+    sta X16_P0
+    lda #>(.xpos)
+    sta X16_P1
+    lda #<(.ypos)
+    sta X16_P2
+    lda #>(.ypos)
+    sta X16_P3
+    jsr fxu_set_pos
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_subpos .xsub, .ysub {
+    lda #(.xsub)
+    ldx #(.ysub)
+    jsr fxu_set_subpos
+}
+}
+; -> A = poly fill low, X = high
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_get_poly_fill {
+    jsr fxu_get_poly_fill
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_tilebase .value {
+    lda #(.value)
+    jsr fxu_set_tilebase
+}
+}
+!ifdef X16_USE_VERAFX_UTILS {
+!macro xm_fxu_set_mapbase .value {
+    lda #(.value)
+    jsr fxu_set_mapbase
+}
+}
+
+; =====================================================================
 ; system/irq
 ; =====================================================================
 !ifdef X16_USE_IRQ {
