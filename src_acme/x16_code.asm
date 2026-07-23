@@ -499,8 +499,10 @@
 ; module, so nothing that exists breaks; a program that wants the core
 ; and not a rarely-used extra sets the _CORE gate and leaves the extra
 ; out. _ANY sources the file.
-;   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
-;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait;
+;   VERA   core = _ADDR + _FILL + _FXPROBE;   _COPY = vera_copy;
+;          _ADDR = vera_set_addr0/1; _FILL = vera_fill; _FXPROBE = vera_has_fx
+;   IRQ    core = install/line/frames/handler; _REMOVE = irq_remove;
+;          _VSYNC = vsync_wait;
 ;          _SPRCOL = collision capture (handler accumulate + mask);
 ;          _SPRCOL_API = install/remove/sprite_collisions/callback
 ;   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
@@ -510,16 +512,25 @@
     !ifndef X16_USE_VERA_CORE { X16_USE_VERA_CORE = 1 }
     !ifndef X16_USE_VERA_COPY { X16_USE_VERA_COPY = 1 }
 }
-!ifdef X16_USE_VERA_CORE { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
-!ifdef X16_USE_VERA_COPY { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
+!ifdef X16_USE_VERA_CORE {
+    !ifndef X16_USE_VERA_ADDR    { X16_USE_VERA_ADDR    = 1 }
+    !ifndef X16_USE_VERA_FILL    { X16_USE_VERA_FILL    = 1 }
+    !ifndef X16_USE_VERA_FXPROBE { X16_USE_VERA_FXPROBE = 1 }
+}
+!ifdef X16_USE_VERA_ADDR    { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
+!ifdef X16_USE_VERA_FILL    { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
+!ifdef X16_USE_VERA_FXPROBE { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
+!ifdef X16_USE_VERA_COPY    { !ifndef X16_USE_VERA_ANY { X16_USE_VERA_ANY = 1 } }
 !ifdef X16_USE_IRQ {
     !ifndef X16_USE_IRQ_CORE       { X16_USE_IRQ_CORE       = 1 }
+    !ifndef X16_USE_IRQ_REMOVE     { X16_USE_IRQ_REMOVE     = 1 }
     !ifndef X16_USE_IRQ_VSYNC      { X16_USE_IRQ_VSYNC      = 1 }
     !ifndef X16_USE_IRQ_SPRCOL     { X16_USE_IRQ_SPRCOL     = 1 }
     !ifndef X16_USE_IRQ_SPRCOL_API { X16_USE_IRQ_SPRCOL_API = 1 }
 }
 !ifdef X16_USE_IRQ_SPRCOL_API { !ifndef X16_USE_IRQ_SPRCOL { X16_USE_IRQ_SPRCOL = 1 } }
 !ifdef X16_USE_IRQ_CORE   { !ifndef X16_USE_IRQ_ANY { X16_USE_IRQ_ANY = 1 } }
+!ifdef X16_USE_IRQ_REMOVE { !ifndef X16_USE_IRQ_ANY { X16_USE_IRQ_ANY = 1 } }
 !ifdef X16_USE_IRQ_VSYNC  { !ifndef X16_USE_IRQ_ANY { X16_USE_IRQ_ANY = 1 } }
 !ifdef X16_USE_IRQ_SPRCOL { !ifndef X16_USE_IRQ_ANY { X16_USE_IRQ_ANY = 1 } }
 !ifdef X16_USE_INPUT {

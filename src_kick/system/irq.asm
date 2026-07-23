@@ -132,7 +132,10 @@ irq_install__done:
 
 // ---------------------------------------------------------------------
 // irq_remove -- restore the previous handler and disable our sources
+// A permanent hook never removes itself, so irq_remove is behind
+// X16_USE_IRQ_REMOVE (X16_USE_IRQ still pulls it, for compat).
 // ---------------------------------------------------------------------
+#if X16_USE_IRQ_REMOVE
 irq_remove:
     lda irq_armed
     beq irq_remove__done
@@ -160,6 +163,7 @@ irq_remove:
     plp
 irq_remove__done:
     rts
+#endif
 
 // ---------------------------------------------------------------------
 // irq_line_install -- call a handler at a given scanline, every frame

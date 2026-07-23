@@ -751,8 +751,10 @@ X16_USE_IRQ = 1
 ; module, so nothing that exists breaks; a program that wants the core
 ; and not a rarely-used extra sets the _CORE gate and leaves the extra
 ; out. _ANY sources the file.
-;   VERA   core = set_addr/fill/has_fx;   _COPY   = vera_copy
-;   IRQ    core = install/line/frames/handler; _VSYNC = vsync_wait;
+;   VERA   core = _ADDR + _FILL + _FXPROBE;   _COPY = vera_copy;
+;          _ADDR = vera_set_addr0/1; _FILL = vera_fill; _FXPROBE = vera_has_fx
+;   IRQ    core = install/line/frames/handler; _REMOVE = irq_remove;
+;          _VSYNC = vsync_wait;
 ;          _SPRCOL = collision capture (handler accumulate + mask);
 ;          _SPRCOL_API = install/remove/sprite_collisions/callback
 ;   INPUT  core = mouse/joy/key_get;      _KEYWAIT = key_wait/key_peek
@@ -767,6 +769,27 @@ X16_USE_VERA_COPY = 1
     ENDIF
     ENDIF
     IFCONST X16_USE_VERA_CORE
+    IFNCONST X16_USE_VERA_ADDR
+X16_USE_VERA_ADDR    = 1
+    ENDIF
+    IFNCONST X16_USE_VERA_FILL
+X16_USE_VERA_FILL    = 1
+    ENDIF
+    IFNCONST X16_USE_VERA_FXPROBE
+X16_USE_VERA_FXPROBE = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERA_ADDR
+    IFNCONST X16_USE_VERA_ANY
+X16_USE_VERA_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERA_FILL
+    IFNCONST X16_USE_VERA_ANY
+X16_USE_VERA_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERA_FXPROBE
     IFNCONST X16_USE_VERA_ANY
 X16_USE_VERA_ANY = 1
     ENDIF
@@ -779,6 +802,9 @@ X16_USE_VERA_ANY = 1
     IFCONST X16_USE_IRQ
     IFNCONST X16_USE_IRQ_CORE
 X16_USE_IRQ_CORE       = 1
+    ENDIF
+    IFNCONST X16_USE_IRQ_REMOVE
+X16_USE_IRQ_REMOVE     = 1
     ENDIF
     IFNCONST X16_USE_IRQ_VSYNC
 X16_USE_IRQ_VSYNC      = 1
@@ -796,6 +822,11 @@ X16_USE_IRQ_SPRCOL = 1
     ENDIF
     ENDIF
     IFCONST X16_USE_IRQ_CORE
+    IFNCONST X16_USE_IRQ_ANY
+X16_USE_IRQ_ANY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_IRQ_REMOVE
     IFNCONST X16_USE_IRQ_ANY
 X16_USE_IRQ_ANY = 1
     ENDIF

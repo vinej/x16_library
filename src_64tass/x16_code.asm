@@ -99,7 +99,11 @@ X16_USE_VERAFX_TRI = 0
 X16_USE_VERAFX_LINETRI = 0
 X16_USE_VERA_CORE = 0
 X16_USE_VERA_COPY = 0
+X16_USE_VERA_ADDR = 0
+X16_USE_VERA_FILL = 0
+X16_USE_VERA_FXPROBE = 0
 X16_USE_IRQ_CORE = 0
+X16_USE_IRQ_REMOVE = 0
 X16_USE_IRQ_VSYNC = 0
 X16_USE_IRQ_SPRCOL = 0
 X16_USE_IRQ_SPRCOL_API = 0
@@ -205,6 +209,7 @@ xuse_screen_core = xuse_screen || X16_USE_SCREEN_CORE != 0
 xuse_screen_extra = xuse_screen || X16_USE_SCREEN_EXTRA != 0
 xuse_shapes = xuse_graphics || X16_USE_SHAPES != 0 || xuse_shapes_poly || xuse_shapes_pie || xuse_shapes_arc || xuse_shapes_rrect || xuse_shapes_bezier || xuse_shp_line
 xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
+xuse_irq_remove = xuse_irq || X16_USE_IRQ_REMOVE != 0
 xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
 xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0
 xuse_screen_any = xuse_screen_core || xuse_screen_extra
@@ -212,11 +217,14 @@ xuse_bitmap2h = xuse_graphics || X16_USE_BITMAP2H != 0 || xuse_shapes
 xuse_irq_sprcol = xuse_irq || X16_USE_IRQ_SPRCOL != 0 || xuse_irq_sprcol_api
 xuse_vera = xuse_video || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap8l || xuse_bitmap2h || xuse_bitmap2l || xuse_bitmap4l
 xuse_verafx_fill = xuse_bitmap2h || X16_USE_VERAFX_FILL != 0 || xuse_bitmap2l || xuse_verafx
-xuse_irq_any = xuse_irq_core || xuse_irq_vsync || xuse_irq_sprcol
+xuse_irq_any = xuse_irq_core || xuse_irq_remove || xuse_irq_vsync || xuse_irq_sprcol
 xuse_verafx_any = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
 xuse_vera_core = xuse_vera || X16_USE_VERA_CORE != 0
 xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0
-xuse_vera_any = xuse_vera_core || xuse_vera_copy
+xuse_vera_addr = xuse_vera_core || X16_USE_VERA_ADDR != 0
+xuse_vera_fill = xuse_vera_core || X16_USE_VERA_FILL != 0
+xuse_vera_fxprobe = xuse_vera_core || X16_USE_VERA_FXPROBE != 0
+xuse_vera_any = xuse_vera_addr || xuse_vera_fill || xuse_vera_fxprobe || xuse_vera_copy
 
 ; --- modules (the ACME tree's order) ---
 .if xuse_vera_any

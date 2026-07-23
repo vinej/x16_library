@@ -336,7 +336,12 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 
 | Gate | Provides |
 |---|---|
-| `X16_USE_VERA` | `vera_set_addr0/1`, `vera_fill`, `vera_copy`, `vera_has_fx` |
+| `X16_USE_VERA` | `vera_set_addr0/1`, `vera_fill`, `vera_copy`, `vera_has_fx` — all of the parts below. The umbrella still pulls the whole module, so nothing that exists breaks; a program that wants one routine sets its part and carries only that. |
+|   `X16_USE_VERA_CORE` | `vera_set_addr0/1` + `vera_fill` + `vera_has_fx` (everything but `vera_copy`) |
+|   `X16_USE_VERA_ADDR` | `vera_set_addr0`/`vera_set_addr1` alone |
+|   `X16_USE_VERA_FILL` | `vera_fill` alone — a program that only fills does not carry the address setters or the FX probe |
+|   `X16_USE_VERA_FXPROBE` | `vera_has_fx` alone |
+|   `X16_USE_VERA_COPY` | `vera_copy` (VRAM→VRAM) alone |
 | `X16_USE_SCREEN` | `screen_set_mode`/`get_mode`/`reset`/`cls`/`chrout`/`color`/`border`, `screen_locate`, `screen_get_cursor`, `screen_charset`, `screen_puts` |
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
@@ -362,7 +367,8 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 |   `X16_USE_VERAFX_AFFINE` | `fx_affine_on`/`ray`/`span` (the rotozoom/mode-7 sampler) |
 |   `X16_USE_VERAFX_LINE` | `fx_line` (hardware Bresenham) |
 |   `X16_USE_VERAFX_TRI` | `fx_triangle` (polygon-filler triangles) |
-| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions`, `irq_save_regs`/`irq_restore_regs` |
+| `X16_USE_IRQ` | `irq_install`, `irq_remove`, `irq_frames`, `vsync_wait`, `irq_line_install`/`remove` (raster interrupts), `irq_sprcol_install`/`remove`, `sprite_collisions`, `irq_save_regs`/`irq_restore_regs`. The umbrella pulls the whole module; `X16_USE_IRQ_CORE`/`_VSYNC`/`_SPRCOL`/`_SPRCOL_API` select parts. |
+|   `X16_USE_IRQ_REMOVE` | `irq_remove` alone. A program whose hook is permanent can set `X16_USE_IRQ_CORE` without this and save `irq_remove`; `X16_USE_IRQ` still pulls it in. |
 | `X16_USE_PSG` | `psg_init`, `psg_set_freq`/`vol`/`wave`, `psg_note_off`, `psg_env_start`/`release`/`stop`/`tick` (per-voice ASR envelopes) |
 | `X16_USE_YM` | `ym_write` (raw), `ym_busy`, `ym_init`, `ym_poke`, `ym_patch`, `ym_note`, `ym_note_bas`, `ym_release_note`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_get_pan`, `ym_get_vol` |
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |

@@ -16,7 +16,11 @@
 ;
 ; The runtime equivalent of +vera_addr, for addresses not known at
 ; assembly time. Compose Y yourself, or use vera_set_addr0_inc below.
+;
+; A program that only fills does not need these, so they are behind
+; X16_USE_VERA_ADDR (X16_USE_VERA / X16_USE_VERA_CORE still pull them in).
 ; ---------------------------------------------------------------------
+.if .def X16_USE_VERA_ADDR
 vera_set_addr0
     pha
     lda #VERA_CTRL_ADDRSEL
@@ -36,6 +40,7 @@ vera_set_addr1
     stx VERA_ADDR_M
     sty VERA_ADDR_H
     rts
+.endif
 
 ; ---------------------------------------------------------------------
 ; vera_fill
@@ -47,7 +52,10 @@ vera_set_addr1
 ;
 ; The tight `sta VERA_DATA0` loop -- far faster than a per-byte address
 ; reload. This is GAME.TXT's VFILL.
+;
+; Behind X16_USE_VERA_FILL (X16_USE_VERA / X16_USE_VERA_CORE still pull it).
 ; ---------------------------------------------------------------------
+.if .def X16_USE_VERA_FILL
 vera_fill
     sta X16_T0                  ; value
     stx X16_T1                  ; count lo
@@ -72,6 +80,7 @@ vera_fill__loop
     bne vera_fill__loop
 vera_fill__done
     rts
+.endif
 
 ; ---------------------------------------------------------------------
 ; vera_copy
@@ -123,7 +132,10 @@ vera_copy__done
 ;
 ; Probes DCSEL=63, where DC_VER0 reads back ASCII 'V' on FX-capable
 ; VERA. Restores DCSEL to 0 on the way out.
+;
+; Behind X16_USE_VERA_FXPROBE (X16_USE_VERA / X16_USE_VERA_CORE still pull it).
 ; ---------------------------------------------------------------------
+.if .def X16_USE_VERA_FXPROBE
 vera_has_fx
     vera_dcsel VERA_DCSEL_FX_VERSION
     lda VERA_DC_VER0
@@ -140,3 +152,4 @@ vera_has_fx__no
     lda #0
     clc
     rts
+.endif
