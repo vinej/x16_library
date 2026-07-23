@@ -49,6 +49,9 @@
 ; shapes_efl routes each plot through shapes_eplot to the octant points (outline)
 ; or the spans (fill).
 ; ---------------------------------------------------------------------
+; CXRF: X16_SKIP_BASE lets this file be !source'd a 2nd time for the extra
+; shapes only (base + defaults in bank 17, extras in bank 19). Upstream-safe.
+.ifndef X16_SKIP_BASE
 shape_circle
 	sta shapes_col
 	stz shapes_efl                    ; outline: the octant point pairs
@@ -828,6 +831,8 @@ shapes_stk
 ; label, so two routines could not each own an @loop), and the work is cut
 ; into small routines so no branch reaches past its 127-byte range.
 ; ---------------------------------------------------------------------
+.endif
+
 .ifdef X16_USE_SHAPES_POLY
 
 POLY_MAX = 24                   ; vertices; the buffers below are 2 bytes each
@@ -3306,6 +3311,7 @@ bez_r    .word 0
 ; The default-bound words are emitted UNCONDITIONALLY -- data inside an
 ; !ifndef would appear in pass 1 and vanish in pass 2 (the symbol exists
 ; by then), shifting every later address into a phase error.
+.ifndef X16_SKIP_BASE
 shp_wdef .word 640
 shp_hdef .word 480
 
@@ -3323,6 +3329,7 @@ SHP_W     = shp_wdef
 .endif
 .ifndef SHP_H
 SHP_H     = shp_hdef
+.endif
 .endif
 
 ; (end zone)

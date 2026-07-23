@@ -25,11 +25,16 @@ GFX8L_HEIGHT = 240
 ; ---------------------------------------------------------------------
 ; gfx8l_init  -- 320x240@256c bitmap on layer 0, 40x30 text on layer 1
 ; gfx8l_clear -- in: A = colour
+; X16_BITMAP8L_NO_INIT leaves gfx8l_init out: a caller that programs the
+; display mode on bare VERA registers itself does not want the KERNAL
+; screen editor (screen_set_mode) pulled in behind it.
 ; ---------------------------------------------------------------------
+    IFNCONST X16_BITMAP8L_NO_INIT
     SUBROUTINE
 gfx8l_init
     lda #$80
     jmp screen_set_mode
+    ENDIF
 
 ; 320*240 = 76800 bytes does not fit vera_fill's 16-bit count (passing
 ; it naively truncates to $2C00 and clears only the top 35 rows), so

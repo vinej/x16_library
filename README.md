@@ -399,6 +399,17 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 | `X16_USE_STRING_FIND` | Searching (`string/find.asm`): `str_find`, `str_rfind`, `str_find_eol`, `str_contains` (character in `Y`), and `str_pattern_match` (`?`/`*` wildcards, self-modifying + recursive). |
 | `X16_USE_STRING_SLICE` | Substrings (`string/slice.asm`): `str_left`, `str_right`, `str_slice` (into a target in `X16_P0/P1`), and in-place `str_ltrim`/`str_rtrim`/`str_trim`. |
 
+### Advanced build gates
+
+A few gates tune what a module *emits* rather than which module is selected. All are undefined by default (the module builds whole); define one before sourcing `x16_code.asm` to opt in. On 64tass they are value gates (`.weak = 0`) and folded in automatically on regen.
+
+| Gate | Effect |
+| --- | --- |
+| `X16_BITMAP8L_MIN` | Build `bitmap8l` core-only — `init`/`clear`/`read`/`pset`/`hline`/`vline`/`rect`/`frame`/`line` — dropping `char`/`text` and the pattern/blit family. |
+| `X16_BITMAP8L_NO_INIT` | Leave `gfx8l_init` out, for a caller that programs the display mode on bare VERA registers itself and does not want `screen_set_mode` (the `SCREEN` module) pulled in behind it. |
+| `X16_SKIP_BASE` | In `gfx/shapes.asm`, omit the base shapes (`shape_circle`/`disc`/`ellipse`/`fellipse`/`flood`) and the default `SHP_*` bindings, keeping only the gated extras (`POLY`/`ARC`/`PIE`/`RRECT`/`BEZIER`). Lets a split-bank build `!source` the file twice — base in one bank, extras in another — with no duplicate symbols. |
+| `X16_SKIP_SHAPES`, `X16_SKIP_MATH` | Tell `x16_code.asm` not to source `gfx/shapes.asm` / `util/math.asm`, for a program that places those modules itself (e.g. a custom bank layout). |
+
 ## Module Notes
 
 **Gates**
