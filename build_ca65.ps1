@@ -101,6 +101,10 @@ function Invoke-TestPrg([string]$out, [string[]]$extraArgs = @()) {
         }
         if (-not $proc.HasExited) { $proc.Kill() }
         $proc.WaitForExit()
+        if (Test-Path $stdout) {
+            $text = (Get-Content $stdout -Raw -ErrorAction SilentlyContinue) -replace "`r", ""
+            if ($text -match '(?m)^DONE ') { $got = $true }
+        }
         if ((-not $got) -and ($attempt -lt 3)) {
             Write-Host "  no DONE line -- retrying the emulator run" -ForegroundColor Yellow
         }

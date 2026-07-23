@@ -140,4 +140,3 @@ vera_has_fx__no
     lda #0
     clc
     rts
-

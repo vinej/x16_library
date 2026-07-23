@@ -22,7 +22,7 @@
 #define X16_USE_PALETTE
 #define X16_USE_TILE
 #define X16_USE_SPRITE
-#define X16_USE_BITMAP
+#define X16_USE_BITMAP8L
 #define X16_USE_VERAFX
 #define X16_USE_IRQ
 #define X16_USE_PSG
@@ -1430,7 +1430,7 @@ test_gfx_pset:
     sta X16_P2
     lda #$5A
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 
     vera_addr(1, VRAM_BITMAP + 16100, VERA_INC_1)
     lda VERA_DATA1
@@ -1444,11 +1444,11 @@ test_gfx_pset__report:
     ldx #<test_gfx_pset__name
     ldy #>test_gfx_pset__name
     jmp t_result
-test_gfx_pset__name: .text "GFX_PSET"
+test_gfx_pset__name: .text "GFX8L_PSET"
     .byte $00
 
 // =====================================================================
-// gfx_pset clips. x = 320 is off the right edge; unclipped it would
+// gfx8l_pset clips. x = 320 is off the right edge; unclipped it would
 // write y*320 + 320, which is the first pixel of the NEXT row -- a bug
 // that looks like a stray dot rather than a crash. Same for y = 240.
 // =====================================================================
@@ -1464,7 +1464,7 @@ test_gfx_clip:
     stz X16_P2
     lda #$99
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 
     vera_addr(1, VRAM_BITMAP + 320, VERA_INC_1)
     lda VERA_DATA1
@@ -1481,7 +1481,7 @@ test_gfx_clip:
     sta X16_P2
     lda #$99
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 
     vera_addr(1, VRAM_BITMAP + 76800, VERA_INC_1)
     lda VERA_DATA1
@@ -1496,11 +1496,11 @@ test_gfx_clip__report:
     ldx #<test_gfx_clip__name
     ldy #>test_gfx_clip__name
     jmp t_result
-test_gfx_clip__name: .text "GFX_CLIP"
+test_gfx_clip__name: .text "GFX8L_CLIP"
     .byte $00
 
 // =====================================================================
-// gfx_vline walks the column with VERA_INC_320, so pixels land 320
+// gfx8l_vline walks the column with VERA_INC_320, so pixels land 320
 // bytes apart: (3,1) then +320 each. Check the neighbours stay clear.
 // =====================================================================
 test_gfx_vline:
@@ -1519,7 +1519,7 @@ test_gfx_vline:
     sta X16_P3
     lda #4
     sta X16_P4
-    jsr gfx_vline
+    jsr gfx8l_vline
 
     // Four pixels, 320 bytes apart, starting at 1*320 + 3 = 323.
     // Each is followed by an untouched neighbour.
@@ -1574,11 +1574,11 @@ test_gfx_vline__report:
     ldx #<test_gfx_vline__name
     ldy #>test_gfx_vline__name
     jmp t_result
-test_gfx_vline__name: .text "GFX_VLINE"
+test_gfx_vline__name: .text "GFX8L_VLINE"
     .byte $00
 
 // =====================================================================
-// gfx_line, Bresenham. A pure diagonal (0,0)-(3,3) must hit exactly
+// gfx8l_line, Bresenham. A pure diagonal (0,0)-(3,3) must hit exactly
 // (0,0) (1,1) (2,2) (3,3), i.e. offsets 0, 321, 642, 963.
 // =====================================================================
 test_gfx_line:
@@ -1598,7 +1598,7 @@ test_gfx_line:
     sta X16_P5
     lda #$C7                    // colour
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 
     vera_addr(1, VRAM_BITMAP + 0, VERA_INC_1)
     lda VERA_DATA1
@@ -1629,7 +1629,7 @@ test_gfx_line__report:
     ldx #<test_gfx_line__name
     ldy #>test_gfx_line__name
     jmp t_result
-test_gfx_line__name: .text "GFX_LINE"
+test_gfx_line__name: .text "GFX8L_LINE"
     .byte $00
 
 // =====================================================================
@@ -3379,7 +3379,7 @@ test_layer_scroll__name: .text "LAYER_SCROLL"
     .byte $00
 
 // =====================================================================
-// gfx_clear must reach the WHOLE 320x240 bitmap. 76800 bytes is $12C00,
+// gfx8l_clear must reach the WHOLE 320x240 bitmap. 76800 bytes is $12C00,
 // which does not fit a 16-bit fill count -- pass it naively and the
 // low 16 bits ($2C00) clear only the top 35 rows. Check the far corner
 // and the seam, and that the byte after the bitmap survives.
@@ -3390,7 +3390,7 @@ test_gfx_clear_full:
     vpoke(VRAM_BITMAP + 76800, $77)  // first byte past the bitmap
 
     lda #$A5
-    jsr gfx_clear
+    jsr gfx8l_clear
 
     stz chk_err
     vera_addr(1, VRAM_BITMAP, VERA_INC_1)
@@ -3405,11 +3405,11 @@ test_gfx_clear_full:
     ldx #<test_gfx_clear_full__name
     ldy #>test_gfx_clear_full__name
     jmp t_result
-test_gfx_clear_full__name: .text "GFX_CLEAR_FULL"
+test_gfx_clear_full__name: .text "GFX8L_CLEAR_FULL"
     .byte $00
 
 // =====================================================================
-// gfx_hline with a 16-bit length. 300 pixels from (10,30) spans offsets
+// gfx8l_hline with a 16-bit length. 300 pixels from (10,30) spans offsets
 // 9610..9909; both ends drawn, both neighbours clear.
 // =====================================================================
 test_gfx_hline_long:
@@ -3431,7 +3431,7 @@ test_gfx_hline_long:
     sta X16_P4
     lda #>300
     sta X16_P5
-    jsr gfx_hline
+    jsr gfx8l_hline
 
     stz chk_err
     vera_addr(1, VRAM_BITMAP + 9609, VERA_INC_1)
@@ -3445,11 +3445,11 @@ test_gfx_hline_long:
     ldx #<test_gfx_hline_long__name
     ldy #>test_gfx_hline_long__name
     jmp t_result
-test_gfx_hline_long__name: .text "GFX_HLINE_LONG"
+test_gfx_hline_long__name: .text "GFX8L_HLINE_LONG"
     .byte $00
 
 // =====================================================================
-// gfx_rect: a 3x2 block at (10,20). Interior filled, all four sides'
+// gfx8l_rect: a 3x2 block at (10,20). Interior filled, all four sides'
 // neighbours untouched.
 // =====================================================================
 test_gfx_rect:
@@ -3473,7 +3473,7 @@ test_gfx_rect:
     sta X16_P5
     lda #2
     sta X16_P6
-    jsr gfx_rect
+    jsr gfx8l_rect
 
     stz chk_err
     vera_addr(1, VRAM_BITMAP + 6409, VERA_INC_1)  // (9,20)
@@ -3495,11 +3495,11 @@ test_gfx_rect:
     ldx #<test_gfx_rect__name
     ldy #>test_gfx_rect__name
     jmp t_result
-test_gfx_rect__name: .text "GFX_RECT"
+test_gfx_rect__name: .text "GFX8L_RECT"
     .byte $00
 
 // =====================================================================
-// gfx_frame: a 4x3 outline at (30,10). Edges drawn, interior hollow.
+// gfx8l_frame: a 4x3 outline at (30,10). Edges drawn, interior hollow.
 // =====================================================================
 test_gfx_frame:
     vera_addr(0, VRAM_BITMAP + 3200, VERA_INC_1)
@@ -3522,7 +3522,7 @@ test_gfx_frame:
     sta X16_P5
     lda #3
     sta X16_P6
-    jsr gfx_frame
+    jsr gfx8l_frame
 
     stz chk_err
     vera_addr(1, VRAM_BITMAP + 3230, VERA_INC_1)  // top edge, (30..33,10)
@@ -3546,11 +3546,11 @@ test_gfx_frame:
     ldx #<test_gfx_frame__name
     ldy #>test_gfx_frame__name
     jmp t_result
-test_gfx_frame__name: .text "GFX_FRAME"
+test_gfx_frame__name: .text "GFX8L_FRAME"
     .byte $00
 
 // =====================================================================
-// gfx_line beyond the pure diagonal: a vertical drop (dx = 0) and a
+// gfx8l_line beyond the pure diagonal: a vertical drop (dx = 0) and a
 // right-to-left horizontal (sx = -1).
 // =====================================================================
 test_gfx_line_steep:
@@ -3572,7 +3572,7 @@ test_gfx_line_steep:
     sta X16_P5
     lda #$D1
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 
     // right-to-left: (5,3) -> (1,3)
     lda #5
@@ -3587,7 +3587,7 @@ test_gfx_line_steep:
     sta X16_P5
     lda #$D1
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 
     stz chk_err
     vera_addr(1, VRAM_BITMAP + 2, VERA_INC_1)  // (2,0)
@@ -3610,7 +3610,7 @@ test_gfx_line_steep:
     ldx #<test_gfx_line_steep__name
     ldy #>test_gfx_line_steep__name
     jmp t_result
-test_gfx_line_steep__name: .text "GFX_LINE_STEEP"
+test_gfx_line_steep__name: .text "GFX8L_LINE_STEEP"
     .byte $00
 
 // =====================================================================
@@ -5856,9 +5856,9 @@ test_clip_line__name: .text "CLIP_LINE"
 
 // =====================================================================
 // Bitmap text. Screen code $A0 (reverse space) is a solid 8x8 block --
-// exactly predictable. Then gfx_text's ASCII conversion and pen
+// exactly predictable. Then gfx8l_text's ASCII conversion and pen
 // advance are proven by drawing "H" and comparing the cell byte-for-
-// byte against gfx_char of screen code 8.
+// byte against gfx8l_char of screen code 8.
 // =====================================================================
 test_gfx_text:
     vera_addr(0, VRAM_BITMAP + 20*320, VERA_INC_1)
@@ -5873,7 +5873,7 @@ test_gfx_text:
     lda #$E1
     sta X16_P3
     lda #$A0
-    jsr gfx_char
+    jsr gfx8l_char
 
     stz chk_err
     vera_addr(1, VRAM_BITMAP + 20*320 + 9, VERA_INC_1)
@@ -5887,16 +5887,16 @@ test_gfx_text:
     vera_addr(1, VRAM_BITMAP + 28*320 + 10, VERA_INC_1)
     chkv($00)  // row 28 untouched
 
-    // gfx_char(8) at (60,20) vs gfx_text "H" at (80,20)
+    // gfx8l_char(8) at (60,20) vs gfx8l_text "H" at (80,20)
     i16_const(X16_P0, 60)
     lda #20
     sta X16_P2
     lda #8                      // screen code of 'H'
-    jsr gfx_char
+    jsr gfx8l_char
     i16_const(X16_P0, 80)
     lda #<test_gfx_text__h
     ldx #>test_gfx_text__h
-    jsr gfx_text
+    jsr gfx8l_text
     lda X16_P0                  // the pen advanced one cell
     cmp #88
     bne test_gfx_text__fail
@@ -5992,7 +5992,7 @@ test_gfx_text__row_addr:
 test_gfx_text__h: .text "H"
     .byte $00
 test_gfx_text__rowbuf: .fill 8, 0
-test_gfx_text__name: .text "GFX_TEXT"
+test_gfx_text__name: .text "GFX8L_TEXT"
     .byte $00
 
 // =====================================================================
@@ -6762,7 +6762,10 @@ t_write_file__bad:
 // kind.
 // =====================================================================
 test_bmx_truncated:
-    cset16(X16_P0, test_bmx_truncated__file)
+    lda #<test_bmx_truncated__file
+    sta X16_P0
+    lda #>test_bmx_truncated__file
+    sta X16_P1
     lda #test_bmx_truncated__file_len
     sta X16_P2
     lda #test_bmx_truncated__fname_len
@@ -6839,7 +6842,10 @@ test_bmx_truncated__name: .text "BMX_TRUNCATED"
 // file supplies two.
 // =====================================================================
 test_bmx_short_pal:
-    cset16(X16_P0, test_bmx_short_pal__file)
+    lda #<test_bmx_short_pal__file
+    sta X16_P0
+    lda #>test_bmx_short_pal__file
+    sta X16_P1
     lda #test_bmx_short_pal__file_len
     sta X16_P2
     lda #test_bmx_short_pal__fname_len
@@ -7428,7 +7434,7 @@ test_pcm_stream_loop__name: .text "PCM_STREAM_LOOP"
 // ---------------------------------------------------------------------
 #import "testlib.asm"
 
-// GFX_READ8: what pset wrote comes back
+// gfx8l_READ8: what pset wrote comes back
 test_gfx_read8:
     lda #50
     sta X16_P0
@@ -7437,13 +7443,13 @@ test_gfx_read8:
     sta X16_P2
     lda #7
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
     lda #50
     sta X16_P0
     stz X16_P1
     lda #60
     sta X16_P2
-    jsr gfx_read
+    jsr gfx8l_read
     ldy #1
     cmp #7
     bne test_gfx_read8__report
@@ -7453,10 +7459,10 @@ test_gfx_read8__report:
     ldx #<test_gfx_read8__name
     ldy #>test_gfx_read8__name
     jmp t_result
-test_gfx_read8__name: .text "GFX_READ8"
+test_gfx_read8__name: .text "GFX8L_READ8"
     .byte 0
 
-// GFX_PAT8: an $F0-row pattern paints fg left, bg right of each cell
+// gfx8l_PAT8: an $F0-row pattern paints fg left, bg right of each cell
 test_gfx_pat8:
     lda #<test_gfx_pat8__pat
     ldx #>test_gfx_pat8__pat
@@ -7467,7 +7473,7 @@ test_gfx_pat8:
     sta X16_P5                  // fg
     lda #<test_gfx_pat8__pat
     ldx #>test_gfx_pat8__pat
-    jsr gfx_pattern_set
+    jsr gfx8l_pattern_set
     lda #64
     sta X16_P0
     stz X16_P1
@@ -7478,7 +7484,7 @@ test_gfx_pat8:
     stz X16_P5
     lda #2
     sta X16_P6
-    jsr gfx_pattern_rect
+    jsr gfx8l_pattern_rect
     ldy #1
     lda #64                     // column 64&7 = 0: bit 7 of $F0 = fg
     ldx #100
@@ -7501,11 +7507,11 @@ test_gfx_pat8__report:
     ldx #<test_gfx_pat8__name
     ldy #>test_gfx_pat8__name
     jmp t_result
-test_gfx_pat8__name: .text "GFX_PAT8"
+test_gfx_pat8__name: .text "GFX8L_PAT8"
     .byte 0
 test_gfx_pat8__pat: .byte $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
 
-// GFX_BLIT8: copy lands, and a masked zero leaves the screen alone
+// gfx8l_BLIT8: copy lands, and a masked zero leaves the screen alone
 test_gfx_blit8:
     lda #82                     // a witness where the source has a hole
     sta X16_P0
@@ -7514,7 +7520,7 @@ test_gfx_blit8:
     sta X16_P2
     lda #9
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
     lda #80
     sta X16_P0
     stz X16_P1
@@ -7528,7 +7534,7 @@ test_gfx_blit8:
     sta X16_P6
     lda #>test_gfx_blit8__src
     sta X16_P7
-    jsr gfx_blitm               // masked: the $00 must skip the witness
+    jsr gfx8l_blitm               // masked: the $00 must skip the witness
     ldy #1
     lda #80
     ldx #120
@@ -7554,7 +7560,7 @@ test_gfx_blit8:
     lda #>test_gfx_blit8__src
     sta X16_P7
     lda #0
-    jsr gfx_blit
+    jsr gfx8l_blit
     lda #82
     ldx #120
     jsr rd8
@@ -7565,7 +7571,7 @@ test_gfx_blit8__report:
     ldx #<test_gfx_blit8__name
     ldy #>test_gfx_blit8__name
     jmp t_result
-test_gfx_blit8__name: .text "GFX_BLIT8"
+test_gfx_blit8__name: .text "GFX8L_BLIT8"
     .byte 0
 test_gfx_blit8__src: .byte 5, 6, 0, 8
 
@@ -7574,7 +7580,7 @@ rd8: // read (A, X) at 8bpp
     stz X16_P1
     stx X16_P2
     phy
-    jsr gfx_read
+    jsr gfx8l_read
     ply
     ora #0                      // ply set the flags from Y; re-set from A
     rts

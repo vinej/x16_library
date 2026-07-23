@@ -37,7 +37,7 @@ DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 CHEAP_PROMOTE = {
     "audio/pcm.asm":     [("pcm_stream_fill", None, "psf_")],
     "util/tscrunch.asm": [("tsc_decompress", None, "tsc2_")],
-    "gfx/bitmap.asm":    [("gfx_text", "gt_code", "gtx_")],
+    "gfx/bitmap8l.asm":  [("gfx8l_text", "gt8l_code", "gtx8l_")],
 }
 
 
@@ -164,7 +164,8 @@ def convert(text, stem, include_map):
             plist = [p.strip().lstrip('.') for p in params.split(',') if p.strip()]
             macro_params = plist
             blocks.append('macro')
-            out.append(f"{name} .macro {', '.join(plist)}")
+            params_s = ', '.join(plist)
+            out.append(f"{name} .macro" + (f" {params_s}" if params_s else ""))
             continue
 
         # closing braces

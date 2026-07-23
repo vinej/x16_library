@@ -231,4 +231,3 @@ sprite_init_all
     ldx #<(128 * 8)
     ldy #>(128 * 8)
     jmp vera_fill
-

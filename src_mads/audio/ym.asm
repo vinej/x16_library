@@ -156,4 +156,3 @@ ym_get_vol
 ym_drum
     jsrfar rom_ym_playdrum,BANK_AUDIO
     rts
-

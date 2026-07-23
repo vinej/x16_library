@@ -176,12 +176,15 @@ stack_notempty
 ; ---------------------------------------------------------------------
     SUBROUTINE
 stack_isfull
-    lda stack_sp
-    ora stack_sp+1
-    beq stack_full                   ; sp == 0
     lda stack_sp+1
     cmp #$20                    ; sp >= $2000: wrapped past the bottom
     bcs stack_full
+    bne stack_notfull
+    lda stack_sp
+    cmp #2                      ; 0 or 1 byte free is full for pushw
+    bcc stack_full
+    SUBROUTINE
+stack_notfull
     clc
     rts
     SUBROUTINE

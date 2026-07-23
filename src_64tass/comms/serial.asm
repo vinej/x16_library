@@ -362,6 +362,7 @@ _loop
     lda X16_P5                  ; stored >= max ?  (16-bit compare)
     cmp X16_P3
     bcc _room
+    bne _done
     lda X16_P4
     cmp X16_P2
     bcs _done

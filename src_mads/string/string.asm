@@ -212,4 +212,3 @@ str_hash__loop
 str_hash__done
     lda X16_T2
     rts
-

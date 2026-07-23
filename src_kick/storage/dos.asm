@@ -158,6 +158,9 @@ dos_rename:
     sta dos_cmdbuf+1
     ldx #2
     jsr dos_append                 // R:new
+    bcs dos_too_long
+    cpx #DOS_CMD_MAX
+    bcs dos_too_long
     lda #'='
     sta dos_cmdbuf,x
     inx
@@ -165,6 +168,8 @@ dos_rename:
 dos_rename__old:
     cpy X16_P2
     beq dos_rename__send
+    cpx #DOS_CMD_MAX
+    bcs dos_too_long
     lda (X16_P0),y
     sta dos_cmdbuf,x
     inx
@@ -183,6 +188,7 @@ dos_stash_name:
 // copy the stashed name into dos_cmdbuf at X, then send; X advances
 dos_append_send:
     jsr dos_append
+    bcs dos_too_long
 dos_send:
     txa
     tay                         // Y = total command length
@@ -195,16 +201,31 @@ dos_append:
 dos_rename__cp:
     cpy X16_T2
     beq dos_rename__done
+    cpx #DOS_CMD_MAX
+    bcs dos_rename__too_long
     lda (X16_T0),y
     sta dos_cmdbuf,x
     inx
     iny
     bra dos_rename__cp
 dos_rename__done:
+    clc
+    rts
+dos_rename__too_long:
+    sec
+    rts
+
+// local construction failure: no command was sent
+dos_too_long:
+    stz dos_msg
+    ldy #0
+    lda #$FF
+    sec
     rts
 
 .label DOS_MSG_MAX = 64
+.label DOS_CMD_MAX = 80
 dos_msg: .fill DOS_MSG_MAX, 0
-dos_cmdbuf: .fill 80, 0
+dos_cmdbuf: .fill DOS_CMD_MAX, 0
 
 // (end zone)

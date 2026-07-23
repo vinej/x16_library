@@ -18,6 +18,7 @@ the generated files here -- fix src_acme/, then regenerate:
 
     python tools\acme2tass.py src_acme src_64tass
     python tools\acme2tass.py test_acme test_64tass
+    python tools\acme_doc2tass.py
 
 Four files are HAND-MAINTAINED (64tass expresses their ACME features
 differently) and are skipped by the converter:

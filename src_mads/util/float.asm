@@ -279,4 +279,3 @@ f_from_str
     ldx f_ptr                   ; X = address low; Y is already the high byte
     jsrfar fp_val,BANK_BASIC
     rts
-

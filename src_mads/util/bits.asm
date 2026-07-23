@@ -66,4 +66,3 @@ bit_test
     ldy #0
     and (X16_PTR0),y
     rts
-

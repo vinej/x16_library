@@ -146,4 +146,3 @@ bank_reserve
 bank_reserve__taken
     sec
     rts
-

@@ -86,4 +86,3 @@ pal_load__loop
     bne pal_load__loop
 pal_load__done
     rts
-

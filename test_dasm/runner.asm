@@ -21,7 +21,7 @@ X16_USE_SCREEN     = 1
 X16_USE_PALETTE    = 1
 X16_USE_TILE       = 1
 X16_USE_SPRITE     = 1
-X16_USE_BITMAP     = 1
+X16_USE_BITMAP8L    = 1
 X16_USE_VERAFX     = 1
 X16_USE_IRQ        = 1
 X16_USE_PSG        = 1
@@ -1432,7 +1432,7 @@ test_gfx_pset
     sta X16_P2
     lda #$5A
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 
     vera_addr 1, VRAM_BITMAP + 16100, VERA_INC_1
     lda VERA_DATA1
@@ -1446,10 +1446,10 @@ test_gfx_pset
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_PSET", $00
+.name dc.b "GFX8L_PSET", $00
 
 ; =====================================================================
-; gfx_pset clips. x = 320 is off the right edge; unclipped it would
+; gfx8l_pset clips. x = 320 is off the right edge; unclipped it would
 ; write y*320 + 320, which is the first pixel of the NEXT row -- a bug
 ; that looks like a stray dot rather than a crash. Same for y = 240.
 ; =====================================================================
@@ -1466,7 +1466,7 @@ test_gfx_clip
     stz X16_P2
     lda #$99
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 
     vera_addr 1, VRAM_BITMAP + 320, VERA_INC_1
     lda VERA_DATA1
@@ -1483,7 +1483,7 @@ test_gfx_clip
     sta X16_P2
     lda #$99
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
 
     vera_addr 1, VRAM_BITMAP + 76800, VERA_INC_1
     lda VERA_DATA1
@@ -1498,10 +1498,10 @@ test_gfx_clip
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_CLIP", $00
+.name dc.b "GFX8L_CLIP", $00
 
 ; =====================================================================
-; gfx_vline walks the column with VERA_INC_320, so pixels land 320
+; gfx8l_vline walks the column with VERA_INC_320, so pixels land 320
 ; bytes apart: (3,1) then +320 each. Check the neighbours stay clear.
 ; =====================================================================
     SUBROUTINE
@@ -1521,7 +1521,7 @@ test_gfx_vline
     sta X16_P3
     lda #4
     sta X16_P4
-    jsr gfx_vline
+    jsr gfx8l_vline
 
     ; Four pixels, 320 bytes apart, starting at 1*320 + 3 = 323.
     ; Each is followed by an untouched neighbour.
@@ -1576,10 +1576,10 @@ test_gfx_vline
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_VLINE", $00
+.name dc.b "GFX8L_VLINE", $00
 
 ; =====================================================================
-; gfx_line, Bresenham. A pure diagonal (0,0)-(3,3) must hit exactly
+; gfx8l_line, Bresenham. A pure diagonal (0,0)-(3,3) must hit exactly
 ; (0,0) (1,1) (2,2) (3,3), i.e. offsets 0, 321, 642, 963.
 ; =====================================================================
     SUBROUTINE
@@ -1600,7 +1600,7 @@ test_gfx_line
     sta X16_P5
     lda #$C7                    ; colour
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 
     vera_addr 1, VRAM_BITMAP + 0, VERA_INC_1
     lda VERA_DATA1
@@ -1631,7 +1631,7 @@ test_gfx_line
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_LINE", $00
+.name dc.b "GFX8L_LINE", $00
 
 ; =====================================================================
 ; PSG voice 3 lives at $1F9C0 + 3*4 = $1F9CC.
@@ -3372,7 +3372,7 @@ test_layer_scroll
 .name dc.b "LAYER_SCROLL", $00
 
 ; =====================================================================
-; gfx_clear must reach the WHOLE 320x240 bitmap. 76800 bytes is $12C00,
+; gfx8l_clear must reach the WHOLE 320x240 bitmap. 76800 bytes is $12C00,
 ; which does not fit a 16-bit fill count -- pass it naively and the
 ; low 16 bits ($2C00) clear only the top 35 rows. Check the far corner
 ; and the seam, and that the byte after the bitmap survives.
@@ -3384,7 +3384,7 @@ test_gfx_clear_full
     vpoke VRAM_BITMAP + 76800, $77     ; first byte past the bitmap
 
     lda #$A5
-    jsr gfx_clear
+    jsr gfx8l_clear
 
     stz chk_err
     vera_addr 1, VRAM_BITMAP, VERA_INC_1
@@ -3399,10 +3399,10 @@ test_gfx_clear_full
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_CLEAR_FULL", $00
+.name dc.b "GFX8L_CLEAR_FULL", $00
 
 ; =====================================================================
-; gfx_hline with a 16-bit length. 300 pixels from (10,30) spans offsets
+; gfx8l_hline with a 16-bit length. 300 pixels from (10,30) spans offsets
 ; 9610..9909; both ends drawn, both neighbours clear.
 ; =====================================================================
     SUBROUTINE
@@ -3425,7 +3425,7 @@ test_gfx_hline_long
     sta X16_P4
     lda #>300
     sta X16_P5
-    jsr gfx_hline
+    jsr gfx8l_hline
 
     stz chk_err
     vera_addr 1, VRAM_BITMAP + 9609, VERA_INC_1
@@ -3439,10 +3439,10 @@ test_gfx_hline_long
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_HLINE_LONG", $00
+.name dc.b "GFX8L_HLINE_LONG", $00
 
 ; =====================================================================
-; gfx_rect: a 3x2 block at (10,20). Interior filled, all four sides'
+; gfx8l_rect: a 3x2 block at (10,20). Interior filled, all four sides'
 ; neighbours untouched.
 ; =====================================================================
     SUBROUTINE
@@ -3467,7 +3467,7 @@ test_gfx_rect
     sta X16_P5
     lda #2
     sta X16_P6
-    jsr gfx_rect
+    jsr gfx8l_rect
 
     stz chk_err
     vera_addr 1, VRAM_BITMAP + 6409, VERA_INC_1   ; (9,20)
@@ -3489,10 +3489,10 @@ test_gfx_rect
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_RECT", $00
+.name dc.b "GFX8L_RECT", $00
 
 ; =====================================================================
-; gfx_frame: a 4x3 outline at (30,10). Edges drawn, interior hollow.
+; gfx8l_frame: a 4x3 outline at (30,10). Edges drawn, interior hollow.
 ; =====================================================================
     SUBROUTINE
 test_gfx_frame
@@ -3516,7 +3516,7 @@ test_gfx_frame
     sta X16_P5
     lda #3
     sta X16_P6
-    jsr gfx_frame
+    jsr gfx8l_frame
 
     stz chk_err
     vera_addr 1, VRAM_BITMAP + 3230, VERA_INC_1   ; top edge, (30..33,10)
@@ -3540,10 +3540,10 @@ test_gfx_frame
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_FRAME", $00
+.name dc.b "GFX8L_FRAME", $00
 
 ; =====================================================================
-; gfx_line beyond the pure diagonal: a vertical drop (dx = 0) and a
+; gfx8l_line beyond the pure diagonal: a vertical drop (dx = 0) and a
 ; right-to-left horizontal (sx = -1).
 ; =====================================================================
     SUBROUTINE
@@ -3566,7 +3566,7 @@ test_gfx_line_steep
     sta X16_P5
     lda #$D1
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 
     ; right-to-left: (5,3) -> (1,3)
     lda #5
@@ -3581,7 +3581,7 @@ test_gfx_line_steep
     sta X16_P5
     lda #$D1
     sta X16_P6
-    jsr gfx_line
+    jsr gfx8l_line
 
     stz chk_err
     vera_addr 1, VRAM_BITMAP + 2, VERA_INC_1      ; (2,0)
@@ -3604,7 +3604,7 @@ test_gfx_line_steep
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_LINE_STEEP", $00
+.name dc.b "GFX8L_LINE_STEEP", $00
 
 ; =====================================================================
 ; umul16 at the corners: $FFFF^2 = $FFFE0001 exercises every carry, and
@@ -5846,9 +5846,9 @@ test_clip_line
 
 ; =====================================================================
 ; Bitmap text. Screen code $A0 (reverse space) is a solid 8x8 block --
-; exactly predictable. Then gfx_text's ASCII conversion and pen
+; exactly predictable. Then gfx8l_text's ASCII conversion and pen
 ; advance are proven by drawing "H" and comparing the cell byte-for-
-; byte against gfx_char of screen code 8.
+; byte against gfx8l_char of screen code 8.
 ; =====================================================================
     SUBROUTINE
 test_gfx_text
@@ -5864,7 +5864,7 @@ test_gfx_text
     lda #$E1
     sta X16_P3
     lda #$A0
-    jsr gfx_char
+    jsr gfx8l_char
 
     stz chk_err
     vera_addr 1, VRAM_BITMAP + 20*320 + 9, VERA_INC_1
@@ -5878,16 +5878,16 @@ test_gfx_text
     vera_addr 1, VRAM_BITMAP + 28*320 + 10, VERA_INC_1
     chkv $00                   ; row 28 untouched
 
-    ; gfx_char(8) at (60,20) vs gfx_text "H" at (80,20)
+    ; gfx8l_char(8) at (60,20) vs gfx8l_text "H" at (80,20)
     i16_const X16_P0, 60
     lda #20
     sta X16_P2
     lda #8                      ; screen code of 'H
-    jsr gfx_char
+    jsr gfx8l_char
     i16_const X16_P0, 80
     lda #<.h
     ldx #>.h
-    jsr gfx_text
+    jsr gfx8l_text
     lda X16_P0                  ; the pen advanced one cell
     cmp #88
     bne .fail
@@ -5982,7 +5982,7 @@ test_gfx_text
 
 .h      dc.b "H", $00
 .rowbuf ds 8, 0
-.name   dc.b "GFX_TEXT", $00
+.name   dc.b "GFX8L_TEXT", $00
 
 ; =====================================================================
 ; The PSG envelope: attack ramps to the peak, sustain holds it, the
@@ -6753,7 +6753,10 @@ t_write_file
 ; =====================================================================
     SUBROUTINE
 test_bmx_truncated
-    cset16 X16_P0, bmt_file
+    lda #<bmt_file
+    sta X16_P0
+    lda #>bmt_file
+    sta X16_P1
     lda #bmt_file_len
     sta X16_P2
     lda #bmt_fname_len
@@ -6837,7 +6840,10 @@ bmt_name      dc.b "BMX_TRUNCATED", $00
 ; =====================================================================
     SUBROUTINE
 test_bmx_short_pal
-    cset16 X16_P0, bsp_file
+    lda #<bsp_file
+    sta X16_P0
+    lda #>bsp_file
+    sta X16_P1
     lda #bsp_file_len
     sta X16_P2
     lda #bsp_fname_len
@@ -7432,7 +7438,7 @@ test_pcm_stream_loop
 ; ---------------------------------------------------------------------
     include "test_dasm/testlib.asm"
 
-; GFX_READ8: what pset wrote comes back
+; gfx8l_READ8: what pset wrote comes back
     SUBROUTINE
 test_gfx_read8
     lda #50
@@ -7442,13 +7448,13 @@ test_gfx_read8
     sta X16_P2
     lda #7
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
     lda #50
     sta X16_P0
     stz X16_P1
     lda #60
     sta X16_P2
-    jsr gfx_read
+    jsr gfx8l_read
     ldy #1
     cmp #7
     bne .report
@@ -7458,9 +7464,9 @@ test_gfx_read8
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_READ8", 0
+.name dc.b "GFX8L_READ8", 0
 
-; GFX_PAT8: an $F0-row pattern paints fg left, bg right of each cell
+; gfx8l_PAT8: an $F0-row pattern paints fg left, bg right of each cell
     SUBROUTINE
 test_gfx_pat8
     lda #<.pat
@@ -7472,7 +7478,7 @@ test_gfx_pat8
     sta X16_P5                  ; fg
     lda #<.pat
     ldx #>.pat
-    jsr gfx_pattern_set
+    jsr gfx8l_pattern_set
     lda #64
     sta X16_P0
     stz X16_P1
@@ -7483,7 +7489,7 @@ test_gfx_pat8
     stz X16_P5
     lda #2
     sta X16_P6
-    jsr gfx_pattern_rect
+    jsr gfx8l_pattern_rect
     ldy #1
     lda #64                     ; column 64&7 = 0: bit 7 of $F0 = fg
     ldx #100
@@ -7506,10 +7512,10 @@ test_gfx_pat8
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_PAT8", 0
+.name dc.b "GFX8L_PAT8", 0
 .pat dc.b $F0, $F0, $F0, $F0, $F0, $F0, $F0, $F0
 
-; GFX_BLIT8: copy lands, and a masked zero leaves the screen alone
+; gfx8l_BLIT8: copy lands, and a masked zero leaves the screen alone
     SUBROUTINE
 test_gfx_blit8
     lda #82                     ; a witness where the source has a hole
@@ -7519,7 +7525,7 @@ test_gfx_blit8
     sta X16_P2
     lda #9
     sta X16_P3
-    jsr gfx_pset
+    jsr gfx8l_pset
     lda #80
     sta X16_P0
     stz X16_P1
@@ -7533,7 +7539,7 @@ test_gfx_blit8
     sta X16_P6
     lda #>.src
     sta X16_P7
-    jsr gfx_blitm               ; masked: the $00 must skip the witness
+    jsr gfx8l_blitm               ; masked: the $00 must skip the witness
     ldy #1
     lda #80
     ldx #120
@@ -7559,7 +7565,7 @@ test_gfx_blit8
     lda #>.src
     sta X16_P7
     lda #0
-    jsr gfx_blit
+    jsr gfx8l_blit
     lda #82
     ldx #120
     jsr rd8
@@ -7570,7 +7576,7 @@ test_gfx_blit8
     ldx #<.name
     ldy #>.name
     jmp t_result
-.name dc.b "GFX_BLIT8", 0
+.name dc.b "GFX8L_BLIT8", 0
 .src dc.b 5, 6, 0, 8
 
     SUBROUTINE
@@ -7579,7 +7585,7 @@ rd8                             ; read (A, X) at 8bpp
     stz X16_P1
     stx X16_P2
     phy
-    jsr gfx_read
+    jsr gfx8l_read
     ply
     ora #0                      ; ply set the flags from Y; re-set from A
     rts

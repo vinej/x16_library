@@ -123,7 +123,7 @@ number_letter:
 // ---------------------------------------------------------------------
 // dec_to_u16 -- parse decimal digits
 //   in:  X16_P0/P1 = string address, X16_P2 = length
-//   out: X16_P4/P5 = value, carry set if a non-digit was found
+//   out: X16_P4/P5 = value, carry set if a non-digit or overflow was found
 // ---------------------------------------------------------------------
 dec_to_u16:
     stz X16_P4
@@ -146,23 +146,28 @@ dec_to_u16__loop:
     sta X16_T2                  // T2:T1 = value
     asl X16_P4
     rol X16_P5                  // value * 2
+    bcs dec_to_u16__bad
     asl X16_P4
     rol X16_P5                  // value * 4
+    bcs dec_to_u16__bad
     clc
     lda X16_P4
     adc X16_T1
     sta X16_P4
     lda X16_P5
     adc X16_T2
+    bcs dec_to_u16__bad
     sta X16_P5                  // value * 5
     asl X16_P4
     rol X16_P5                  // value * 10
+    bcs dec_to_u16__bad
     clc
     lda X16_P4
     adc X16_T0
     sta X16_P4
     lda X16_P5
     adc #0
+    bcs dec_to_u16__bad
     sta X16_P5
 
     iny

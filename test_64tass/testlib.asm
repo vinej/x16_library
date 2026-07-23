@@ -91,6 +91,7 @@ t_pass
     inc t_total
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<_word
@@ -106,6 +107,7 @@ t_fail
     inc t_total
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<_word
@@ -130,6 +132,7 @@ t_skip
     inc t_skips
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<_word
@@ -163,6 +166,7 @@ _failed
 ; t_summary -- print "DONE <passes>/<total>"
 ; ---------------------------------------------------------------------
 t_summary
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<_done

@@ -188,4 +188,3 @@ str_compare_nocase_iso__s1end
 str_compare_nocase_iso__same
     lda #0
     rts
-

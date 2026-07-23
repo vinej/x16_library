@@ -360,4 +360,3 @@ vsync_wait__wait
     beq vsync_wait__wait
     rts
 .endif
-

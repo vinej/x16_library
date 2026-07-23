@@ -183,4 +183,3 @@ bcd_subfrom
     sta (X16_T0),y
     cld
     rts
-

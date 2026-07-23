@@ -90,6 +90,7 @@ t_pass
     inc t_total
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<t_pass__word
@@ -105,6 +106,7 @@ t_fail
     inc t_total
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<t_fail__word
@@ -129,6 +131,7 @@ t_skip
     inc t_skips
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<t_skip__word
@@ -162,6 +165,7 @@ t_result__failed
 ; t_summary -- print "DONE <passes>/<total>"
 ; ---------------------------------------------------------------------
 t_summary
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<t_summary__done
@@ -207,4 +211,3 @@ t_vcmp_const__loop
 t_vcmp_const__bad
     lda #1
     rts
-

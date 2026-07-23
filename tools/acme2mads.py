@@ -184,7 +184,7 @@ def convert(text, stem, include_map):
         # defaults (the X16_USE_* dependency closure) keep the plain
         # `.if !.def N`: their guard runs before any reference, so
         # definedness is meaningful. Symbol defaults (SHP_PSET =
-        # gfx2_pset) get a kick-style _SET sentinel instead: MADS
+        # gfx2h_pset) get a kick-style _SET sentinel instead: MADS
         # pre-registers forward REFERENCES, so a symbol already used
         # above (jmp SHP_PSET) counts as "defined", the default would
         # be skipped and the jump would land on $0000. The sentinel is
@@ -360,7 +360,7 @@ def main():
             print(f"skip  {rel} (hand-maintained)")
             continue
         text = f.read_text(encoding="ascii", errors="replace")
-        converted = convert(text, f.stem, include_map)
+        converted = convert(text, f.stem, include_map).rstrip() + "\n"
         outp = dst / rel
         outp.parent.mkdir(parents=True, exist_ok=True)
         outp.write_text(converted, encoding="ascii")

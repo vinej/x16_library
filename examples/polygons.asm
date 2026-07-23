@@ -9,7 +9,7 @@
 ; are on show at once.
 ;
 ; The shapes bind to the 2bpp bitmap engine by default (gfx2, 640x480,
-; four colours), so this also shows gfx2_init / gfx2_clear and a custom
+; four colours), so this also shows gfx2h_init / gfx2h_clear and a custom
 ; four-entry palette.
 ;
 ;   .\build_acme.ps1 -Source examples\polygons.asm -Run
@@ -40,9 +40,9 @@ FILL  = 2                       ; body
 
 ; ---------------------------------------------------------------------
 main
-    jsr gfx2_init               ; 640x480 @ 2bpp on layer 0
+    jsr gfx2h_init               ; 640x480 @ 2bpp on layer 0
     lda #BG
-    jsr gfx2_clear              ; a clean background
+    jsr gfx2h_clear              ; a clean background
     jsr set_palette
 
     stz index

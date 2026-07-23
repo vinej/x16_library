@@ -19,6 +19,8 @@
 ; ---------------------------------------------------------------------
 ; Module            Provides
 ;   X16_USE_VERA      vera_set_addr0/1, vera_fill, vera_copy, vera_has_fx
+;   X16_USE_VERA_DC   vdc_get/set_video, vdc_set_output/layers,
+;                     vdc_get/set_scale/border/active, vdc_get_version
 ;   X16_USE_SCREEN    screen_set_mode/get_mode/reset/cls/chrout/color/
 ;                     border, screen_locate, screen_get_cursor,
 ;                     screen_charset, screen_puts
@@ -28,17 +30,54 @@
 ;   X16_USE_SPRITE    sprites_on/off, sprite_pos, sprite_get_pos,
 ;                     sprite_image, sprite_flags, sprite_z, sprite_size,
 ;                     sprite_init_all
-;   X16_USE_BITMAP    gfx_init, gfx_clear, gfx_read, gfx_pset,
-;                     gfx_pattern_set, gfx_pattern_rect, gfx_blit,
-;                     gfx_blitm (colour-key), gfx_hline,
-;                     gfx_vline, gfx_rect, gfx_frame, gfx_line,
-;                     gfx_char, gfx_text (circle/disc/flood are in
-;                     X16_USE_SHAPES now, shared with gfx2)
-;   X16_USE_BITMAP2   gfx2_init, gfx2_clear, gfx2_setptr, gfx2_pset,
-;                     gfx2_read, gfx2_hline, gfx2_vline, gfx2_rect,
-;                     gfx2_frame, gfx2_line, gfx2_pattern_set,
-;                     gfx2_pattern_rect, gfx2_blit, gfx2_blitm
+;   X16_USE_BITMAP8L  gfx8l_init, gfx8l_clear, gfx8l_read,
+;                     gfx8l_pset, gfx8l_pattern_set,
+;                     gfx8l_pattern_rect, gfx8l_blit,
+;                     gfx8l_blitm (colour-key), gfx8l_hline,
+;                     gfx8l_vline, gfx8l_rect, gfx8l_frame,
+;                     gfx8l_line, gfx8l_char, gfx8l_text
+;   X16_USE_BITMAP8H  gfx8h_has, gfx8h_init/off,
+;                     gfx8h_passthru_on/off, gfx8h_pal_set/load,
+;                     gfx8h_clear, gfx8h_setptr, gfx8h_pset,
+;                     gfx8h_read, gfx8h_hline, gfx8h_vline,
+;                     gfx8h_rect, gfx8h_frame, gfx8h_line,
+;                     gfx8h_pattern_set, gfx8h_pattern_rect,
+;                     gfx8h_blit, gfx8h_blitm, gfx8h_copy
+;                     (640x480@8bpp; MiSTer VERA_2 SDRAM layer)
+;   X16_USE_BITMAP2H  gfx2h_init, gfx2h_clear, gfx2h_setptr,
+;                     gfx2h_pset, gfx2h_read, gfx2h_hline,
+;                     gfx2h_vline, gfx2h_rect, gfx2h_frame,
+;                     gfx2h_line, gfx2h_pattern_set,
+;                     gfx2h_pattern_rect, gfx2h_blit, gfx2h_blitm
 ;                     (640x480@2bpp; pulls in VERA and VERAFX)
+;   X16_USE_BITMAP2L  gfx2l_init, gfx2l_clear, gfx2l_setptr,
+;                     gfx2l_pset, gfx2l_read, gfx2l_hline,
+;                     gfx2l_vline, gfx2l_rect, gfx2l_frame,
+;                     gfx2l_line, gfx2l_pattern_set,
+;                     gfx2l_pattern_rect, gfx2l_blit, gfx2l_blitm
+;                     (320x240@2bpp; pulls in VERA and VERAFX)
+;   X16_USE_BITMAP4L  gfx4l_init, gfx4l_clear, gfx4l_read,
+;                     gfx4l_pset, gfx4l_pattern_set,
+;                     gfx4l_pattern_rect, gfx4l_blit,
+;                     gfx4l_blitm, gfx4l_hline, gfx4l_vline,
+;                     gfx4l_rect, gfx4l_frame, gfx4l_line,
+;                     gfx4l_char, gfx4l_text
+;   X16_USE_BITMAP4H  gfx4h_has, gfx4h_init/off,
+;                     gfx4h_passthru_on/off, gfx4h_pal_set/load,
+;                     gfx4h_clear, gfx4h_setptr, gfx4h_pset,
+;                     gfx4h_read, gfx4h_hline, gfx4h_vline,
+;                     gfx4h_rect, gfx4h_frame, gfx4h_line,
+;                     gfx4h_pattern_set, gfx4h_pattern_rect,
+;                     gfx4h_blit, gfx4h_blitm, gfx4h_copy
+;                     (640x480@4bpp; MiSTer VERA_2 SDRAM layer)
+;   X16_USE_FB        fb_init/info/palette/cursor,
+;                     fb_get/set/fill/filter/move pixels
+;   X16_USE_GRAPH     graph_init/clear/window/colors,
+;                     graph_line/rect/oval/image/text
+;   X16_USE_CONSOLE   con_init, con_put/get_char, con_put_image,
+;                     con_set_paging_message
+;   X16_USE_CLOCK     clock_update, clock_get/set_timer,
+;                     clock_get/set_date_time
 ;   X16_USE_SHAPES    shape_circle, shape_disc, shape_ellipse,
 ;                     shape_fellipse, shape_flood -- engine-
 ;                     agnostic: they draw through SHP_PSET/SHP_READ/
@@ -69,6 +108,9 @@
 ;                     wants one fast fill should not carry a rotozoom
 ;                     sampler to get it: BITMAP2 asks for _FILL alone
 ;                     and is 2,162 bytes lighter for it.
+;   X16_USE_VERAFX_UTILS  fxu_* low-level FX ctrl/cache/mult/accum/
+;                     16-bit-hop/polygon primitives; separate from
+;                     X16_USE_VERAFX to keep that bundle stable
 ;   X16_USE_IRQ       irq_install, irq_remove, irq_frames, vsync_wait,
 ;                     irq_line_install/remove, irq_sprcol_install/
 ;                     remove, sprite_collisions
@@ -77,12 +119,27 @@
 ;   X16_USE_YM        ym_write, ym_busy, ym_init, ym_poke, ym_patch,
 ;                     ym_note, ym_note_bas, ym_release_note, ym_vol,
 ;                     ym_pan, ym_drum, ym_get_pan, ym_get_vol
+;   X16_USE_AUDIO_ROM ar_* wrappers for the full BANK_AUDIO API:
+;                     note conversion, ROM PSG/YM shadows, play strings
+;   X16_USE_ZSM       zsm_init/tick/play/stop/status; compact ZSM
+;                     stream player for PSG/YM plus PCM ctrl/rate
+;   X16_USE_ZSM_PCM   + PCM instrument triggers from a ZSM PCM table
+;                     using the AFLOW PCM streamer (pulls PCM_STREAM)
 ;   X16_USE_PCM       pcm_ctrl, pcm_rate, pcm_reset, pcm_full/empty,
 ;                     pcm_put, pcm_write
 ;   X16_USE_PCM_STREAM  pcm_stream_start/stop/active (AFLOW-driven;
 ;                     pulls in PCM and IRQ)
 ;   X16_USE_INPUT     joy_scan, joy_get, mouse_show/hide/get,
 ;                     key_get, key_wait, key_peek
+;   X16_USE_KEYBOARD  kbd_scan, kbd_peek/put, kbd_get_modifiers,
+;                     kbd_get/set_keymap
+;   X16_USE_MOUSE     mse_config/scan/get/get_to,
+;                     mse_show/show_keep/hide
+;   X16_USE_I2C       i2c_read_byte/write_byte,
+;                     i2c_batch_read/write
+;   X16_USE_VERA_SPI  spi_get/set_ctrl, spi_select/deselect,
+;                     spi_slow/fast, spi_transfer/read/write,
+;                     spi_read/write_bytes
 ;   X16_USE_SERIAL    ser_detect, ser_init, ser_avail, ser_get,
 ;                     ser_get_wait, ser_put, ser_puts, ser_write,
 ;                     ser_read_until, ser_discard_until -- the serial /
@@ -103,6 +160,10 @@
 ;                     HIRAM bank (the 256-byte rb_* live in BUFFERS)
 ;   X16_USE_MEM       mem_fill, mem_copy, mem_crc, mem_decompress
 ;                     (KERNAL block ops; they stream to/from VERA too)
+;   X16_USE_FILEIO    fio_set_lfs/name, fio_open/close,
+;                     fio_chkin/chkout, fio_chrin/chrout, fio_readst
+;   X16_USE_IEC       iec_listen/talk/second/tksa, iec_ciout/acptr,
+;                     iec_unlisten/untalk, iec_macptr/mciout
 ;   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
 ;   X16_USE_DOS       dos_cmd, dos_status, dos_delete, dos_rename,
 ;                     dos_mkdir, dos_rmdir, dos_chdir
@@ -110,7 +171,7 @@
 ;                     format: header + palette + pixels)
 ;   X16_USE_MATH      rnd_seed/rnd8/rnd16, sin8/cos8 (+u), atan2, lerp8
 ;   X16_USE_CLIP      clip_set, clip_line (Cohen-Sutherland, feeds
-;                     gfx_line/fx_line's parameter block)
+;                     gfx8l_line/fx_line's parameter block)
 ;   X16_USE_BUFFERS   rb_init/put/get/count, stk_init/push/pop/depth
 ;   X16_USE_ADPCM     adpcm_init, adpcm_nibble, adpcm_block (IMA 4:1)
 ;   X16_USE_ZX0       zx0_decompress (tighter than the ROM's LZSA2)
@@ -169,12 +230,6 @@
     .endif
     .if !.def X16_USE_SPRITE
     X16_USE_SPRITE = 1
-    .endif
-    .if !.def X16_USE_BITMAP
-    X16_USE_BITMAP = 1
-    .endif
-    .if !.def X16_USE_BITMAP2
-    X16_USE_BITMAP2 = 1
     .endif
     .if !.def X16_USE_VERAFX
     X16_USE_VERAFX = 1
@@ -257,8 +312,8 @@
 .endif
 
 ; --- dependencies ----------------------------------------------------
-; sprite_init_all, psg_init, gfx_clear and gfx_hline all call vera_fill.
-; gfx_init calls screen_set_mode. The PCM streamer's AFLOW service runs
+; sprite_init_all, psg_init, gfx8l_clear and gfx8l_hline all call vera_fill.
+; gfx8l_init calls screen_set_mode. The PCM streamer's AFLOW service runs
 ; inside irq_handler, so it needs the IRQ module (and PCM itself).
 .if .def X16_USE_SPRITE
     .if !.def X16_USE_VERA
@@ -275,7 +330,7 @@
     X16_USE_NUMBER = 1
     .endif
 .endif
-.if .def X16_USE_BITMAP
+.if .def X16_USE_BITMAP8L
     .if !.def X16_USE_VERA
     X16_USE_VERA = 1
     .endif
@@ -334,8 +389,8 @@
 .endif
 .if .def X16_USE_SHAPES
     .if !.def SHP_PSET
-        .if !.def X16_USE_BITMAP2
-        X16_USE_BITMAP2 = 1
+        .if !.def X16_USE_BITMAP2H
+        X16_USE_BITMAP2H = 1
         .endif
 .endif
 .endif
@@ -351,6 +406,39 @@
 ; blob: it drives a specific add-on card, so you enable the gate to pay for
 ; it, and a program that never talks serial carries none of it.
 .if .def X16_USE_SERIAL
+.endif
+; comms/i2c.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_I2C
+.endif
+; comms/spi.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_VERA_SPI
+.endif
+; video/vdc.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_VERA_DC
+.endif
+; system/clock.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_CLOCK
+.endif
+; storage/fileio.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_FILEIO
+.endif
+; input/keyboard.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_KEYBOARD
+.endif
+; input/mouse.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_MOUSE
+.endif
+; gfx/fb.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_FB
+.endif
+; gfx/graph.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_GRAPH
+.endif
+; gfx/console.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_CONSOLE
+.endif
+; storage/iec.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_IEC
 .endif
 ; comms/zimodem.asm layers the ESP32 WiFi AT-command protocol over SERIAL.
 ; Also pay-per-use (out of X16_USE_ALL); pulls SERIAL in.
@@ -382,7 +470,7 @@
 .endif
 .if .def X16_USE_STRING_SLICE
 .endif
-.if .def X16_USE_BITMAP2
+.if .def X16_USE_BITMAP2H
     .if !.def X16_USE_VERA
     X16_USE_VERA = 1
     .endif
@@ -390,11 +478,28 @@
     X16_USE_VERAFX_FILL = 1
     .endif
 .endif
+.if .def X16_USE_BITMAP2L
+    .if !.def X16_USE_VERA
+    X16_USE_VERA = 1
+    .endif
+    .if !.def X16_USE_VERAFX_FILL
+    X16_USE_VERAFX_FILL = 1
+    .endif
+.endif
+.if .def X16_USE_BITMAP4L
+    .if !.def X16_USE_VERA
+    X16_USE_VERA = 1
+    .endif
+.endif
+.if .def X16_USE_BITMAP8H
+.endif
+.if .def X16_USE_BITMAP4H
+.endif
 
 ; --- VERAFX's parts --------------------------------------------------
 ; X16_USE_VERAFX still means all of it, so nothing that exists breaks.
 ; The sub-gates are for programs that want one part and not 2.5 KB of
-; the others: gfx2 asks for FILL alone and saves 2,162 bytes by it.
+; the others: bitmap2h/bitmap2l ask for FILL alone and save 2,162 bytes by it.
 ; Every part leaves FX through fx_off, so _ANY carries it.
 .if .def X16_USE_VERAFX
     .if !.def X16_USE_VERAFX_MULT
@@ -464,6 +569,26 @@
 .if .def X16_USE_VERAFX_TRI
     .if !.def X16_USE_VERAFX_LINETRI
     X16_USE_VERAFX_LINETRI = 1
+    .endif
+.endif
+; gfx/verafx_utils.asm is pay-per-use and deliberately kept OUT of
+; X16_USE_VERAFX and X16_USE_ALL.
+.if .def X16_USE_VERAFX_UTILS
+.endif
+; audio/rom.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_AUDIO_ROM
+.endif
+; audio/zsm.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+.if .def X16_USE_ZSM
+.endif
+; audio/zsm.asm's PCM sample layer is also pay-per-use. Enabling this
+; gate pulls in ZSM plus the AFLOW PCM streamer, but not through USE_ALL.
+.if .def X16_USE_ZSM_PCM
+    .if !.def X16_USE_ZSM
+    X16_USE_ZSM = 1
+    .endif
+    .if !.def X16_USE_PCM_STREAM
+    X16_USE_PCM_STREAM = 1
     .endif
 .endif
 .if .def X16_USE_PCM_STREAM
@@ -580,6 +705,9 @@
 .if .def X16_USE_VERA_ANY
     icl "video/vera.asm"
 .endif
+.if .def X16_USE_VERA_DC
+    icl "video/vdc.asm"
+.endif
 .if .def X16_USE_SCREEN_ANY
     icl "video/screen.asm"
 .endif
@@ -592,11 +720,32 @@
 .if .def X16_USE_SPRITE
     icl "sprite/sprite.asm"
 .endif
-.if .def X16_USE_BITMAP
-    icl "gfx/bitmap.asm"
+.if .def X16_USE_BITMAP8L
+    icl "gfx/bitmap8l.asm"
 .endif
-.if .def X16_USE_BITMAP2
-    icl "gfx/bitmap2.asm"
+.if .def X16_USE_BITMAP8H
+    icl "gfx/bitmap8h.asm"
+.endif
+.if .def X16_USE_BITMAP2H
+    icl "gfx/bitmap2h.asm"
+.endif
+.if .def X16_USE_BITMAP2L
+    icl "gfx/bitmap2l.asm"
+.endif
+.if .def X16_USE_BITMAP4L
+    icl "gfx/bitmap4l.asm"
+.endif
+.if .def X16_USE_BITMAP4H
+    icl "gfx/bitmap4h.asm"
+.endif
+.if .def X16_USE_FB
+    icl "gfx/fb.asm"
+.endif
+.if .def X16_USE_GRAPH
+    icl "gfx/graph.asm"
+.endif
+.if .def X16_USE_CONSOLE
+    icl "gfx/console.asm"
 .endif
 ; X16_SKIP_SHAPES / X16_SKIP_MATH (below): a program that sources these two
 ; modules itself -- e.g. a custom bank layout, or a gate pulled in only for a
@@ -611,6 +760,12 @@
 .if .def X16_USE_VERAFX_ANY
     icl "gfx/verafx.asm"
 .endif
+.if .def X16_USE_VERAFX_UTILS
+    icl "gfx/verafx_utils.asm"
+.endif
+.if .def X16_USE_CLOCK
+    icl "system/clock.asm"
+.endif
 .if .def X16_USE_IRQ_ANY
     icl "system/irq.asm"
 .endif
@@ -620,11 +775,29 @@
 .if .def X16_USE_YM
     icl "audio/ym.asm"
 .endif
+.if .def X16_USE_AUDIO_ROM
+    icl "audio/rom.asm"
+.endif
+.if .def X16_USE_ZSM
+    icl "audio/zsm.asm"
+.endif
 .if .def X16_USE_PCM
     icl "audio/pcm.asm"
 .endif
 .if .def X16_USE_INPUT_ANY
     icl "input/input.asm"
+.endif
+.if .def X16_USE_KEYBOARD
+    icl "input/keyboard.asm"
+.endif
+.if .def X16_USE_MOUSE
+    icl "input/mouse.asm"
+.endif
+.if .def X16_USE_I2C
+    icl "comms/i2c.asm"
+.endif
+.if .def X16_USE_VERA_SPI
+    icl "comms/spi.asm"
 .endif
 .if .def X16_USE_SERIAL
     icl "comms/serial.asm"
@@ -646,6 +819,12 @@
 .endif
 .if .def X16_USE_MEM
     icl "storage/mem.asm"
+.endif
+.if .def X16_USE_FILEIO
+    icl "storage/fileio.asm"
+.endif
+.if .def X16_USE_IEC
+    icl "storage/iec.asm"
 .endif
 .if .def X16_USE_LOAD
     icl "storage/load.asm"

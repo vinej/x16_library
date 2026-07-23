@@ -386,4 +386,3 @@ bank_copy_far__far_done
 BANK_BOUNCE_SIZE = 128
 bank_bounce
     :(BANK_BOUNCE_SIZE) dta 0
-

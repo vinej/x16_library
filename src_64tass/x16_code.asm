@@ -16,8 +16,6 @@ X16_USE_SCREEN = 0
 X16_USE_PALETTE = 0
 X16_USE_TILE = 0
 X16_USE_SPRITE = 0
-X16_USE_BITMAP = 0
-X16_USE_BITMAP2 = 0
 X16_USE_VERAFX = 0
 X16_USE_IRQ = 0
 X16_USE_PSG = 0
@@ -44,6 +42,7 @@ X16_USE_NUMBER = 0
 X16_USE_INT16 = 0
 X16_USE_INT32 = 0
 X16_USE_FLOAT = 0
+X16_USE_BITMAP8L = 0
 X16_USE_SHAPES_POLY = 0
 X16_USE_SHAPES = 0
 X16_USE_SHAPES_PIE = 0
@@ -51,8 +50,20 @@ X16_USE_SHAPES_ARC = 0
 X16_USE_SHP_LINE = 0
 X16_USE_SHAPES_RRECT = 0
 X16_USE_SHAPES_BEZIER = 0
+X16_USE_BITMAP2H = 0
 X16_USE_DOUBLE = 0
 X16_USE_SERIAL = 0
+X16_USE_I2C = 0
+X16_USE_VERA_SPI = 0
+X16_USE_VERA_DC = 0
+X16_USE_CLOCK = 0
+X16_USE_FILEIO = 0
+X16_USE_KEYBOARD = 0
+X16_USE_MOUSE = 0
+X16_USE_FB = 0
+X16_USE_GRAPH = 0
+X16_USE_CONSOLE = 0
+X16_USE_IEC = 0
 X16_USE_SERIAL_ZIMODEM = 0
 X16_USE_BCD = 0
 X16_USE_STACK = 0
@@ -63,6 +74,10 @@ X16_USE_STRING_CASE = 0
 X16_USE_STRING_FIND = 0
 X16_USE_STRING_SLICE = 0
 X16_USE_VERAFX_FILL = 0
+X16_USE_BITMAP2L = 0
+X16_USE_BITMAP4L = 0
+X16_USE_BITMAP8H = 0
+X16_USE_BITMAP4H = 0
 X16_USE_VERAFX_MULT = 0
 X16_USE_VERAFX_COPY = 0
 X16_USE_VERAFX_TRANSP = 0
@@ -70,6 +85,10 @@ X16_USE_VERAFX_AFFINE = 0
 X16_USE_VERAFX_LINE = 0
 X16_USE_VERAFX_TRI = 0
 X16_USE_VERAFX_LINETRI = 0
+X16_USE_VERAFX_UTILS = 0
+X16_USE_AUDIO_ROM = 0
+X16_USE_ZSM = 0
+X16_USE_ZSM_PCM = 0
 X16_USE_VERA_CORE = 0
 X16_USE_VERA_COPY = 0
 X16_USE_IRQ_CORE = 0
@@ -80,7 +99,7 @@ X16_USE_INPUT_CORE = 0
 X16_USE_INPUT_KEYWAIT = 0
 X16_USE_SCREEN_CORE = 0
 X16_USE_SCREEN_EXTRA = 0
-X16_BITMAP_MIN = 0
+X16_BITMAP8L_MIN = 0
 X16_SKIP_MATH = 0
 X16_SKIP_SHAPES = 0
 .endweak
@@ -90,11 +109,9 @@ xuse_all = X16_USE_ALL != 0
 xuse_palette = xuse_all || X16_USE_PALETTE != 0
 xuse_tile = xuse_all || X16_USE_TILE != 0
 xuse_sprite = xuse_all || X16_USE_SPRITE != 0
-xuse_bitmap = xuse_all || X16_USE_BITMAP != 0
 xuse_verafx = xuse_all || X16_USE_VERAFX != 0
 xuse_psg = xuse_all || X16_USE_PSG != 0
 xuse_ym = xuse_all || X16_USE_YM != 0
-xuse_pcm_stream = xuse_all || X16_USE_PCM_STREAM != 0
 xuse_input = xuse_all || X16_USE_INPUT != 0
 xuse_bank = xuse_all || X16_USE_BANK != 0
 xuse_bankalloc = xuse_all || X16_USE_BANKALLOC != 0
@@ -113,11 +130,23 @@ xuse_bits = xuse_all || X16_USE_BITS != 0
 xuse_int16 = xuse_all || X16_USE_INT16 != 0
 xuse_int32 = xuse_all || X16_USE_INT32 != 0
 xuse_float = xuse_all || X16_USE_FLOAT != 0
+xuse_bitmap8l = X16_USE_BITMAP8L != 0
 xuse_shapes_poly = X16_USE_SHAPES_POLY != 0
 xuse_shapes_pie = X16_USE_SHAPES_PIE != 0
 xuse_shapes_rrect = X16_USE_SHAPES_RRECT != 0
 xuse_shapes_bezier = X16_USE_SHAPES_BEZIER != 0
 xuse_double = X16_USE_DOUBLE != 0
+xuse_i2c = X16_USE_I2C != 0
+xuse_vera_spi = X16_USE_VERA_SPI != 0
+xuse_vera_dc = X16_USE_VERA_DC != 0
+xuse_clock = X16_USE_CLOCK != 0
+xuse_fileio = X16_USE_FILEIO != 0
+xuse_keyboard = X16_USE_KEYBOARD != 0
+xuse_mouse = X16_USE_MOUSE != 0
+xuse_fb = X16_USE_FB != 0
+xuse_graph = X16_USE_GRAPH != 0
+xuse_console = X16_USE_CONSOLE != 0
+xuse_iec = X16_USE_IEC != 0
 xuse_serial_zimodem = X16_USE_SERIAL_ZIMODEM != 0
 xuse_bcd = X16_USE_BCD != 0
 xuse_stack = X16_USE_STACK != 0
@@ -127,9 +156,15 @@ xuse_string_ctype = X16_USE_STRING_CTYPE != 0
 xuse_string_case = X16_USE_STRING_CASE != 0
 xuse_string_find = X16_USE_STRING_FIND != 0
 xuse_string_slice = X16_USE_STRING_SLICE != 0
-xuse_screen = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap
-xuse_irq = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
-xuse_pcm = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
+xuse_bitmap2l = X16_USE_BITMAP2L != 0
+xuse_bitmap4l = X16_USE_BITMAP4L != 0
+xuse_bitmap8h = X16_USE_BITMAP8H != 0
+xuse_bitmap4h = X16_USE_BITMAP4H != 0
+xuse_verafx_utils = X16_USE_VERAFX_UTILS != 0
+xuse_audio_rom = X16_USE_AUDIO_ROM != 0
+xuse_zsm_pcm = X16_USE_ZSM_PCM != 0
+xuse_screen = xuse_all || X16_USE_SCREEN != 0 || xuse_bitmap8l
+xuse_pcm_stream = xuse_all || X16_USE_PCM_STREAM != 0 || xuse_zsm_pcm
 xuse_number = xuse_all || X16_USE_NUMBER != 0 || xuse_int16
 xuse_shapes_arc = xuse_shapes_pie || X16_USE_SHAPES_ARC != 0
 xuse_serial = xuse_serial_zimodem || X16_USE_SERIAL != 0
@@ -139,24 +174,27 @@ xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
 xuse_verafx_affine = xuse_verafx || X16_USE_VERAFX_AFFINE != 0
 xuse_verafx_line = xuse_verafx || X16_USE_VERAFX_LINE != 0
 xuse_verafx_tri = xuse_verafx || X16_USE_VERAFX_TRI != 0
+xuse_zsm = xuse_zsm_pcm || X16_USE_ZSM != 0
 xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
 xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
+xuse_irq = xuse_all || X16_USE_IRQ != 0 || xuse_pcm_stream
+xuse_pcm = xuse_all || X16_USE_PCM != 0 || xuse_pcm_stream
 xuse_math = xuse_all || X16_USE_MATH != 0 || xuse_shapes_poly || xuse_shapes_arc
 xuse_shp_line = xuse_shapes_arc || X16_USE_SHP_LINE != 0 || xuse_shapes_bezier
 xuse_verafx_linetri = xuse_verafx_line || X16_USE_VERAFX_LINETRI != 0 || xuse_verafx_tri
-xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
-xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
-xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0
 xuse_input_any = xuse_input_core || xuse_input_keywait
 xuse_screen_core = xuse_screen || X16_USE_SCREEN_CORE != 0
 xuse_screen_extra = xuse_screen || X16_USE_SCREEN_EXTRA != 0
 xuse_shapes = xuse_shapes_poly || X16_USE_SHAPES != 0 || xuse_shapes_pie || xuse_shapes_arc || xuse_shapes_rrect || xuse_shapes_bezier || xuse_shp_line
-xuse_irq_sprcol = xuse_irq || X16_USE_IRQ_SPRCOL != 0 || xuse_irq_sprcol_api
+xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
+xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
+xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0
 xuse_screen_any = xuse_screen_core || xuse_screen_extra
-xuse_bitmap2 = xuse_all || X16_USE_BITMAP2 != 0 || xuse_shapes
+xuse_bitmap2h = xuse_shapes || X16_USE_BITMAP2H != 0
+xuse_irq_sprcol = xuse_irq || X16_USE_IRQ_SPRCOL != 0 || xuse_irq_sprcol_api
+xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap8l || xuse_bitmap2h || xuse_bitmap2l || xuse_bitmap4l
+xuse_verafx_fill = xuse_bitmap2h || X16_USE_VERAFX_FILL != 0 || xuse_bitmap2l || xuse_verafx
 xuse_irq_any = xuse_irq_core || xuse_irq_vsync || xuse_irq_sprcol
-xuse_vera = xuse_all || X16_USE_VERA != 0 || xuse_sprite || xuse_psg || xuse_bitmap || xuse_bitmap2
-xuse_verafx_fill = xuse_bitmap2 || X16_USE_VERAFX_FILL != 0 || xuse_verafx
 xuse_verafx_any = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
 xuse_vera_core = xuse_vera || X16_USE_VERA_CORE != 0
 xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0
@@ -165,6 +203,9 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 ; --- modules (the ACME tree's order) ---
 .if xuse_vera_any
 .include "video/vera.asm"
+.endif
+.if xuse_vera_dc
+.include "video/vdc.asm"
 .endif
 .if xuse_screen_any
 .include "video/screen.asm"
@@ -178,17 +219,44 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .if xuse_sprite
 .include "sprite/sprite.asm"
 .endif
-.if xuse_bitmap
-.include "gfx/bitmap.asm"
+.if xuse_bitmap8l
+.include "gfx/bitmap8l.asm"
 .endif
-.if xuse_bitmap2
-.include "gfx/bitmap2.asm"
+.if xuse_bitmap8h
+.include "gfx/bitmap8h.asm"
+.endif
+.if xuse_bitmap2h
+.include "gfx/bitmap2h.asm"
+.endif
+.if xuse_bitmap2l
+.include "gfx/bitmap2l.asm"
+.endif
+.if xuse_bitmap4l
+.include "gfx/bitmap4l.asm"
+.endif
+.if xuse_bitmap4h
+.include "gfx/bitmap4h.asm"
+.endif
+.if xuse_fb
+.include "gfx/fb.asm"
+.endif
+.if xuse_graph
+.include "gfx/graph.asm"
+.endif
+.if xuse_console
+.include "gfx/console.asm"
 .endif
 .if xuse_shapes && X16_SKIP_SHAPES == 0
 .include "gfx/shapes.asm"
 .endif
 .if xuse_verafx_any
 .include "gfx/verafx.asm"
+.endif
+.if xuse_verafx_utils
+.include "gfx/verafx_utils.asm"
+.endif
+.if xuse_clock
+.include "system/clock.asm"
 .endif
 .if xuse_irq_any
 .include "system/irq.asm"
@@ -199,11 +267,29 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .if xuse_ym
 .include "audio/ym.asm"
 .endif
+.if xuse_audio_rom
+.include "audio/rom.asm"
+.endif
+.if xuse_zsm
+.include "audio/zsm.asm"
+.endif
 .if xuse_pcm
 .include "audio/pcm.asm"
 .endif
 .if xuse_input_any
 .include "input/input.asm"
+.endif
+.if xuse_keyboard
+.include "input/keyboard.asm"
+.endif
+.if xuse_mouse
+.include "input/mouse.asm"
+.endif
+.if xuse_i2c
+.include "comms/i2c.asm"
+.endif
+.if xuse_vera_spi
+.include "comms/spi.asm"
 .endif
 .if xuse_serial
 .include "comms/serial.asm"
@@ -225,6 +311,12 @@ xuse_vera_any = xuse_vera_core || xuse_vera_copy
 .endif
 .if xuse_mem
 .include "storage/mem.asm"
+.endif
+.if xuse_fileio
+.include "storage/fileio.asm"
+.endif
+.if xuse_iec
+.include "storage/iec.asm"
 .endif
 .if xuse_load
 .include "storage/load.asm"

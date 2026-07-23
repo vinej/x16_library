@@ -21,7 +21,7 @@
 !cpu 65c02
 !source "x16.asm"
 
-X16_USE_BITMAP2     = 1         ; for the gfx2_* macros
+X16_USE_BITMAP2H     = 1         ; for the gfx2h_* macros
 X16_USE_SHAPES_POLY = 1         ; the polygon (pulls SHAPES, MATH)
 X16_USE_PALETTE     = 1
 X16_USE_SCREEN      = 1
@@ -44,8 +44,8 @@ C3   = 3
 
 ; ---------------------------------------------------------------------
 main
-    +xm_gfx2_init
-    +xm_gfx2_clear BG
+    +xm_gfx2h_init
+    +xm_gfx2h_clear BG
     jsr set_palette
 
     ; The pinwheel: one hexagon outline per rotation, fanned across a

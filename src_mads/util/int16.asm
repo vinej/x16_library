@@ -413,4 +413,3 @@ i16_to_dec_s__done
     lda #<i16_buf
     ldx #>i16_buf
     rts
-

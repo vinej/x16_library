@@ -8,12 +8,12 @@
 // The shapes are ENGINE-AGNOSTIC and live here ONCE, not per engine:
 // they draw through three entry symbols and read the canvas bounds
 // through two, all overridable BEFORE this file is sourced. Left alone
-// they bind to the 2bpp module (bitmap2). Any engine with the same call
+// they bind to the 2bpp high-res module (bitmap2h). Any engine with the same call
 // shapes can sit behind them:
-//   - bitmap2 (2bpp): the default, no work.
-//   - bitmap (8bpp): predefine SHP_PSET / SHP_HLINE to small shims that
-//     move the colour from A into X16_P3 (where gfx_pset wants it), then
-//     jmp gfx_pset / gfx_hline; SHP_READ = gfx_read; SHP_W/H = 320/240.
+//   - bitmap2h (2bpp): the default, no work.
+//   - bitmap8l (8bpp): predefine SHP_PSET / SHP_HLINE to small shims that
+//     move the colour from A into X16_P3 (where gfx8l_pset wants it), then
+//     jmp gfx8l_pset / gfx8l_hline; SHP_READ = gfx8l_read; SHP_W/H = 320/240.
 //   - CXRF points them at its graphics port and gets every mode at once.
 //
 //   SHP_PSET   pset:  P0/P1 = x, P2/P3 = y, A = colour (must clip)
@@ -1056,7 +1056,7 @@ shapes_pg_ojok:
 	rts
 
 // 16-bit Bresenham from (lx0,ly0) to (lx1,ly1), plotting through SHP_PSET
-// (the gfx2_line algorithm, engine-agnostic and clipping via the binding)
+// (the gfx2h_line algorithm, engine-agnostic and clipping via the binding)
 shapes_poly_line:
 	sec                         // dx = |x1 - x0|, sx = direction
 	lda poly_lx1
@@ -1611,7 +1611,7 @@ poly_prod: .fill 4, 0
 // shp_line -- shared 16-bit Bresenham (X16_USE_SHP_LINE)
 // ---------------------------------------------------------------------
 // The curve shapes (arc, bezier) sample a handful of points and join
-// them; this is the join. It is the same engine-agnostic gfx2_line walk
+// them; this is the join. It is the same engine-agnostic gfx2h_line walk
 // the polygon carries privately (shapes_poly_line), lifted out so arc and
 // bezier share ONE copy behind their own gate. A program that wants only
 // the polygon still pays nothing for this; one that wants an arc pays for
@@ -3335,13 +3335,13 @@ shp_wdef: .word 640
 shp_hdef: .word 480
 
 #if !SHP_PSET_SET
-.label SHP_PSET = gfx2_pset
+.label SHP_PSET = gfx2h_pset
 #endif
 #if !SHP_READ_SET
-.label SHP_READ = gfx2_read
+.label SHP_READ = gfx2h_read
 #endif
 #if !SHP_HLINE_SET
-.label SHP_HLINE = gfx2_hline
+.label SHP_HLINE = gfx2h_hline
 #endif
 #if !SHP_W_SET
 .label SHP_W = shp_wdef

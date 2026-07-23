@@ -96,6 +96,25 @@
 // YM2151 FM chip. NOT at $9FE0 -- see x16-rom-r49/inc/io.inc.
 .label YM_REG = $9F40
 .label YM_DATA = $9F41
+
+// VERA_2 MiSTer SDRAM bitmap layer. This is a core-specific extension
+// in the I/O expansion area, not part of stock VERA VRAM.
+.label VERA2_CTRL = $9F60
+.label VERA2_ID = $9F61
+.label VERA2_ADDR_L = $9F62
+.label VERA2_ADDR_M = $9F63
+.label VERA2_ADDR_H = $9F64
+.label VERA2_DATA = $9F65
+.label VERA2_PAL_IDX = $9F66
+.label VERA2_PAL_LO = $9F67
+.label VERA2_PAL_HI = $9F68
+.label VERA2_BLIT_DST_L = $9F69
+.label VERA2_BLIT_DST_M = $9F6A
+.label VERA2_BLIT_DST_H = $9F6B
+.label VERA2_BLIT_LEN_L = $9F6C
+.label VERA2_BLIT_LEN_M = $9F6D
+.label VERA2_BLIT_LEN_H = $9F6E
+.label VERA2_BLIT_CTRL = $9F6F
 // (end addr)
 
 // ---------------------------------------------------------------------
@@ -155,6 +174,14 @@
 .label VERA_ISR_COLLISION = %11110000
 
 // ---------------------------------------------------------------------
+// SPI_CTRL bitfields.
+// ---------------------------------------------------------------------
+.label VERA_SPI_SELECT = %00000001   // 1 asserts chip-select, 0 releases it
+.label VERA_SPI_SLOWCLK = %00000010   // 1 = ~390 kHz, 0 = ~12.5 MHz
+.label VERA_SPI_AUTOTX = %00000100   // reading SPI_DATA starts a $FF transfer
+.label VERA_SPI_BUSY = %10000000   // read-only
+
+// ---------------------------------------------------------------------
 // FX_CTRL (DCSEL=2) bitfields.
 // ---------------------------------------------------------------------
 .label VERA_FX_ADDR1_NORMAL = 0
@@ -198,6 +225,32 @@
 .label VERA_LAYER_MAPH_64 = %01000000
 .label VERA_LAYER_MAPH_128 = %10000000
 .label VERA_LAYER_MAPH_256 = %11000000
+
+// ---------------------------------------------------------------------
+// VERA_2 MiSTer SDRAM bitmap layer bitfields.
+// ---------------------------------------------------------------------
+.label VERA2_ID_MAGIC = $B5
+.label VERA2_CTRL_ENABLE = %00000001
+.label VERA2_CTRL_MODE_8BPP = %00000010
+.label VERA2_CTRL_MODE_4BPP = %00000100
+.label VERA2_CTRL_PASSTHRU = %00001000
+
+.label VERA2_INC_1 = $0
+.label VERA2_INC_0 = $1
+.label VERA2_INC_2 = $2
+.label VERA2_INC_4 = $3
+.label VERA2_INC_8 = $4
+.label VERA2_INC_16 = $5
+.label VERA2_INC_32 = $6
+.label VERA2_INC_64 = $7
+.label VERA2_INC_128 = $8
+.label VERA2_INC_256 = $9
+.label VERA2_INC_320 = $A
+.label VERA2_INC_640 = $B
+.label VERA2_INC_NEG1 = $C
+.label VERA2_INC_NEG2 = $D
+.label VERA2_INC_NEG320 = $E
+.label VERA2_INC_NEG640 = $F
 
 // ---------------------------------------------------------------------
 // VRAM map.  17-bit addresses: bit 16 is the "bank" in ADDR_H.

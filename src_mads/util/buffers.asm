@@ -121,4 +121,3 @@ rb_data
 stk_sp   .byte 0
 stk_data
     :(256) dta 0
-

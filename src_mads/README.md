@@ -23,6 +23,7 @@ MAINTENANCE: src_acme/ is the reference implementation. Do not edit the
 generated files here -- fix src_acme/, then regenerate:
 
     python tools\acme2mads.py src_acme src_mads
+    python tools\acme_doc2mads.py
     python tools\acme2mads.py test_acme test_mads   (then delete
     test_mads/blobsmoke.asm -- that one is dist-only)
 

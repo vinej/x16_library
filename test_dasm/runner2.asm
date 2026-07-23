@@ -12,7 +12,7 @@
     processor 65c02
     include "x16.asm"
 
-X16_USE_BITMAP2 = 1
+X16_USE_BITMAP2H = 1
 X16_USE_SHAPES  = 1             ; pulls in VERA and VERAFX
 X16_USE_SHAPES_POLY = 1         ; + regular polygons (pulls in MATH)
 X16_USE_SHAPES_RRECT = 1        ; + rounded rectangles
@@ -136,19 +136,19 @@ test_g2_pset
     sta X16_P2
     stz X16_P3
     lda #3
-    jsr gfx2_pset
+    jsr gfx2h_pset
     lda #5                      ; (5,10) colour 2 -> byte 1 pixel 1
     sta X16_P0
     lda #2
-    jsr gfx2_pset
+    jsr gfx2h_pset
     lda #10                     ; (10,10) colour 1 -> byte 2 pixel 2
     sta X16_P0
     lda #1
-    jsr gfx2_pset
+    jsr gfx2h_pset
     lda #15                     ; (15,10) colour 3 -> byte 3 pixel 3
     sta X16_P0
     lda #3
-    jsr gfx2_pset
+    jsr gfx2h_pset
 
     vera_addr 1, G2R10, VERA_INC_1
     lda VERA_DATA1
@@ -179,7 +179,7 @@ test_g2_pset
     lda #>479
     sta X16_P3
     lda #3
-    jsr gfx2_pset
+    jsr gfx2h_pset
     vera_addr 1, 76799, VERA_INC_1
     lda VERA_DATA1
     cmp #$03
@@ -201,7 +201,7 @@ test_g2_pset
     stz X16_P2
     stz X16_P3
     lda #3
-    jsr gfx2_pset
+    jsr gfx2h_pset
     vera_addr 1, 160, VERA_INC_1
     lda VERA_DATA1
     cmp #$11
@@ -216,7 +216,7 @@ test_g2_pset
     lda #>480
     sta X16_P3
     lda #3
-    jsr gfx2_pset
+    jsr gfx2h_pset
     vera_addr 1, 76800, VERA_INC_1
     lda VERA_DATA1
     cmp #$22
@@ -244,25 +244,25 @@ test_g2_read
     lda #12
     sta X16_P2
     stz X16_P3
-    jsr gfx2_read
+    jsr gfx2h_read
     bcs .fail
     cmp #0
     bne .fail
     lda #1
     sta X16_P0
-    jsr gfx2_read
+    jsr gfx2h_read
     bcs .fail
     cmp #1
     bne .fail
     lda #2
     sta X16_P0
-    jsr gfx2_read
+    jsr gfx2h_read
     bcs .fail
     cmp #2
     bne .fail
     lda #3
     sta X16_P0
-    jsr gfx2_read
+    jsr gfx2h_read
     bcs .fail
     cmp #3
     bne .fail
@@ -271,7 +271,7 @@ test_g2_read
     sta X16_P0
     lda #>640
     sta X16_P1
-    jsr gfx2_read
+    jsr gfx2h_read
     bcc .fail
 
     lda #0
@@ -307,7 +307,7 @@ test_g2_hline
     sta X16_P4
     stz X16_P5
     lda #3
-    jsr gfx2_hline
+    jsr gfx2h_hline
 
     vera_addr 1, G2R20, VERA_INC_1
     lda VERA_DATA1              ; byte 0: untouched
@@ -357,7 +357,7 @@ test_g2_hline_short
     sta X16_P4
     stz X16_P5
     lda #2
-    jsr gfx2_hline
+    jsr gfx2h_hline
 
     vera_addr 1, G2R21, VERA_INC_1
     lda VERA_DATA1
@@ -396,7 +396,7 @@ test_g2_vline
     sta X16_P4
     stz X16_P5
     lda #0
-    jsr gfx2_vline
+    jsr gfx2h_vline
 
     vera_addr 1, G2R30B1, VERA_INC_160
     ldx #4
@@ -441,7 +441,7 @@ test_g2_rect
     sta X16_P6
     stz X16_P7
     lda #1
-    jsr gfx2_rect
+    jsr gfx2h_rect
 
     vera_addr 1, G2R40, VERA_INC_1
     lda VERA_DATA1
@@ -492,7 +492,7 @@ test_g2_frame
     sta X16_P6
     stz X16_P7
     lda #3
-    jsr gfx2_frame
+    jsr gfx2h_frame
 
     vera_addr 1, G2R50, VERA_INC_1
     ldx #4
@@ -550,7 +550,7 @@ test_g2_line
     sta X16_P6
     stz X16_P7
     lda #3
-    jsr gfx2_line
+    jsr gfx2h_line
 
     vera_addr 1, G2R60, VERA_INC_1
     lda VERA_DATA1
@@ -586,7 +586,7 @@ test_g2_pattern
     lda #<.pat
     ldx #>.pat
     ldy #3                      ; background 0, foreground 3
-    jsr gfx2_pattern_set
+    jsr gfx2h_pattern_set
 
     vera_addr 0, G2R70, VERA_INC_1
     lda #$55
@@ -605,7 +605,7 @@ test_g2_pattern
     lda #1
     sta X16_P6
     stz X16_P7
-    jsr gfx2_pattern_rect
+    jsr gfx2h_pattern_rect
 
     vera_addr 1, G2R70, VERA_INC_1
     lda VERA_DATA1
@@ -642,7 +642,7 @@ test_g2_pattern_phase
     lda #<.pat2
     ldx #>.pat2
     ldy #3
-    jsr gfx2_pattern_set
+    jsr gfx2h_pattern_set
 
     vera_addr 0, G2R74, VERA_INC_1
     lda #$00
@@ -662,7 +662,7 @@ test_g2_pattern_phase
     lda #1
     sta X16_P6
     stz X16_P7
-    jsr gfx2_pattern_rect
+    jsr gfx2h_pattern_rect
 
     vera_addr 1, G2R74, VERA_INC_1
     lda VERA_DATA1
@@ -711,7 +711,7 @@ test_g2_blit
     lda #>.img
     sta X16_P7
     lda #0                      ; copy
-    jsr gfx2_blit
+    jsr gfx2h_blit
 
     vera_addr 1, G2R80B2, VERA_INC_1
     lda VERA_DATA1
@@ -748,7 +748,7 @@ test_g2_blit
     lda #>.img
     sta X16_P7
     lda #3                      ; xor
-    jsr gfx2_blit
+    jsr gfx2h_blit
 
     vera_addr 1, G2R80B2, VERA_INC_1
     lda VERA_DATA1
@@ -797,7 +797,7 @@ test_g2_blitm
     sta X16_P6
     lda #>.mcol
     sta X16_P7
-    jsr gfx2_blitm
+    jsr gfx2h_blitm
 
     vera_addr 1, G2R90B3, VERA_INC_160
     ldx #4
@@ -822,7 +822,7 @@ test_g2_blitm
 .mcol dc.b $0F, $50, $0F, $50, $0F, $50, $0F, $50   ; (mask,data) x4
 
 ; ---------------------------------------------------------------------
-; gfx2_clear floods exactly the 76,800 framebuffer bytes and nothing
+; gfx2h_clear floods exactly the 76,800 framebuffer bytes and nothing
 ; past them
 ; ---------------------------------------------------------------------
     SUBROUTINE
@@ -832,7 +832,7 @@ test_g2_clear
     sta VERA_DATA0
 
     lda #2
-    jsr gfx2_clear
+    jsr gfx2h_clear
 
     vera_addr 1, 0, VERA_INC_1
     lda VERA_DATA1
@@ -865,7 +865,7 @@ test_g2_clear
 ; ---------------------------------------------------------------------
     SUBROUTINE
 test_g2_init
-    jsr gfx2_init
+    jsr gfx2h_init
 
     lda VERA_L0_CONFIG
     cmp #(VERA_LAYER_BITMAP | VERA_LAYER_BPP_2)
@@ -1108,7 +1108,7 @@ test_shape_flood
     sta X16_P6
     stz X16_P7
     lda #3
-    jsr gfx2_frame
+    jsr gfx2h_frame
     lda #80                     ; flood from inside, colour 1
     sta X16_P0
     stz X16_P1
@@ -2448,7 +2448,7 @@ shp_rd                          ; read (A, X), both bytes
     stx X16_P2
     stz X16_P3
     phy
-    jsr gfx2_read
+    jsr gfx2h_read
     ply
     ora #0                      ; ply set the flags from Y; re-set from A
     rts
@@ -2469,6 +2469,6 @@ shp_clear40y                    ; ...or over (A,X)+40x40
     sta X16_P6
     stz X16_P7
     lda #0
-    jmp gfx2_rect
+    jmp gfx2h_rect
 
     include "x16_code.asm"

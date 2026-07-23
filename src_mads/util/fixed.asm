@@ -119,4 +119,3 @@ mul88__negate_b
     sbc X16_P3
     sta X16_P3
     rts
-

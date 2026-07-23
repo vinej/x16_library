@@ -11,6 +11,7 @@ MAINTENANCE: src_acme/ is the reference implementation. Do not edit
 the generated files here -- fix src_acme/, then regenerate:
 
     python tools\acme2ca65.py src_acme src_ca65
+    python tools\acme_doc2ca65.py
     (test_ca65/runner.asm + testlib.asm are converted the same way;
     see build_ca65.ps1 / the commands in tools/acme2ca65.py's header)
 

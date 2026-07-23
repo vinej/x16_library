@@ -99,6 +99,7 @@ t_pass
     inc t_total
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<.word
@@ -115,6 +116,7 @@ t_fail
     inc t_total
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<.word
@@ -140,6 +142,7 @@ t_skip
     inc t_skips
     pha
     phx
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<.word
@@ -175,6 +178,7 @@ t_result
 ; ---------------------------------------------------------------------
     SUBROUTINE
 t_summary
+    jsr CLRCHN
     lda #$0D
     jsr CHROUT
     lda #<.done

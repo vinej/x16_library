@@ -27,6 +27,7 @@ MAINTENANCE: src_acme/ is the reference implementation. Do not edit
 the generated files here -- fix src_acme/, then regenerate:
 
     python tools\acme2vasm.py src_acme src_vasm
+    python tools\acme_doc2vasm.py
     (test_vasm/runner.asm + testlib.asm and the examples are converted
     the same way; see build_vasm.ps1 / tools/acme2vasm.py's header)
 

@@ -23,7 +23,7 @@
 !cpu 65c02
 !source "x16.asm"
 
-X16_USE_BITMAP2       = 1       ; the 2bpp engine the shapes bind to
+X16_USE_BITMAP2H       = 1       ; the 2bpp engine the shapes bind to
 X16_USE_SHAPES_RRECT  = 1       ; rounded rectangles (self-contained)
 X16_USE_SHAPES_ARC    = 1       ; arcs (pulls MATH + SHP_LINE)
 X16_USE_SHAPES_PIE    = 1       ; filled pies (pulls SHAPES_ARC)
@@ -44,8 +44,8 @@ ACC  = 3                        ; accents
 
 ; ---------------------------------------------------------------------
 main
-    +xm_gfx2_init               ; 640x480 @ 2bpp on layer 0
-    +xm_gfx2_clear BG
+    +xm_gfx2h_init               ; 640x480 @ 2bpp on layer 0
+    +xm_gfx2h_clear BG
     jsr set_palette
 
     jsr draw_rrects

@@ -180,4 +180,3 @@ screen_puts__loop
 screen_puts__done
     rts
 .endif
-

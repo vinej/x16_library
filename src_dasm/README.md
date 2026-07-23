@@ -26,6 +26,7 @@ MAINTENANCE: src_acme/ is the reference implementation. Do not edit
 the generated files here -- fix src_acme/, then regenerate:
 
     python tools\acme2dasm.py src_acme src_dasm
+    python tools\acme_doc2dasm.py
     (test_dasm/runner.asm + testlib.asm and the examples are converted
     the same way; see build_dasm.ps1 / tools/acme2dasm.py's header)
 

@@ -362,6 +362,7 @@ ser_read_until__loop:
     lda X16_P5                  // stored >= max ?  (16-bit compare)
     cmp X16_P3
     bcc ser_read_until__room
+    bne ser_read_until__done
     lda X16_P4
     cmp X16_P2
     bcs ser_read_until__done

@@ -601,4 +601,3 @@ bmx_cur
     :(3) dta 0
 bmx_row  .word 0
 bmx_rows .word 0
-

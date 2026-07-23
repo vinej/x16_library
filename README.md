@@ -3,17 +3,19 @@
 An assembly library for the Commander X16. Write programs directly in 6502,
 without re-deriving the machine's hardware surface every time.
 
-The capability list comes from the ForthX16 help pages in [`doc/`](doc/); the
-hardware facts come from the official VERA references in the same folder and
-from the r49 ROM sources. No Forth code is used — this is a fresh assembly
-implementation with an assembly-shaped API.
+| Topic | Detail |
+|---|---|
+| Target | Commander X16 programs written directly in 6502 assembly. |
+| Source material | Capability list from the ForthX16 help pages in [`doc/`](doc/); hardware facts from the official VERA references and r49 ROM sources. |
+| Implementation | Fresh assembly implementation with an assembly-shaped API. No Forth code is reused. |
 
 ## Prerequisites
 
-The third-party toolchains are expected in the working tree but are **not**
-committed (see `.gitignore` — they are not ours to redistribute). Each
-assembler lives in its own repo-local folder, and the build scripts look
-only there:
+| Tooling rule | Detail |
+|---|---|
+| Repo-local tools | Third-party toolchains are expected in the working tree. |
+| Not committed | Toolchain folders are gitignored because they are not ours to redistribute. |
+| Lookup path | Each assembler lives in its own repo-local folder; build scripts look only there. |
 
 | Path | What | Where from |
 |---|---|---|
@@ -26,16 +28,13 @@ only there:
 | `vasm\vasm6502_oldstyle.exe` | vasm 2.0f, 6502 CPU + oldstyle syntax | <http://sun.hasenbraten.de/vasm/> — binary releases, `vasm6502_oldstyle_Win64.zip` |
 | `emulator\x16emu.exe` + `rom.bin` | X16 emulator r49 | <https://github.com/X16Community/x16-emulator>, ROM from <https://github.com/X16Community/x16-rom> |
 
-Only `acme\` and `emulator\` are required to build the reference tree and run
-the tests; the other six folders are needed only to recompile their
-respective ports.
-
-Use the **r49** emulator and ROM: the constants in `src_acme/core/` are transcribed
-from the r49 ROM sources, and the test suite asserts against r49 behaviour.
-
-The official X16 and VERA reference documents are likewise omitted from the
-repo; they live upstream at <https://github.com/X16Community/x16-docs>. Only the
-ForthX16 help pages (`doc/*.TXT`) are committed here.
+| Requirement | Detail |
+|---|---|
+| Reference build | Only `acme\` and `emulator\` are required to build the ACME tree and run tests. |
+| Support ports | The other six toolchain folders are needed only to recompile their ports. |
+| Emulator/ROM | Use r49; constants in `src_acme/core/` come from r49 ROM sources and tests assert r49 behaviour. |
+| External docs | Official X16 and VERA references live upstream at <https://github.com/X16Community/x16-docs>. |
+| Committed docs | Only the ForthX16 help pages (`doc/*.TXT`) are committed here. |
 
 ## Quick start
 
@@ -88,18 +87,21 @@ Assemble with `src_acme\` on the include path:
 acme -I src_acme -f cbm -o OUT.PRG myprog.asm
 ```
 
-`x16.asm` must come **before** any code, because ACME macros have to be defined
-before they are called. `x16_code.asm` goes wherever you want the library's
-machine code to sit, and must be sourced exactly once. ACME has no linker, so
-unused routines cannot be stripped automatically — that is what the `X16_USE_*`
-gates are for.
+| Rule | Detail |
+|---|---|
+| Source order | `x16.asm` must come before any code, because ACME macros have to be defined before they are called. |
+| Library placement | `x16_code.asm` goes wherever you want the library machine code to sit, and must be sourced exactly once. |
+| Module selection | ACME has no linker, so unused routines cannot be stripped automatically. Use `X16_USE_*` gates to choose what is emitted. |
 
 ### Friendly macros (optional): `core/sugar.asm`
 
-Loading an argument block by hand — a dozen `lda`/`sta` lines per call — is the
-tax of a register-and-P-block ABI. `core/sugar.asm` is an **optional, opt-in**
-layer that pays it for you: one macro per public routine, named `xm_<routine>`,
-that takes the arguments in order and calls it. So
+| Topic | Detail |
+|---|---|
+| Purpose | Avoid hand-loading the register-and-P-block ABI for common public routines. |
+| Status | Optional and opt-in; programs can ignore it completely. |
+| Shape | One macro per public routine, named `xm_<routine>`, with arguments in call order. |
+
+For example:
 
 ```asm
 +xm_shape_frrect 40, 40, 200, 110, 28, FILL   ; rounded rect, filled
@@ -107,11 +109,13 @@ that takes the arguments in order and calls it. So
 +xm_sprite_pos 0, 100, 50                       ; sprite 0 to (100,50)
 ```
 
-replaces the setup blocks entirely. It is the same idea as the CXRF `asmsdk`
-`cxm_*` layer, adapted to this repo and generated the same way as everything
-else (written for ACME; the six ports come out of `tools/acme2*.py`). Set your
-gates, then source it — each module's macros are wrapped in that module's
-`X16_USE_*`, so `xm_pal_set` only exists when `X16_USE_PALETTE` is set:
+replaces the setup blocks entirely.
+
+| Rule | Detail |
+|---|---|
+| Naming | One macro per public routine, named `xm_<routine>`. |
+| Generation | Written for ACME; the six support assembler versions are generated by `tools/acme2*.py`. |
+| Gating | Set your `X16_USE_*` gates first, then source `core/sugar.asm`. Each module's macros are wrapped in that module's gate. |
 
 ```asm
 !source "x16.asm"
@@ -120,15 +124,13 @@ X16_USE_PALETTE      = 1
 !source "core/sugar.asm"     ; <- optional, AFTER the gates
 ```
 
-Two things to know. **It is purely additive**: a program that does not source it,
-or does not invoke a macro, is byte-for-byte unchanged, and each macro expands to
-exactly the hand-written setup + `jsr`, so it costs nothing at run time.
-**Arguments are immediates** (`lda #arg`), so pass constants; to call with a value
-held in a variable, set the block by hand and `jsr` the routine (see
-`examples/m_bounce.asm`, which macros the constant setup and hand-writes the
-per-frame position/collision). Argument-free routines (`i16_add`, `f_sqrt`,
-`sprites_on`) are called directly — a wrapper would add nothing. The
-`examples/m_*.asm` files are macro editions of the plain examples.
+| Constraint | Detail |
+|---|---|
+| Additive only | A program that does not source it, or does not invoke a macro, is byte-for-byte unchanged. |
+| Runtime cost | Each macro expands to the hand-written setup plus `jsr`, so it costs nothing extra at run time. |
+| Arguments | Macro arguments are immediates (`lda #arg`). For variables, set the parameter block by hand and `jsr` the routine. |
+| Direct calls | Argument-free routines such as `i16_add`, `f_sqrt`, and `sprites_on` are called directly. |
+| Examples | `examples/m_*.asm` are macro editions of the plain examples; `m_bounce.asm` shows constant setup through macros and per-frame values by hand. |
 
 ## Other assemblers: ca65, 64tass, KickAssembler, dasm, MADS, vasm
 
@@ -136,17 +138,52 @@ Two ways in, pick per project:
 
 ### Native sources (full `X16_USE_*` gating)
 
-The library exists as **seven native source trees** — ACME (`src_acme/`, the
-reference), ca65 (`src_ca65/`), 64tass (`src_64tass/`), KickAssembler
-(`src_kick/`), dasm (`src_dasm/`), MADS (`src_mads/`) and vasm
-(`src_vasm/`) — same file layout, same module gates, same macros, same
-routine contracts. The six ports are not reimplementations: converters in
-`tools/` (`acme2ca65.py`, `acme2tass.py`, `acme2kick.py`, `acme2dasm.py`,
-`acme2mads.py`, `acme2vasm.py`) produce them from the ACME tree, a few
-dialect-specific files are maintained by hand (each tree's README lists
-them), and every port is held to the hardest possible bar — **its test
-runner assembles to a byte-identical PRG** (same SHA-256) as the ACME build
-and passes the same 152-test suite (154 windowed) on the emulator.
+| Topic | Detail |
+|---|---|
+| Reference tree | ACME in `src_acme/`. |
+| Generated trees | ca65 `src_ca65/`, 64tass `src_64tass/`, KickAssembler `src_kick/`, dasm `src_dasm/`, MADS `src_mads/`, vasm `src_vasm/`. |
+| Contract | Same file layout, module gates, macros, and routine contracts in every tree. |
+| Converters | `tools/acme2ca65.py`, `tools/acme2tass.py`, `tools/acme2kick.py`, `tools/acme2dasm.py`, `tools/acme2mads.py`, `tools/acme2vasm.py`. |
+| Hand-maintained files | A few dialect-specific files remain manual; each support tree README lists them. |
+| Release check | Each port's test runner must assemble to the same SHA-256 PRG as ACME and pass the same 152-test suite, or 154 tests windowed. |
+
+### Tutorial documentation
+
+| Topic | Detail |
+|---|---|
+| Convention | Tutorial docs follow the same reference/generated model as assembler sources. |
+| Source of truth | ACME docs live in `src_acme/tutorial/`. |
+| Files | `userguide.md`, `macroguide.md`, and detailed `macro_*.md` files are written in ACME syntax. |
+| Generated copies | Do not edit support-tree tutorial folders by hand. |
+
+After changing the ACME tutorial docs, regenerate the dialect copies:
+
+```powershell
+python tools\acme_doc2ca65.py
+python tools\acme_doc2tass.py
+python tools\acme_doc2dasm.py
+python tools\acme_doc2kick.py
+python tools\acme_doc2mads.py
+python tools\acme_doc2vasm.py
+```
+
+Those commands write:
+
+```
+src_ca65\tutorial\
+src_64tass\tutorial\
+src_dasm\tutorial\
+src_kick\tutorial\
+src_mads\tutorial\
+src_vasm\tutorial\
+```
+
+| Converter | Detail |
+|---|---|
+| Shared engine | `tools/acme_doc_convert.py`. |
+| Entry points | `tools/acme_doc2*.py` scripts set default source and destination folders. |
+| Converted syntax | Includes, gates, origins, comments, bank-byte operators, and macro calls. |
+| Macro forms | ACME-style `xm_*`, hash-prefixed `#xm_*`, or KickAssembler `xm_*(...)`. |
 
 Each port pairs a source tree with its repo-local toolchain folder:
 
@@ -185,40 +222,25 @@ vasm\vasm6502_oldstyle -c02 -Fbin -cbm-prg -I src_vasm -o PROG.PRG prog.asm
 .\build_vasm.ps1 -Test
 ```
 
-A ca65 program is the ACME skeleton with `.include` in place of `!source`
-and no `+` on macro calls; `.ifdef`-based `X16_USE_*` gating works
-identically. 64tass keeps ACME's `X16_USE_VERA = 1` spelling (gates default
-to 0 via `.weak`). KickAssembler selects modules with `#define X16_USE_*`
-before the `#import "x16_code.asm"` — see `src_kick/README.md` for the
-one ordering rule (zero-page overrides go before the `x16.asm` import).
-A dasm program is the ACME skeleton with `processor 65c02`, `include` in
-place of `!source`, `IFCONST X16_USE_*` gating, and no `+` on macro calls;
-because dasm has no cheap-local tier the converter emits a `SUBROUTINE`
-before each label so `.name` locals scope as ACME's `@name` did. dasm has
-**no linker** — like ACME and 64tass it writes the `.prg` directly (`-f1`).
-A MADS program is the ACME skeleton with `icl` for `!source`, `.if .def
-X16_USE_*` gating, `org` for `*=`, and no `+` on macro calls; MADS's
-`?`-locals resolve to the nearest definition rather than the enclosing
-label, so the converter renames each `@cheap` to a `<routine>__name`
-global instead. MADS also has **no linker** and emits a flat image (x16.asm
-sets `opt h-`), so `build_mads.ps1` prepends the two-byte $0801 load
-address — the same PRG the others produce. Macro arguments must be
-space-free (MADS splits them on whitespace), which the converter handles.
-A vasm program is the ACME skeleton with `include` in place of `!source`,
-`org` for `*=`, `ifdef X16_USE_*` gating, no `+` on macro calls, and 65C02
-mode selected by `-c02` on the command line rather than in the source.
-vasm is the friendliest port: its `.name` locals are scoped between two
-global labels — exactly ACME's `@name` cheap-local tier — so the converter
-maps them one for one with no scaffolding (zone-locals are promoted to
-globals, as in the ca65/dasm ports). Like ACME, vasm has **no linker**;
-`-Fbin -cbm-prg` writes the `.prg` (load address + image) directly.
+#### Dialect syntax quick reference
+
+| Dialect | Main differences from ACME |
+|---|---|
+| ca65 | Use `.include` instead of `!source`; omit `+` on macro calls; `.ifdef X16_USE_*` gates work the same way. |
+| 64tass | Keeps `X16_USE_VERA = 1`; gates default to 0 via `.weak`. |
+| KickAssembler | Use `#define X16_USE_*`; import with `#import`; zero-page overrides go before the `x16.asm` import. |
+| dasm | Use `processor 65c02`, `include`, `IFCONST X16_USE_*`, and no `+`; converter emits `SUBROUTINE` scopes for `.name` locals. |
+| MADS | Use `icl`, `.if .def X16_USE_*`, `org`, and no `+`; converter promotes cheap locals to `<routine>__name`; build script prepends the `$0801` load address. |
+| vasm | Use `include`, `org`, `ifdef X16_USE_*`, no `+`; select 65C02 with `-c02`; `-Fbin -cbm-prg` writes the PRG directly. |
+| Linkers | ACME, 64tass, dasm, MADS, and vasm write images directly; ca65 uses `ld65`. |
 
 ### Prebuilt binary + bindings (no gating, any assembler)
 
-Alternatively, `dist.ps1` assembles the whole library into a binary at a
-fixed address and generates bindings for the three other major 6502
-assemblers straight from that build's symbol list, so the addresses can
-never drift from the binary:
+| Topic | Detail |
+|---|---|
+| Purpose | `dist.ps1` builds the whole library as one fixed-address binary. |
+| Bindings | Generated from that build's symbol list, so routine addresses cannot drift from the blob. |
+| Assemblers | Includes bindings for the main blob workflow assemblers. |
 
 ```
 .\dist.ps1
@@ -227,7 +249,7 @@ never drift from the binary:
 produces
 
 ```
-dist\x16lib.bin          the whole library at $6000 (raw, currently ~14.7 KB)
+dist\x16lib.bin          the whole library at $5800 (raw, currently 12,553 bytes / ~12.3 KB)
 dist\X16LIB.PRG          the same with a load header, for a runtime LOAD
 dist\ca65\x16lib.inc     constants + addresses + the macro layer, per dialect
 dist\64tass\x16lib.inc
@@ -236,20 +258,16 @@ dist\ca65\x16lib.cfg     ld65 linker config that embeds the blob
 dist\examples\           a working hello for each assembler
 ```
 
-The prebuilt binary and the generated bindings are **committed**, so this
-route needs no toolchain beyond your own assembler — running `dist.ps1`
-is only for regenerating them after a library change (there's also a
-`dist\acme\x16lib.inc` for using the blob from ACME itself).
-
-Your program owns `$0801` up to the library's org (the generated includes
-export it as `X16LIB_ORG`, `$5800` since 0.4.0 — it was `$6000` through
-0.3.0, and gfx2 no longer fits under `$9EFF` from there); the library claims
-zero page `$22`–`$31`, exactly as under ACME. Include the binding file, embed
-`x16lib.bin` at `X16LIB_ORG` (each example shows the dialect's way), and call the
-same routines with the same registers — `screen_puts`, `u16_to_dec`,
-`i16_divmod`, the data-port contract, everything in this README applies
-unchanged. The macro layer (`vera_addr`, `jsrfar`, `basic_stub`, …) is ported
-to each dialect inside the generated include.
+| Topic | Detail |
+|---|---|
+| Status | The prebuilt binary and generated bindings are committed. |
+| Required tools | Your own assembler only; run `dist.ps1` only when regenerating after a library change. |
+| ACME binding | `dist\acme\x16lib.inc` lets ACME use the blob too. |
+| Program space | Your program owns `$0801` up to `X16LIB_ORG`. |
+| Library org | `X16LIB_ORG = $5800` since 0.4.0; it was `$6000` through 0.3.0. |
+| Zero page | The blob claims `$22-$31`, exactly as the ACME source build does. |
+| Usage | Include the binding, embed `x16lib.bin` at `X16LIB_ORG`, and call the same routines with the same registers. |
+| Macros | `vera_addr`, `jsrfar`, `basic_stub`, and the macro layer are ported inside each generated include. |
 
 ```
 ca65 --cpu 65C02 -I dist\ca65 --bin-include-dir dist -o hello.o dist\examples\hello-ca65.s
@@ -260,31 +278,21 @@ ld65 -C dist\ca65\x16lib.cfg -o HELLO.PRG hello.o
 java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 ```
 
-Dialect notes, each learned the hard way:
+#### Blob notes
 
-- **64tass needs `-C`** (case-sensitive symbols): the `jsrfar` macro and the
-  KERNAL's `JSRFAR` entry differ only in case. And its default `"none"`
-  encoding converts ASCII to PETSCII — `'H'` becomes `$C8` — so the example
-  defines an identity encoding for byte-exact `.text`.
-- **ca65** wants `--cpu 65C02` (the VERA macros use `trb`/`tsb`), and finds
-  the binary via `--bin-include-dir`. The supplied linker config pads the
-  gap to the library org, making one self-contained ~37 KB PRG; drop the
-  `X16LIB` area and `LOAD "X16LIB.PRG"` at run time if you want a small
-  one. (Keep `x16lib.cfg`'s `LIB` start equal to `X16LIB_ORG`.)
-- **KickAssembler** needs `.cpu _65c02` and `.encoding "ascii"` for CHROUT
-  strings; the blob is embedded with `LoadBinary`/`.fill`.
+| Dialect | Detail |
+|---|---|
+| 64tass | Needs `-C` because `jsrfar` and KERNAL `JSRFAR` differ only by case; examples define identity text encoding for byte-exact strings. |
+| ca65 | Needs `--cpu 65C02` and `--bin-include-dir`; supplied linker config embeds the blob as one self-contained PRG. |
+| KickAssembler | Needs `.cpu _65c02` and `.encoding "ascii"`; embeds the blob with `LoadBinary`/`.fill`. |
 
-A blob and its includes are one unit: regenerate both together with
-`dist.ps1`, never mix files from different builds. The dist build is verified
-on the emulator (`test\blobsmoke.asm` drives the blob purely through the
-generated bindings), and the three examples assemble with ca65 V2.19,
-64tass V1.60 and KickAssembler 5 (Java 8+) — pass `-Ca65`/`-Tass`/`-KickJar`
-to `dist.ps1` to re-run that check yourself.
-
-What the bindings do **not** give you: `X16_USE_*` module gating (the blob
-always contains everything — currently ~17.1 KB) and a movable `X16_ZP`. If
-you need either, or you want the routines inlined into your own PRG, use
-the ACME sources directly.
+| Rule | Detail |
+|---|---|
+| Keep files together | A blob and its includes are one unit. Regenerate both with `dist.ps1`; never mix files from different builds. |
+| Verification | `test\blobsmoke.asm` drives the blob through generated bindings; examples assemble with ca65 V2.19, 64tass V1.60, and KickAssembler 5. |
+| Re-run checks | Pass `-Ca65`, `-Tass`, or `-KickJar` to `dist.ps1`. |
+| Not included | No `X16_USE_*` module gating and no movable `X16_ZP`; the blob always contains everything, currently 12,553 bytes / ~12.3 KB. |
+| Need gating? | Use the native source tree when you need module selection, a movable zero page, or routines inlined into your own PRG. |
 
 ## Conventions
 
@@ -297,10 +305,14 @@ the ACME sources directly.
 | Clobbers | `A`, `X`, `Y` and flags, unless a routine's header says otherwise |
 | Errors | carry set, or a status byte in `A` |
 
-**Zero page.** The library claims 16 bytes at `X16_ZP` (default `$22`, the start
-of the free user window). Define `X16_ZP` yourself before `!source "x16.asm"` to
-move it. `r0`–`r15` (`$02`–`$21`) are the KERNAL's virtual registers and are
-treated as caller-save scratch.
+**Zero Page**
+
+| Topic | Detail |
+|---|---|
+| Library block | The library claims 16 bytes at `X16_ZP`. |
+| Default | `X16_ZP = $22`, the start of the free user window. |
+| Override | Define `X16_ZP` before `!source "x16.asm"` to move it. |
+| KERNAL registers | `r0`-`r15` (`$02`-$21`) are caller-save scratch. |
 
 ## Modules
 
@@ -311,16 +323,20 @@ treated as caller-save scratch.
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
-| `X16_USE_BITMAP` | 320×240 @ 8bpp (256 colours): `gfx_init`, `gfx_clear`, `gfx_read`, `gfx_pset`, `gfx_hline`, `gfx_vline`, `gfx_rect`, `gfx_frame`, `gfx_line`, `gfx_pattern_set`/`gfx_pattern_rect`, `gfx_blit`, `gfx_blitm` (colour-key), `gfx_char`, `gfx_text` |
-| `X16_USE_BITMAP2` | 640×480 @ 2bpp (4 colours, 160-byte rows, MSB-first pixels): `gfx2_init`, `gfx2_clear` (FX cache fill), `gfx2_setptr`, `gfx2_pset`, `gfx2_read`, `gfx2_hline`, `gfx2_vline`, `gfx2_rect`, `gfx2_frame`, `gfx2_line`, `gfx2_pattern_set`/`gfx2_pattern_rect` (screen-anchored 8×8 patterns), `gfx2_blit` (byte-aligned raster ops copy/OR/AND/XOR), `gfx2_blitm` (masked pre-shifted column blit — proportional-text speed). Pulls in VERA and VERAFX. Spans clip like the 8bpp module: `gfx2_pset`/`gfx2_read` clip, the rest assume on-screen arguments |
-| `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_ellipse`, `shape_fellipse`, `shape_flood` — engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`), so ONE copy serves both bitmap modules: the default binds them to `gfx2` (2bpp); bind `SHP_*` to `gfx_*` for 8bpp. Pulls in `X16_USE_BITMAP2` by default. (kick/mads can't test definedness of an already-referenced symbol, so overriding a binding there sets a sentinel alongside it: `SHP_PSET_SET = 1` next to your `SHP_PSET`, and likewise per symbol.) |
+| `X16_USE_BITMAP8L` | 320x240 @ 8bpp in VERA VRAM: `gfx8l_init`, `gfx8l_clear`, `gfx8l_read`, `gfx8l_pset`, `gfx8l_hline`, `gfx8l_vline`, `gfx8l_rect`, `gfx8l_frame`, `gfx8l_line`, `gfx8l_pattern_set`/`gfx8l_pattern_rect`, `gfx8l_blit`, `gfx8l_blitm`, `gfx8l_char`, `gfx8l_text` |
+| `X16_USE_BITMAP4L` | 320x240 @ 4bpp in VERA VRAM: `gfx4l_init`, `gfx4l_clear`, `gfx4l_read`, `gfx4l_pset`, `gfx4l_hline`, `gfx4l_vline`, `gfx4l_rect`, `gfx4l_frame`, `gfx4l_line`, `gfx4l_pattern_set`/`gfx4l_pattern_rect`, `gfx4l_char`, `gfx4l_text` |
+| `X16_USE_BITMAP2L` | 320x240 @ 2bpp in VERA VRAM: `gfx2l_init`, `gfx2l_clear`, `gfx2l_setptr`, `gfx2l_pset`, `gfx2l_read`, `gfx2l_hline`, `gfx2l_vline`, `gfx2l_rect`, `gfx2l_frame`, `gfx2l_line`, `gfx2l_pattern_set`/`gfx2l_pattern_rect` |
+| `X16_USE_BITMAP2H` | 640x480 @ 2bpp using MiSTer VERA_2 SDRAM auto-increment: `gfx2h_init`, `gfx2h_clear`, `gfx2h_setptr`, `gfx2h_pset`, `gfx2h_read`, `gfx2h_hline`, `gfx2h_vline`, `gfx2h_rect`, `gfx2h_frame`, `gfx2h_line`, `gfx2h_pattern_set`/`gfx2h_pattern_rect`, `gfx2h_blit`, `gfx2h_blitm` |
+| `X16_USE_BITMAP4H` | 640x480 @ 4bpp using MiSTer VERA_2 SDRAM: `gfx4h_has`, `gfx4h_init`/`off`, passthru, palette, clear, pset/read, drawing, pattern, blit/blitm, copy |
+| `X16_USE_BITMAP8H` | 640x480 @ 8bpp using MiSTer VERA_2 SDRAM: `gfx8h_has`, `gfx8h_init`/`off`, passthru, palette, clear, pset/read, drawing, pattern, copy |
+| `X16_USE_SHAPES` | `shape_circle`, `shape_disc`, `shape_ellipse`, `shape_fellipse`, `shape_flood` - engine-agnostic, in `gfx/shapes.asm`. They draw through overridable `SHP_PSET`/`SHP_HLINE`/`SHP_READ` (bounds `SHP_W`/`SHP_H`). The default binds them to `gfx2h` (640x480 2bpp); bind `SHP_*` to `gfx8l_*`, `gfx4l_*`, `gfx2l_*`, `gfx4h_*`, or `gfx8h_*` for another bitmap target. Pulls in `X16_USE_BITMAP2H` by default. (kick/mads overrides set `SHP_PSET_SET = 1`, etc., next to the binding.) |
 | `X16_USE_SHAPES_POLY` | Adds `shape_polygon` (outline) and `shape_fpolygon` (filled) — regular convex N-gons through the same `SHP_*` bindings. Pulls in `X16_USE_SHAPES` and `X16_USE_MATH` (the vertices come from `sin8`/`cos8`), so it is a pay-per-use extra: a program that only draws circles keeps a math-free `SHAPES` build. |
 | `X16_USE_SHAPES_RRECT` | Adds `shape_rrect` (outline) and `shape_frrect` (filled) — rounded rectangles. Caller sets `rr_x`/`rr_y` (top-left), `rr_w`/`rr_h`, `rr_r` (corner radius, clamped to `min(w,h)/2`); colour in `A`. Self-contained (the corners come from a midpoint circle walk, no trig), so it only pulls in `X16_USE_SHAPES`. |
 | `X16_USE_SHAPES_ARC` | Adds `shape_arc` — a portion of a circle outline from a start to an end byte-angle (`0` = east, `64` = south, the `sin8`/`cos8` convention; `start == end` draws the whole circle). Args in the P block: `P0/P1` = cx, `P2/P3` = cy, `P4` = r, `P5` = start, `P6` = end, colour in `A`. Sampled every ~4 byte-angle units and joined with the shared line helper, so the chord error stays under a third of a pixel. Pulls in `X16_USE_MATH` and `X16_USE_SHP_LINE`. |
 | `X16_USE_SHAPES_PIE` | Adds `shape_pie` — a filled wedge from the centre to the arc, same arguments as `shape_arc`. Built as a fan of triangles, so any span works (including the reflex &gt; 180° case, and `start == end` for a whole disc); draws with `SHP_HLINE`. Pulls in `X16_USE_SHAPES_ARC` (it reuses the arc's sample placement). |
 | `X16_USE_SHAPES_BEZIER` | Adds `shape_bezier` — a cubic Bézier through four control points. Caller sets `bez_x0`/`bez_y0` … `bez_x3`/`bez_y3` (signed words); colour in `A`. Evaluated by de Casteljau at a size-adaptive number of samples (control-polygon perimeter / 8, clamped to 4..64) and joined with the shared line helper; the P0/P3 anchors are emitted exactly. Pulls in `X16_USE_SHP_LINE`. |
 | `X16_USE_SHP_LINE` | Internal: the shared 16-bit Bresenham (`shp_line`, `shl_x0`/`shl_y0` → `shl_x1`/`shl_y1`, `shl_col`) that `SHAPES_ARC` and `SHAPES_BEZIER` join their samples with. Pulled automatically; you would not normally set it yourself. |
-| `X16_USE_VERAFX` | All of the parts below, as it always has been. The parts exist because the whole is 2.5 KB and a program that wants one fast fill should not carry a rotozoom sampler to get it — `X16_USE_BITMAP2` asks for `_FILL` alone and is 2,162 bytes lighter for it. `fx_off` comes with any part. |
+| `X16_USE_VERAFX` | All of the parts below, as it always has been. The parts exist because the whole is 2.5 KB and a program that wants one fast fill should not carry a rotozoom sampler to get it — `X16_USE_BITMAP2H` asks for `_FILL` alone and is 2,162 bytes lighter for it. `fx_off` comes with any part. |
 |   `X16_USE_VERAFX_MULT` | `fx_mult` (signed 16×16→32 in hardware) |
 |   `X16_USE_VERAFX_FILL` | `fx_fill`, `fx_clear` |
 |   `X16_USE_VERAFX_COPY` | `fx_copy` (cached VRAM→VRAM) |
@@ -345,7 +361,7 @@ treated as caller-save scratch.
 | `X16_USE_DOS` | `dos_cmd`, `dos_status`, `dos_delete`, `dos_rename`, `dos_mkdir`, `dos_rmdir`, `dos_chdir` — the command channel, so a failed save can say *why* |
 | `X16_USE_BMX` | `bmx_load`, `bmx_save` — the X16's native bitmap format (header + palette + pixels) |
 | `X16_USE_MATH` | `rnd_seed`/`rnd8`/`rnd16` (xorshift), `sin8`/`cos8`/`sin8u`/`cos8u` (built-at-assembly tables), `atan2`, `lerp8` |
-| `X16_USE_CLIP` | `clip_set`, `clip_line` (Cohen–Sutherland; feeds `gfx_line`/`fx_line`'s parameter block) |
+| `X16_USE_CLIP` | `clip_set`, `clip_line` (Cohen–Sutherland; feeds `gfx8l_line`/`fx_line`'s parameter block) |
 | `X16_USE_BUFFERS` | `rb_init`/`put`/`get`/`count` (ring buffer), `stk_init`/`push`/`pop`/`depth` |
 | `X16_USE_ADPCM` | `adpcm_init`, `adpcm_nibble`, `adpcm_block` — IMA ADPCM, 4:1 compressed PCM |
 | `X16_USE_ZX0` | `zx0_decompress` — ZX0 v2 (salvador/zx0 output); packs tighter than the ROM's LZSA2 |
@@ -365,309 +381,193 @@ treated as caller-save scratch.
 | `X16_USE_STRING_FIND` | Searching (`string/find.asm`): `str_find`, `str_rfind`, `str_find_eol`, `str_contains` (character in `Y`), and `str_pattern_match` (`?`/`*` wildcards, self-modifying + recursive). |
 | `X16_USE_STRING_SLICE` | Substrings (`string/slice.asm`): `str_left`, `str_right`, `str_slice` (into a target in `X16_P0/P1`), and in-place `str_ltrim`/`str_rtrim`/`str_trim`. |
 
-Gates pull in their dependencies (`X16_USE_SPRITE` implies `X16_USE_VERA`), and
-asking for a module twice is not an error.
+## Module Notes
 
-`tile_*` reads `L1_CONFIG` and `L1_MAPBASE` at run time rather than assuming a
-screen width, so it keeps working across `screen_set_mode`.
+**Gates**
 
-`irq_install` chains onto the KERNAL's `CINV` vector rather than replacing it,
-so the keyboard, mouse, cursor and the VERA VSYNC acknowledge all keep running.
-It is idempotent on purpose: a second install that stored `irq_handler` as its
-own "previous" vector would make the chaining `jmp (irq_old_vector)` jump to
-itself and hang the machine.
+| Topic | Detail |
+|---|---|
+| Dependencies | Gates pull in their dependencies, such as `X16_USE_SPRITE` implying `X16_USE_VERA`. |
+| Repeated gates | Asking for a module twice is not an error. |
+| `X16_USE_ALL` | Optional hardware- or size-heavy gates stay pay-per-use when noted in the module table. |
 
-`fx_*` needs VERA firmware v0.3.1+ (emulator R44+) — probe with `vera_has_fx`
-first. Every FX routine leaves `FX_CTRL = 0` and `DCSEL = 0` on exit, because a
-lingering Addr1 Mode silently changes how ordinary VRAM addressing behaves for
-everyone downstream.
+**Tile And Screen**
 
-The `bank_*` bulk copies auto-advance across the 8 KB bank boundary, and all of
-them save and restore `RAM_BANK`. They run on the KERNAL's `MEMORY_COPY` one
-bank-segment at a time, so they move whole segments per call rather than a
-byte per loop. `bank_copy_far` copies banked RAM to banked RAM — only one
-bank fits the window at a time, so it bounces through a small low-RAM
-buffer. `bank_alloc`/`bank_free` hand out whole banks from a bitmap pool,
-which is the natural allocation unit on this machine.
+| Topic | Detail |
+|---|---|
+| Tile dimensions | `tile_*` reads `L1_CONFIG` and `L1_MAPBASE` at run time instead of assuming a fixed screen width. |
+| Mode changes | Tile helpers keep working across `screen_set_mode`. |
+| KERNAL calls | `screen_*` routines protect the VERA address-port state before entering KERNAL screen routines. |
 
-**The KERNAL block routines treat `$9F00-$9FFF` addresses as
-non-incrementing.** That one property makes `mem_fill`, `mem_copy` and
-`mem_decompress` stream to and from VERA: point a data port somewhere, pass
-`VERA_DATA0` as the target, and the port's own increment walks VRAM.
-`mem_decompress` unpacks an LZSA2 block (`lzsa -r -f2 in out` — raw blocks,
-no frame header) either into RAM or *straight into video memory*, which is
-how compressed tiles, maps and sprites should ship. It cannot decompress in
-place; the input may live in banked RAM (8 KB limit).
+**IRQ**
 
-`irq_line_install` runs a handler at a chosen scanline every frame — the
-raster-split primitive (status bar over a scrolling playfield: repoint the
-scroll registers in the line handler, restore them in a VSYNC or second line
-handler). The library acknowledges LINE and SPRCOL itself; the KERNAL only
-ever acknowledges VSYNC, and an unacknowledged source refires forever.
-`irq_sprcol_install` + `sprite_collisions` expose VERA's hardware sprite
-collision groups (the mask nibble set via `sprite_flags`): collisions
-accumulate in a variable the IRQ latches, and `sprite_collisions` is a
-read-and-clear. Pass a null handler to poll instead of being called back.
+| Topic | Detail |
+|---|---|
+| Chaining | `irq_install` chains onto the KERNAL `CINV` vector so keyboard, mouse, cursor, and VSYNC acknowledge continue to run. |
+| Idempotency | Reinstalling does not make `irq_handler` chain to itself. |
+| Raster IRQ | `irq_line_install` runs a handler at a scanline each frame; useful for raster splits. |
+| Sprite collision IRQ | `irq_sprcol_install` and `sprite_collisions` expose VERA collision groups; the latched mask is read-and-clear. |
+| Callback safety | Callbacks that call library routines must bracket themselves with `irq_save_regs` / `irq_restore_regs`. |
 
-`pcm_stream_start` plays samples larger than the 4 KB FIFO the way the
-hardware intends: it primes the FIFO, then the AFLOW interrupt (FIFO fell
-under 1/4) refills it from your buffer. AFLOW has no ISR acknowledge — it
-clears only by refilling, so when the data runs out the streamer disables it
-in `IEN`; forget that in hand-rolled code and the interrupt storms. Set the
-format with `pcm_ctrl` first; the rate is passed to `pcm_stream_start` and
-playback starts only after the FIFO is primed, so it cannot underrun at t=0.
-`pcm_stream_start_bank` streams from banked RAM instead — a 24-bit byte
-count and a starting bank; the refiller maps banks in as it crosses `$C000`
-and always hands the interrupted code's `RAM_BANK` back. Set `pcm_str_loop`
-(caller-owned, survives a stop) before starting and the sample wraps
-endlessly until `pcm_stream_stop`. One hardware detail the tests pin: the
-FIFO's full flag asserts at 4095 bytes, not 4096 — the ring keeps one slot
-back.
+**VERA FX**
 
-**An IRQ callback that calls the library must save the zero page it
-borrows.** The KERNAL's virtual registers `r0`–`r15` and the library's
-`X16_P0..T7` block belong to whatever code the interrupt cut off —
-`mem_copy` runs on `r0`–`r2` with interrupts enabled, and a raster callback
-that calls another `mem_*` (or `mouse_get`) corrupts the interrupted copy's
-pointers on resume. Bracket such callbacks with `irq_save_regs` /
-`irq_restore_regs` (one 48-byte buffer, no nesting — interrupts don't nest
-here either). A callback that only touches A/X/Y and its own variables
-needs nothing.
+| Topic | Detail |
+|---|---|
+| Probe | `fx_*` requires VERA firmware v0.3.1+ / emulator R44+; call `vera_has_fx` first. |
+| Exit state | FX routines leave `FX_CTRL = 0` and `DCSEL = 0` on exit. |
+| Affine mode | `fx_affine_on` / `fx_affine_ray` / `fx_affine_span` sample an 8x8-tile texture map for rotozoom or mode-7-style spans. |
+| Hardware line | `fx_line` uses VERA's Bresenham engine and strobes `DATA1` once per pixel. |
+| Hardware triangle | `fx_triangle` uses the FX polygon filler; vertices may be in any order and the bottom row is half-open. |
+| Register order | Program FX addresses before slope registers, then clear FX position registers after setting the slope. |
 
-`psg_set_freq` writes the frequency **high byte first**, stepping the port
-downward: low-first leaves the voice at new-low/old-high for a few cycles,
-an audible click on every pitch change. `psg_env_start` +
-`psg_env_tick` (once per frame) run attack/sustain/release envelopes on all
-16 voices — the decay everybody hand-rolls in the frame loop, done once,
-with each voice's pan bits preserved.
+**Banked RAM**
 
-`clip_line` (Cohen–Sutherland) removes the drawers' documented "does not
-clip" sharp edge: give it a segment in 16-bit signed coordinates (±4095)
-and it rejects it (carry set) or loads the visible part straight into
-`gfx_line`/`fx_line`'s parameter block. `gfx_char`/`gfx_text` draw the
-VRAM charset's glyphs into the bitmap, transparent background, ASCII
-conversion included.
+| Topic | Detail |
+|---|---|
+| Bulk copies | `bank_*` copies auto-advance across 8 KB bank boundaries and save/restore `RAM_BANK`. |
+| KERNAL copy | Copies use `MEMORY_COPY` one bank segment at a time instead of byte loops. |
+| Far copy | `bank_copy_far` bounces through a low-RAM buffer because only one bank fits in the HIRAM window at once. |
+| Allocation | `bank_alloc` / `bank_free` hand out whole banks from a bitmap pool. |
 
-`util/math.asm` is the game-math kit: a 16-bit xorshift PRNG, 256-entry
-sine/cosine tables computed by the assembler, an octant-reduced `atan2`
-(byte angles: 256 = full circle, 0 = east, 64 = down-screen — the sine
-tables use the same convention, so `atan2` output feeds `sin8`/`cos8`
-directly), and `lerp8`.
+**KERNAL Block Routines**
 
-`adpcm_block` decodes IMA ADPCM — 16-bit samples stored as 4-bit deltas,
-low nibble first as in WAV blocks. Four-to-one compression is what makes
-`pcm_stream_start` practical from an SD card: decode a bank's worth, stream
-it, decode the next. `adpcm_pred`/`adpcm_index` are exposed because WAV
-block headers carry the initial decoder state.
+| Topic | Detail |
+|---|---|
+| VERA streaming | KERNAL block routines treat `$9F00-$9FFF` as non-incrementing, letting VERA data-port increments walk VRAM. |
+| Decompression | `mem_decompress` unpacks raw LZSA2 blocks into RAM or straight into video memory. |
+| Limits | Decompression cannot run in place; banked input is limited to 8 KB. |
 
-`gfx/shapes.asm` (`X16_USE_SHAPES`) holds the drawing that is not
-engine-specific: `shape_circle` (midpoint outline), `shape_disc` (filled
-spans), `shape_ellipse`/`shape_fellipse` (axis-aligned outline and fill,
-radii 0–255 each way, by the error-form midpoint walk) and `shape_flood`
-(a scanline flood fill over a bounded 96-seed
-stack — carry set means the stack overflowed and the fill is incomplete,
-pathological shapes only). They plot through `SHP_PSET`/`SHP_HLINE` and
-read through `SHP_READ`, all overridable, so one copy serves the 2bpp
-`gfx2` and 8bpp `gfx` modules alike (rather than a hand-written circle in
-each). Left alone they bind to `gfx2`.
+**PCM Stream**
 
-`X16_USE_SHAPES_POLY` adds regular convex polygons on top: `shape_polygon`
-(cx, cy, radius, sides, rotation, colour) walks `sides` vertices evenly
-around the circle — `3` is a triangle, `4` a square/diamond, `6` a
-hexagon, `12` a dodecagon (3–24) — and connects them with an engine-agnostic
-Bresenham through `SHP_PSET`, so the outline clips exactly like
-`shape_circle`. `shape_fpolygon` is the filled twin: a per-scanline convex
-span fill through `SHP_HLINE` (so it does not clip — keep it on screen,
-like `shape_disc`), half-open at the bottom edge so tiled polygons never
-double-paint a shared side. `rotation` is a byte angle (0 = the first
-vertex points east, 64 = south, matching `sin8`/`cos8`) — it turns a
-point-up triangle into a flat-bottom one, or a pointy-top hexagon into a
-flat-top one. The vertices come from `sin8`/`cos8`, so the gate pulls in
-`X16_USE_MATH`; it is a one-shot drawing primitive (cost scales with
-sides × height), not a per-frame filler.
+| Topic | Detail |
+|---|---|
+| Large samples | `pcm_stream_start` primes the 4 KB FIFO, then refills through the AFLOW interrupt. |
+| AFLOW | AFLOW clears only by refilling; the streamer disables it when playback ends. |
+| Banked samples | `pcm_stream_start_bank` streams from banked RAM with a 24-bit byte count and restores `RAM_BANK`. |
+| Looping | Set caller-owned `pcm_str_loop` before starting to loop until `pcm_stream_stop`. |
+| FIFO detail | The FIFO full flag asserts at 4095 bytes, not 4096. |
 
-Four more curve shapes sit behind their own pay-per-use gates.
-`X16_USE_SHAPES_RRECT` adds `shape_rrect`/`shape_frrect` (rounded
-rectangles: `rr_x`/`rr_y`/`rr_w`/`rr_h`/`rr_r`, colour in `A`) — the
-corners come from a midpoint circle walk, so it needs no trig and pulls in
-nothing but `SHAPES`. `X16_USE_SHAPES_ARC` adds `shape_arc`, a slice of a
-circle outline from a start to an end byte-angle, sampled every ~4 units
-and joined with a shared 16-bit Bresenham (`X16_USE_SHP_LINE`) so the chord
-error stays sub-pixel; `X16_USE_SHAPES_PIE` fills the matching wedge
-(`shape_pie`) as a fan of triangles, which handles any span up to a full
-disc. `X16_USE_SHAPES_BEZIER` adds `shape_bezier`, a cubic curve through
-four control points (`bez_x0`/`bez_y0` … `bez_x3`/`bez_y3`), evaluated by
-de Casteljau at a size-adaptive sample count and joined with the same
-line helper — the P0/P3 anchors land exactly on the curve. Arc and bézier
-clip like `shape_circle` (they draw through `SHP_PSET`); the pie draws
-with `SHP_HLINE`, so keep it on screen like `shape_disc`.
+**Audio**
 
-`comms/serial.asm` (`X16_USE_SERIAL`) drives the serial / WiFi card's
-16C550 UARTs — up to two, on 8-byte boundaries in the expansion window,
-the standard card at `$9F60` and `$9F68`. The WiFi half is an ESP32
-running ZiModem, an AT-command modem you talk to as bytes over UART 0;
-this module is that byte layer, not the modem protocol. `ser_detect`
-fingerprints each candidate base by the three registers a bare bus does
-not fake — the top nibble of IER always reads 0, the top two bits of MCR
-always read 0, and the scratch register holds two different patterns you
-write it — with interrupts held off across the probe. `ser_init` sets
-8N1, turns on the FIFOs and auto-flow control, programs the baud divisor
-(a `SER_BAUD_*` constant: `14745600 / (16 × baud)`) and remembers the
-UART, so `ser_put`/`ser_get`/… need no address after it. Receiving is
-non-blocking by default: `ser_get` returns carry-set when the FIFO is
-empty rather than spinning (`ser_get_wait` is the blocking twin, for when
-a device is known to be there). Byte writes go to THR through `sta (ptr)`
-with no index, because an indexed store's dummy read would land on RHR
-and pop a byte off the receive FIFO.
+| Topic | Detail |
+|---|---|
+| PSG frequency | `psg_set_freq` writes the high byte first to avoid short pitch glitches. |
+| PSG envelope | `psg_env_start` plus per-frame `psg_env_tick` runs ASR envelopes for all 16 voices while preserving pan bits. |
+| YM raw writes | `ym_write` is fast and reaches raw chip registers, but it bypasses ROM audio shadows. |
+| YM note API | Use `ym_poke` when mixing register writes with `ym_note` / `ym_vol`. |
+| YM register order | Note-API routines take channel in `A` and payload in `X`; raw `ym_write` uses `A` = value, `X` = register. |
+| YM patch setup | Run `ym_init` before `ym_patch` so the default patch set exists. |
 
-Its test story differs from the rest of the library, and the header says
-so. The bundled emulator models these UARTs under `-midicard` (with an
-`-sf2` placeholder — the registers answer whether or not the soundfont
-loads), so **detection and the whole of `ser_init` are checked against a
-real register-readback oracle**, exactly like the VERA tests read the
-data port back. What the emulator cannot do is feed the receive FIFO or
-route transmitted bytes back (its MCR-loopback only wires the modem
-status bits), so a genuine byte round-trip is a real-hardware test: the
-suite covers the RX path only for its empty / non-blocking behaviour and
-TX for liveness. The serial runner builds and passes byte-identically on
-all seven assemblers, like everything else.
+**Graphics Utilities**
 
-`comms/zimodem.asm` (`X16_USE_SERIAL_ZIMODEM`) puts the WiFi half to
-work. The card's ESP32 runs ZiModem firmware, a Hayes-style modem you
-drive with `AT` commands over UART 0 — `zi_init` settles the board and
-applies the standard config (echo off, stream mode), `zi_cmd` frames a
-command line, `zi_wait_ok` reads back the `OK`, `zi_get_ip` returns the
-IPv4 address, and `zi_hex_open`/`zi_hex_chunk`/`zi_hex_close` pull a file
-down in ZiModem's hex-transfer mode. It is a thin AT-framing skin over
-the `ser_*` primitives, nothing more. Its testing is necessarily thinner
-than the base module's: ZiModem is *interactive*, and almost every
-routine blocks reading the ESP32's reply — which the emulator, with no
-board attached, never sends. So those flows are hardware-verified, and
-the suite pins only what it can run headless: `zi_hexdecode` (the
-hex-payload decoder — pure computation, checked against a known vector),
-`zi_cmd`'s transmit path, and 7-way byte parity. The code says as much
-in its header.
+| Topic | Detail |
+|---|---|
+| Clipping | `clip_line` clips 16-bit signed segments and loads the visible result for `gfx8l_line` / `fx_line`. |
+| Bitmap text | `gfx8l_char` / `gfx8l_text` draw VRAM charset glyphs into the bitmap with transparent background and ASCII conversion. |
+| Game math | `util/math.asm` provides xorshift random, byte-angle sine/cosine, `atan2`, and `lerp8`. |
+| ADPCM | `adpcm_block` decodes IMA ADPCM, low nibble first; `adpcm_pred` and `adpcm_index` expose WAV block state. |
 
-`util/bcd.asm` (`X16_USE_BCD`) does decimal add and subtract through the
-65C02's BCD mode. Values sit in `bcd_a` (accumulator) and `bcd_b` (operand),
-the same shape as the integer modules, and each byte holds two decimal digits
-low-first — so `$0987 + $1111` really is `$2098`, not the binary `$1A98`.
-There is one routine per width (`bcd_add8`/`16`/`32`, `bcd_sub8`/`16`/`32`):
-decimal `ADC`/`SBC` does not distinguish signed from unsigned, exactly as
-two's-complement add/sub does not in `int16`/`int32`. `bcd_addto`/`bcd_subfrom`
-add or subtract `bcd_b` into a 32-bit value in place through a pointer, to skip
-copying it through the accumulator. The point is a score or clock that stays
-print-ready: keep it in BCD and print the hex form, which already reads as
-decimal, instead of paying a binary→decimal conversion every frame. These run
-in decimal mode across the operation; the KERNAL IRQ is decimal-safe, but a
-custom IRQ handler that does its own `ADC`/`SBC` must `cld` first.
+**Shapes**
 
-`storage/stack.asm` (`X16_USE_STACK`) and `storage/ringbuffer.asm`
-(`X16_USE_RINGBUFFER`) are the big siblings of the 256-byte `stk_*`/`rb_*` in
-`X16_USE_BUFFERS`: each keeps up to 8 KB of data in one whole HIRAM bank
-(`$A000-$BFFF`) instead of low RAM. Hand the bank number to `stack_init` /
-`ring_init`; the pointers and counters stay in low RAM, so only the data
-lives in the bank, and every call saves and restores `RAM_BANK` — a stack in
-bank 5 and your own use of bank 7 in between never collide. Both take and
-return bytes or words (`stack_pushw`/`popw`, `ring_putw`/`getw`), and the
-ring wraps at the 8 KB boundary. There are no over/underflow guards (like the
-small ones): the cap is 8191 bytes, so consult `*_isfull`/`*_isempty` and
-`*_free`/`*_size` yourself.
+| Topic | Detail |
+|---|---|
+| Base shapes | `X16_USE_SHAPES` provides circles, discs, ellipses, filled ellipses, and flood fill. |
+| Engine binding | Shapes plot through overridable `SHP_PSET`, `SHP_HLINE`, and `SHP_READ`, so one implementation can target different bitmap engines. |
+| Polygon gate | `X16_USE_SHAPES_POLY` adds regular outlines and filled convex polygons; vertices use `sin8` / `cos8`, so it pulls in math. |
+| Rounded rectangles | `X16_USE_SHAPES_RRECT` adds `shape_rrect` / `shape_frrect` without trig. |
+| Arcs and pies | `X16_USE_SHAPES_ARC` adds sampled circle arcs; `X16_USE_SHAPES_PIE` fills matching wedges. |
+| Bezier | `X16_USE_SHAPES_BEZIER` draws cubic curves through four control points with adaptive sampling. |
+| Clipping rule | Arc and Bezier plot through `SHP_PSET`; pie and filled shapes use `SHP_HLINE`, so keep those on screen. |
 
-The `string/` modules are the NUL-terminated string toolkit, split five ways
-so you pay only for what you use — the gates are independent, set whichever
-ones you want. `X16_USE_STRING` is the core (measure, copy, append, compare,
-hash); `X16_USE_STRING_CTYPE` classifies single characters; `X16_USE_STRING_CASE`
-folds case; `X16_USE_STRING_FIND` searches (including `?`/`*` pattern matching);
-`X16_USE_STRING_SLICE` copies `left`/`right`/`slice` pieces and trims whitespace
-off either end. Strings are passed by pointer in `A`/`X` with a second string
-in `X16_P0/P1`, the same convention as `screen_puts`, and are at most 255 bytes.
-The case and classification routines come in a PETSCII form and an `_iso` form
-because the two encodings place the letters at different codes — PETSCII
-"lower" is numerically ISO "upper", which is the charset, not a bug.
-**Number ↔ string conversion is deliberately *not* here**: it already lives
-where the numbers do — `u16_to_dec`/`hex` and `dec_to_u16` in `NUMBER`,
-`i16_to_dec`/`i32_to_dec` in the integer modules, `f_to_str`/`from_str` in
-`FLOAT`, `d_to_str`/`from_str` in `DOUBLE`. All five string gates are
-pay-per-use (out of `X16_USE_ALL`).
+**Serial**
 
-The compression picture, complete: the ROM's LZSA2 (`mem_decompress`) is
-free and can stream into VRAM; `zx0_decompress` (the modern ZX0 v2 that
-`salvador`/`zx0` emit — not their `-classic` mode) packs tightest;
-`tsc_decompress` (TSCrunch) unpacks fastest. On the shared 96-byte test
-phrase they pack to 31, 30 and 33 bytes respectively. The TSCrunch port
-replaces the reference decruncher's NMOS undocumented opcodes (`LAX`,
-`ALR`) with legal 65C02 pairs — the original leans on them, and the X16's
-CPU treats them as NOPs. Both are RAM-to-RAM (their match copiers read
-the output back), and neither decompresses in place.
+| Topic | Detail |
+|---|---|
+| Hardware | `comms/serial.asm` drives 16C550 UARTs, usually at `$9F60` and `$9F68`. |
+| Detection | `ser_detect` fingerprints candidate bases using IER, MCR, and scratch-register behaviour. |
+| Init | `ser_init` configures 8N1, FIFOs, auto-flow control, baud divisor, and stores the active UART base. |
+| Receive | `ser_get` is non-blocking and returns carry set when the FIFO is empty; `ser_get_wait` blocks. |
+| Transmit | Byte writes avoid indexed stores so a dummy read cannot pop receive data. |
+| Testing | Emulator tests cover detection, init, empty RX, TX liveness, and byte-identical assembly; hardware is needed for real byte round-trip. |
 
-`fx_affine_on`/`fx_affine_ray`/`fx_affine_span` drive the last FX mode:
-VERA samples an 8×8-tile texture map along a fixed-point ray, one texel
-per `DATA1` read. A rotated, zoomed scanline — the mode-7 floor, the
-rotozoom — is `fx_affine_ray` (start position, dx/dy from `sin8`/`cos8`)
-followed by `fx_affine_span` into the framebuffer. The map wraps by
-default or clips to tile 0 (`fx_affine_on`'s flag); increments use the
-same 1/512-texel encoding as the line and polygon helpers.
+**ZiModem**
 
-`bmx_load`/`bmx_save` speak BMX version 1 — the platform's image format,
-the one the community tools and Prog8 write. Loading restores the palette
-(at the file's own start index) and streams the pixels into VRAM; rows land
-`bmx_stride` bytes apart (default 320), so a full-screen image is a plain
-contiguous load and a smaller one is a stamp that leaves its surroundings
-alone. Saving mirrors it exactly; note the saved palette comes from VRAM's
-host-write shadow, so it is only meaningful for entries this program set
-itself. Compressed BMX files are refused with `BMX_ERR_PACKED`. Loading
-moves the palette and pixel data with `MACPTR` block reads streamed
-straight into the VERA data port (the input-carry-set fixed-destination
-mode), falling back to a `CHRIN` byte loop on devices that cannot — a
-full-screen load is KERNAL-block-copy fast, not byte-banging fast.
+| Topic | Detail |
+|---|---|
+| Layer | `comms/zimodem.asm` is an AT-command skin over `ser_*`, not a replacement serial driver. |
+| Setup | `zi_init` settles the ESP32 modem and applies the standard config. |
+| Commands | `zi_cmd`, `zi_wait_ok`, `zi_reset`, and `zi_get_ip` cover common modem control. |
+| Hex download | `zi_hex_open` / `zi_hex_chunk` / `zi_hex_close` fetch files through ZiModem hex-transfer mode. |
+| Testing | Headless tests pin `zi_hexdecode`, transmit framing, and 7-way byte parity; interactive modem replies need hardware. |
 
-The `dos_*` routines finally answer *why* a file operation failed: every
-command sent to channel 15 is answered with a status line (`dos_msg`), and
-each wrapper returns the numeric code with carry set on the ≥20 error
-classes. `dos_status` also clears a pending error. Note the first read
-after power-on is code 73 — the DOS version banner — by design.
+**BCD**
 
-`fx_line` draws the same endpoints as `gfx_line`, but VERA tracks the
-Bresenham internally and the CPU just strobes `DATA1` once per pixel.
-`fx_triangle` uses the FX polygon filler: VERA walks two edges at once and
-reports each row's span width, and the CPU fills exactly that many pixels.
-Vertices in any order; the bottom row is half-open so adjacent triangles
-never double-paint a shared edge. Both assume `gfx_init`'s 320×240@8bpp
-framebuffer and do not clip. Two hardware facts cost real debugging to
-learn: program the FX **addresses before the slope registers** (ADDRx writes
-prefetch, and a prefetch in line mode steps the helper with whatever slope is
-lingering), and **zero the FX position registers after setting the slope** —
-the documented "the increment write clears the position's overflow bit" is
-not what the hardware does, and a leftover carry bit eats the line's first
-minor-step.
+| Topic | Detail |
+|---|---|
+| Registers | Values live in `bcd_a` and `bcd_b`, with two decimal digits per byte, low-first. |
+| Widths | `bcd_add8` / `16` / `32` and `bcd_sub8` / `16` / `32` use decimal-mode `ADC` / `SBC`. |
+| In-place math | `bcd_addto` / `bcd_subfrom` update a 32-bit value through a pointer. |
+| Purpose | Scores and clocks can stay print-ready by printing the hex digits as decimal digits. |
+| IRQ note | KERNAL IRQ is decimal-safe; custom IRQ code using `ADC` / `SBC` should `cld` first. |
 
-`ym_write` talks to the chip directly — fast, and the only way to reach the LFO
-and per-operator envelopes. But the ROM audio driver keeps RAM shadows of volume
-and pan, and a raw write leaves those stale. If you also use the note API
-(`ym_note`, `ym_vol`), poke registers through `ym_poke` instead. This is
-`AUDIOYM.TXT`'s `YM!` versus `FMPOKE` distinction.
+**HIRAM Storage**
 
-**Every FM note-API routine takes the channel in `A` and its payload in `X`** —
-`ym_note_bas`, `ym_patch`, `ym_vol`, `ym_pan`, `ym_drum`, `ym_release_note`. That
-is the opposite way round from the register-level `ym_write` (`A` = value,
-`X` = register), and the opposite of what most people guess. Get it backwards and
-you play a valid-looking note on the wrong channel: nothing crashes, nothing
-complains. `YM_CHANNEL_IN_A` in the suite pins it.
+| Topic | Detail |
+|---|---|
+| Stack | `X16_USE_STACK` keeps an 8 KB LIFO in one HIRAM bank. |
+| Ring buffer | `X16_USE_RINGBUFFER` keeps an 8 KB FIFO in one HIRAM bank. |
+| Bank safety | Both save and restore `RAM_BANK`; pointers and counters stay in low RAM. |
+| Data width | Byte and word operations are available: `stack_pushw` / `popw`, `ring_putw` / `getw`. |
+| Capacity | There are no over/underflow guards; check `*_isfull`, `*_isempty`, `*_free`, and `*_size`. |
 
-`ym_init` must run before `ym_patch` — it resets the chip and loads the default
-patch set, so without it there is nothing to select.
+**Strings**
 
-Joystick bits are **active low**: a pressed button reads 0. Test with
-`and #JOY_LEFT : beq moving_left`.
+| Topic | Detail |
+|---|---|
+| Split gates | `STRING`, `STRING_CTYPE`, `STRING_CASE`, `STRING_FIND`, and `STRING_SLICE` are independent pay-per-use gates. |
+| Calling convention | String pointer in `A`/`X`; second string or target pointer in `X16_P0/P1`; maximum length is 255 bytes. |
+| Encodings | Case and classification include PETSCII and `_iso` forms because letter ranges differ. |
+| Number conversion | Number-to-string routines live with number modules: `NUMBER`, `INT16`, `INT32`, `FLOAT`, and `DOUBLE`. |
+
+**Compression**
+
+| Topic | Detail |
+|---|---|
+| ROM LZSA2 | `mem_decompress` is free and can stream into VRAM. |
+| ZX0 | `zx0_decompress` handles modern ZX0 v2 output and packs tightest in the shared phrase test. |
+| TSCrunch | `tsc_decompress` unpacks fastest; the port replaces NMOS-only undocumented opcodes with legal 65C02 pairs. |
+| Limits | ZX0 and TSC are RAM-to-RAM and cannot decompress in place. |
+
+**BMX And DOS**
+
+| Topic | Detail |
+|---|---|
+| BMX format | `bmx_load` / `bmx_save` support BMX version 1 image files. |
+| Loading | Loads palette and pixels into VRAM; `bmx_stride` defaults to 320 for full-screen contiguous rows. |
+| Saving | Palette data comes from the host-write shadow, so it only reflects entries the program set. |
+| Compression | Packed BMX files are refused with `BMX_ERR_PACKED`. |
+| DOS status | `dos_*` wrappers return numeric status codes with carry set for error classes `>= 20`. |
+| First status | The first DOS status read after power-on is code 73, the DOS version banner. |
+
+**Input**
+
+| Topic | Detail |
+|---|---|
+| Joystick polarity | Joystick bits are active low: a pressed button reads 0. |
+| Example | `and #JOY_LEFT : beq moving_left` tests for a pressed left direction. |
 
 ## Integers
 
-`util/int16.asm` and `util/int32.asm` are the `ARITHMETIC.TXT` and `DOUBLE.TXT`
-surfaces. Both have the same shape: values live in named registers the caller
-writes directly (`i16_a`/`i16_b`/`i16_r`, `i32_a`/`i32_b`/`i32_r`) rather than in
-the parameter block, because a binary 32-bit operation needs eight bytes of input
-and the block only holds eight in total.
+| Topic | Detail |
+|---|---|
+| Modules | `util/int16.asm` and `util/int32.asm` mirror the documented `ARITHMETIC.TXT` and `DOUBLE.TXT` surfaces. |
+| Storage | Values live in named registers the caller writes directly: `i16_a` / `i16_b` / `i16_r`, and `i32_a` / `i32_b` / `i32_r`. |
+| Shared operations | Add, subtract, negate, multiply, and left shift are the same for signed and unsigned two's-complement values. |
+| Signed-specific operations | Comparison, division, right shift, and decimal output have signed/unsigned pairs where needed. |
+| Divide by zero | Both `divmod` routines return carry set and leave operands untouched. |
+| Signed division | `i16_divmod_s` truncates toward zero and gives the remainder the sign of the dividend. |
+| Square root | `i16_sqrt` is an exact integer floor square root. |
+| Full product | `i16_mul` and `i32_mul` keep the low word; use `umul16` in `util/fixed.asm` for a full 16x16 -> 32 product. |
 
 ```asm
 +i16_const i16_a, 1000
@@ -680,26 +580,16 @@ jsr i16_to_dec              ; A/X -> "142", Y = length
 jsr i32_divmod              ; i32_a = 142857, i32_r = 1
 ```
 
-Add, subtract, negate, multiply and the left shift are shared between signed and
-unsigned — two's complement makes them identical. Only comparison (`i16_cmps` vs
-`i16_cmpu`), division, the right shift (`asr` vs `shr`) and decimal output need
-to know which you meant, and those come in pairs. Both `divmod`s return carry set
-on divide-by-zero and leave the operands untouched.
+## Floating Point
 
-`i16_divmod_s` truncates toward zero and gives the remainder the sign of the
-**dividend**, matching C and Forth's `SM/REM`: `-7 / 2` is `-3` remainder `-1`,
-not `-4` remainder `1`. Get that wrong and the quotient still looks plausible.
-
-`i16_sqrt` is `FLOAT.TXT`'s `ISQRT` — an exact integer floor square root, no FP
-involved. `i16_mul` and `i32_mul` keep only the low word; for the full 32-bit
-product of two 16-bit values use `umul16` in `util/fixed.asm`.
-
-## Floating point
-
-`util/float.asm` is a *binding*, not a reimplementation. The
-ROM already carries a complete C128/C65-compatible FP library in `BANK_BASIC`,
-reached through a stable jump table at `$FE00`. Everything works on `FAC`, the
-floating accumulator in zero page; a float in memory is 5 bytes (`FP_SIZE`).
+| Topic | Detail |
+|---|---|
+| Module | `util/float.asm` is a binding to the ROM floating-point library, not a reimplementation. |
+| ROM bank | Calls reach the C128/C65-compatible FP jump table in `BANK_BASIC` at `$FE00`. |
+| Accumulator | Operations work on `FAC`, the floating accumulator in zero page. |
+| Size | A float in memory is 5 bytes (`FP_SIZE`), about nine significant digits. |
+| Cost | Every call crosses a ROM bank through `jsrfar`; use fixed point or integers for per-frame math. |
+| Integer conversion | `f_to_s16` floors through the ROM `qint`; use `f_to_str` when the printed value matters. |
 
 ```asm
 lda #<10 : ldx #>10 : jsr f_from_s16
@@ -707,42 +597,27 @@ lda #<fvar : ldy #>fvar : jsr f_div     ; FAC = 10.0 / fvar
 jsr f_to_str_trim                        ; A/X -> "2.5"
 ```
 
-Every call crosses a ROM bank through `jsrfar`, which is not free — for
-per-frame maths prefer `util/fixed.asm` (8.8) or `util/int32.asm`.
-
-`f_to_s16` **floors** (it goes through the ROM's `qint`). So `0.04 * 100` comes
-out a hair under 4.0 in binary floating point and `f_to_s16` gives 3. That is the
-float being a float; use `f_to_str` when you want the printed value.
-
 ## Examples
 
-| | |
+| Example | Shows |
 |---|---|
-| `examples/hello.asm` | Smallest thing that proves the toolchain: assemble, autorun, print, touch VRAM. |
-| `examples/bounce.asm` | A sprite bouncing over the full 640×480 display on fixed-point velocity, frame-locked to VSYNC. A PSG blip with a per-frame decay envelope on every wall bounce; a YM2151 FM note while it overlaps the outlined target box, released when it leaves. Exercises VSYNC, sprites, palette, fixed point, 16-bit collision, tilemap drawing, PSG, FM, and number formatting together. |
-| `examples/numbers.asm` | A tour of the number libraries: 16-bit and 32-bit integers, 8.8 fixed point, and floating point. Each line prints an expression and its result, so it doubles as a check. Needs no VSYNC, so it also runs headless. |
-| `examples/polygons.asm` | A gallery of the regular polygons — triangle, square, pentagon, hexagon, heptagon, octagon, nonagon, decagon, dodecagon — each filled with `shape_fpolygon` and outlined with `shape_polygon`, on the 2bpp bitmap engine with a custom four-colour palette. Windowed (waits for a key). |
-| `examples/polyspin.asm` | A filled polygon spinning in place, redrawn each frame with a growing `rotation`, frame-locked to VSYNC. Shows the rotation argument in motion. Windowed. |
-| `examples/curves.asm` | A gallery of the curve shapes: rounded rectangles (`shape_frrect`/`shape_rrect`, including a fully-rounded stadium), concentric arcs and a Pac-Man `shape_pie` with its rim outlined by `shape_arc`, and three cubic `shape_bezier` curves. Uses the optional `xm_*` macro layer throughout, so every draw is one line. Windowed (waits for a key). |
-| `examples/m_hello.asm`, `m_polygons.asm`, `m_polyspin.asm`, `m_bounce.asm`, `m_numbers.asm` | Macro editions of the examples above, calling the library through the optional friendly macro layer `core/sugar.asm` (the `+xm_*` macros). `m_polygons` spells the 3×3 gallery out as literal one-line calls; `m_numbers` produces byte-identical output to `numbers.asm`; `m_bounce` shows the honest split — constant setup through macros, per-frame run-time values (position, envelope, collision) still hand-written. Run any with `run.bat m_bounce` etc. |
+| `examples/hello.asm` | Smallest toolchain proof: assemble, autorun, print, touch VRAM. |
+| `examples/bounce.asm` | VSYNC, sprites, palette, fixed point, 16-bit collision, tilemap drawing, PSG, FM, and number formatting together. |
+| `examples/numbers.asm` | 16-bit integers, 32-bit integers, 8.8 fixed point, and floating point; also runs headless. |
+| `examples/polygons.asm` | Filled and outlined regular polygons on the 2bpp bitmap engine with a custom palette. |
+| `examples/polyspin.asm` | Per-frame polygon redraw with a changing byte-angle rotation. |
+| `examples/curves.asm` | Rounded rectangles, arcs, pies, and cubic Bezier curves through the optional `xm_*` macro layer. |
+| `examples/m_*.asm` | Macro editions of the plain examples using `core/sugar.asm`. |
 
-`bounce.asm` shows two audio patterns worth copying. **Play on the edge, not the
-level:** `hit` is true for every frame of an overlap, so retriggering the FM note
-each frame would buzz at 60 Hz — compare against the previous frame and act only
-on the transition. **Envelopes belong in the frame loop:** `start_blip` just sets
-pitch and arms a timer; `update_blip` scales the remaining frames into a PSG
-volume once per frame, which is a linear decay for free.
+**Example Notes**
 
-It also shows how to move over a 640×480 field. A plain 8.8 word only has eight
-integer bits, so the position is three bytes — an 8-bit fraction under a 16-bit
-pixel coordinate — and the velocity's integer byte is sign-extended when it
-ripples into the high half. Bounces **clamp to the edge** as well as reversing:
-reversing alone leaves the sprite a fraction of a pixel outside the wall, and on
-the left that is a negative coordinate which wraps to `$FFFF` and gets masked to
-10 bits, flicking the sprite across the screen for a frame.
-
-`bounce` needs real VSYNC, so run it windowed: `run-bounce.bat`. `numbers` does
-not, so it also runs under `-testbench` if you want its output on stdout.
+| Topic | Detail |
+|---|---|
+| Audio edge trigger | `bounce.asm` triggers the FM note on the overlap transition, not every overlapping frame. |
+| Envelopes | `bounce.asm` updates PSG volume once per frame for a simple decay. |
+| 640x480 movement | Positions use an 8-bit fraction under a 16-bit pixel coordinate; velocity is sign-extended into the high byte. |
+| Bounds | Bounces clamp to the edge before reversing to avoid wrapped negative coordinates. |
+| Headless runs | `bounce` needs real VSYNC and should run windowed; `numbers` also runs under `-testbench`. |
 
 `numbers.asm` prints, among others:
 
@@ -757,146 +632,54 @@ SIN(1)              = .841470985         LN(10)              = 2.30258509
 VAL("3.14159") * 2  = 6.28318001         INT(-2.5)  (FLOOR)  = -3
 ```
 
-The trailing digits of `6.28318001` are the float's own rounding at nine
-significant figures, not an error.
+| Note | Detail |
+|---|---|
+| Float rounding | The trailing digits of `6.28318001` are the ROM float's nine-digit rounding, not an error. |
 
-## Things the hardware will get you wrong
+## Hardware Pitfalls
 
-Each of these is enforced by a macro or covered by a test.
+Each entry is enforced by a macro or covered by a test.
 
-**VERA has two independent data ports.** `DATA0` always reads and writes port 0,
-`DATA1` always port 1, no matter what `ADDRSEL` says. `ADDRSEL` only picks whose
-`ADDR_L/M/H` are visible at `$9F20`. That is why `vera_copy` can stream through
-both ports without touching `CTRL` in its inner loop.
-
-**`CTRL` packs three things into one byte:** `RESET` (bit 7), `DCSEL` (bits 6:1)
-and `ADDRSEL` (bit 0). A plain `lda #2 : sta VERA_CTRL` to select an FX register
-bank silently clears `ADDRSEL` out from under whoever was using port 1. Use
-`+vera_dcsel` and `+vera_addrsel`, which read-modify-write. Never set bit 7.
-
-**The address-increment field is an index, not a byte count.** `0..15` maps to
-`0,1,2,4,8,…,512` *and* `40,80,160,320,640`. Use the `VERA_INC_*` constants.
-Those odd values make tilemap-row and bitmap-row striding free.
-
-**The KERNAL requires `ADDRSEL = 0`.** Several of its screen routines write
-`VERA_ADDR_L/M/H` before selecting a port, or never touch `VERA_CTRL` at all.
-`screen_set_char` is the sharpest example: it sets all three address registers
-and then does `sta VERA_DATA0`. With `ADDRSEL = 1` the address goes into port 1
-while the character goes out of port 0, at whatever stale address it held — so
-the character lands somewhere random and the screen corrupts.
-
-This bites because `+vera_addr 1` and `vera_copy` both legitimately leave port 1
-selected. The `screen_*` routines force `ADDRSEL = 0` before entering the
-KERNAL; if you call `CHROUT` or `CINT` yourself, go through `screen_chrout` or
-emit `+vera_addrsel 0` first. Note also that the KERNAL leaves `DCSEL = 0`, so a
-`DCSEL` selection does not survive a call into it.
-
-**Sprite coordinates are display coordinates, and the default display is
-640×480.** In the standard 80×60 text mode the KERNAL leaves `HSCALE`/`VSCALE` at
-128, so a sprite's 10-bit X and Y address a 640×480 field. Only screen modes 2, 3
-and `$80` shift the scale by one to give 320×240. Assume 320×240 in the default
-mode and your sprite is confined to the top-left quarter of the screen — it moves
-and bounces correctly, so it looks like a coordinate bug rather than a scale one.
-
-This is also why `collide8` is not enough on its own: byte coordinates cannot
-reach past x=255. Use `collide16` for anything positioned in display space.
-
-**The YM2151 is at `$9F40`/`$9F41`**, not `$9FE0`.
-
-**Audio and graphics are not in the `$FFxx` KERNAL table.** They live at `$C000+`
-inside `BANK_AUDIO` (`$0A`) and `BANK_GRAPH` (`$08`). Reach them with `+jsrfar`,
-which saves and restores the caller's ROM bank while preserving `A`/`X`/`Y` and
-flags. Do not hand-roll the bank switch: after the `jsr`, the saved bank byte is
-buried on the stack under the callee's return values, and you cannot recover it
-without destroying them. `jsrfar` works because it reserves the slot up front.
-
-**`$1F9C0`–`$1FFFF` (PSG, palette, sprite attributes) is write-only.** Reads
-return the last value the *host* wrote, not the hardware's state. Reading back
-your own writes is fine — the tests rely on it — but you cannot discover the
-state after a reset that way.
-
-**The FX multiplier adds into an accumulator before writing out.** If you drive
-the FX registers yourself rather than through `fx_mult`, clear the accumulator
-first (read `FX_ACCUM_RESET`) or a leftover value silently corrupts your product.
-
-**Three of the ROM's FP routines are documented backwards.** `math/jumptab.s`
-claims `fsub` computes `FAC -= mem` and `fdiv` computes `FAC /= mem`. Both
-actually do `jsr conupk` (load ARG from memory) and then fall into the ARG-first
-form, so what you get is `mem - FAC` and `mem / FAC`. And `val_1` (string to
-float) is written `.X:.Y`, which everywhere else in that file means high:low —
-but the code is `stx index / sty index+1`, so X holds the **low** byte.
-
-Nothing crashes when you get these wrong: `10 - 3` quietly returns `-7`, and a
-misordered pointer parses some other string. `util/float.asm` wraps them back to
-the intuitive direction, and `F_SUB_ORDER` / `F_DIV_ORDER` / `F_STR` pin it.
-`f_rsub` and `f_rdiv` expose the raw order, which is what you want for `1/x`.
-
-**ACME remembers how wide a literal was written.** `$FFFFFFFE` is a four-byte
-value, and `& $FF` does not narrow it, so `lda #(x & $FF)` is rejected as out of
-range even when the result provably fits in a byte. Narrow with `<` instead:
-`lda #<(x >>> 24)`. This bites any macro that decomposes a 32-bit constant.
-
-**A routine that answers in the carry is fragile.** `collide8` returns its result
-in the carry, and so do `fs_load`/`fs_save`/`ym_write`. Almost anything you call
-next clobbers it — `screen_locate` does a `clc` on its way into `PLOT`. Capture
-the flag immediately (`lda #0 : rol`) before doing anything else. `bounce.asm`
-has this exact trap commented at the point it bites.
+| Pitfall | Rule |
+|---|---|
+| VERA data ports | `DATA0` always uses port 0 and `DATA1` always uses port 1; `ADDRSEL` only chooses which address registers are visible. |
+| `VERA_CTRL` packing | `RESET`, `DCSEL`, and `ADDRSEL` share one byte; use `+vera_dcsel` and `+vera_addrsel` instead of plain stores. |
+| Increment field | VERA increments are encoded indexes, not byte counts; use `VERA_INC_*` constants, including row strides 40, 80, 160, 320, and 640. |
+| KERNAL screen calls | KERNAL screen routines require `ADDRSEL = 0`; use `screen_*` wrappers or emit `+vera_addrsel 0` before direct KERNAL calls. |
+| `DCSEL` after KERNAL | KERNAL calls leave `DCSEL = 0`; do not expect a previous `DCSEL` selection to survive. |
+| Sprite coordinates | Default display-space coordinates are 640x480; screen modes 2, 3, and `$80` shift to 320x240. |
+| Collision width | Use `collide16` for display-space sprites because byte coordinates cannot reach past x=255. |
+| YM address | The YM2151 lives at `$9F40` / `$9F41`, not `$9FE0`. |
+| ROM audio/graphics | Audio and graphics APIs live inside `BANK_AUDIO` and `BANK_GRAPH`; use `+jsrfar` instead of hand-rolled bank switches. |
+| Write-only VRAM region | `$1F9C0-$1FFFF` reads return the host-write shadow, not current hardware state after reset. |
+| FX multiplier | Clear the accumulator first by reading `FX_ACCUM_RESET` when driving FX multiplier registers directly. |
+| ROM FP order | Some ROM FP docs describe `fsub`, `fdiv`, and `val_1` backwards; `util/float.asm` wraps them into intuitive order. |
+| ACME literal width | ACME remembers literal width; narrow 32-bit constants with `<`, such as `lda #<(x >>> 24)`. |
+| Carry results | `collide8`, `fs_load`, `fs_save`, and `ym_write` answer in carry; capture it immediately with a pattern such as `lda #0 : rol`. |
 
 ## Tests
 
-`test_acme/runner.asm` runs on the real emulated machine. Each test drives the
-library one way and verifies through an independent path (write via port 0, read
-back via port 1), so a bug in the address plumbing cannot hide behind itself.
-Results are printed over `CHROUT`; `build_acme.ps1 -Test` greps them and fails the
-build on any `FAIL`, on a pass count that disagrees with the reported total, or
-on a run that never prints `DONE`.
+| Topic | Detail |
+|---|---|
+| Main runner | `test_acme/runner.asm` runs on the emulated machine and checks behaviour through independent readback paths. |
+| Result parsing | `build_acme.ps1 -Test` fails on any `FAIL`, mismatched pass count, or missing `DONE`. |
+| Filesystem round-trip | `FS_ROUNDTRIP` saves and loads through `test/fsroot` as device 8 scratch storage. |
+| Intentional no-guard | `screen_locate` has no VERA guard because `PLOT` does not touch VERA; the tests proved the guard was unnecessary. |
+| Headless skips | `x16emu -testbench` has no video IRQ, so VSYNC tests report `SKIP` when both frame count and jiffy clock are stuck. |
+| Windowed VSYNC | Run the suite windowed (`-run -warp -echo`, no `-testbench`) when VSYNC behaviour must pass. |
+| Serial runner | `test_<tree>/serial.asm` runs under `-midicard -sf2 <placeholder>` to model two 16C550 UARTs. |
+| Serial limits | Headless tests verify detection, init, empty RX, and TX liveness; real byte loopback requires hardware. |
+| ZiModem tests | Headless tests pin `zi_hexdecode` and `zi_cmd` transmit framing; interactive AT flows are hardware-verified. |
 
-The suite has been mutation-tested. Each of these makes exactly the corresponding
-test fail and the build exit non-zero: breaking `+vera_dcsel` into a naive store;
-removing `vera_fill`'s zero-count guard; deleting the `ADDRSEL` guard from
-`screen_cls` or `screen_chrout`; dropping `irq_install`'s idempotency guard;
-removing `mem_to_bank`'s bank roll; skipping `fx_fill`'s 1-3 byte tail; dropping
-`fx_mult`'s accumulator reset; removing `gfx_pset`'s clipping; changing
-`gfx_vline`'s stride off `VERA_INC_320`; losing `u16_to_dec`'s always-print-the-
-units-digit rule; swapping the FM channel and payload registers; letting `f_sub`
-use the ROM's reversed operand order; dropping `i32_divmod`'s divide-by-zero
-guard; making `i32_cmps` ignore sign; giving `i16_divmod_s`'s remainder the
-divisor's sign; turning `i16_asr` into a logical shift; nudging `i16_sqrt` off by
-one; and corrupting an expected value.
+**Mutation Coverage**
 
-`FS_ROUNDTRIP` really saves and loads: `build_acme.ps1 -Test` points `-fsroot` at
-`test/fsroot`, so device 8 is a scratch directory rather than a real SD-card
-image.
-
-That exercise also earns its keep the other way. Removing the guard from
-`screen_locate` changes nothing, because `PLOT` never touches VERA — so there is
-no guard there, and a comment says why.
-
-**Skips.** `x16emu -testbench` is headless: it runs no video, so VERA never
-raises a VSYNC interrupt and the KERNAL's jiffy clock stands still. Rather than
-drop `VSYNC_COUNTER` or let it fail, it consults the jiffy clock (`RDTIM`, which
-only advances inside the IRQ) as an independent oracle — frames stuck *and*
-jiffy stuck means no interrupts exist here, so it reports `SKIP`; frames stuck
-while the jiffy moves is a real bug and reports `FAIL`. Skips are counted
-separately and excluded from the pass/total, so they can never be mistaken for
-passes. Run the suite windowed (`-run -warp -echo`, no `-testbench`) and
-`VSYNC_COUNTER` passes.
-
-**The serial runner** (`test_<tree>/serial.asm`) needs a UART to answer, so
-`build_*.ps1 -Test` runs it under the emulator's serial-MIDI card
-(`-midicard -sf2 <placeholder>`), which models two 16C550s at `$9F60`/`$9F68`.
-The card's registers respond whether or not the soundfont loads, so the
-harness writes a throwaway `build/dummy.sf2` — no binary asset in the repo,
-and the "Could not load MIDI synth library" line the emulator prints is
-expected. The same independent-oracle rule holds: the tests drive `ser_detect`
-and `ser_init`, then read the raw UART registers straight back through absolute
-addresses. Detection and register programming are verified this way; the
-receive path is checked only for its empty / non-blocking behaviour (nothing
-feeds the RX FIFO headless) and transmit for liveness (sent bytes leave for the
-synth and cannot be read back). A real byte round-trip is a hardware test. The
-same runner also pins the ZiModem layer's one headless-testable piece —
-`zi_hexdecode`, the hex-payload decoder — against a known vector, and `zi_cmd`'s
-transmit path; the interactive AT-command flows are hardware-verified.
+| Area | Mutations Caught |
+|---|---|
+| VERA and screen | Naive `+vera_dcsel`, missing `vera_fill` zero-count guard, missing `ADDRSEL` guards, wrong `gfx8l_vline` stride. |
+| IRQ and memory | Broken `irq_install` idempotency, missing `mem_to_bank` bank roll, skipped `fx_fill` tail, missing `fx_mult` accumulator reset. |
+| Graphics | Removed `gfx8l_pset` clipping and corrupted expected pixel values. |
+| Numbers | Broken `u16_to_dec` units digit, divide-by-zero guards, signed compare, signed remainder, arithmetic shift, and `i16_sqrt` edge cases. |
+| Audio and float | Swapped FM channel/payload registers and raw ROM reversed float operand order. |
 
 ## Layout
 
@@ -913,6 +696,7 @@ doc/         ForthX16 help pages + official X16/VERA references
 src_acme/    THE REFERENCE IMPLEMENTATION
   x16.asm        constants + macros (source first, emits nothing)
   x16_code.asm   routine modules, gated by X16_USE_*
+  tutorial/      ACME-syntax user guide and macro reference source
   core/          const_zp, const_vera, const_kernal, const_rom, macros
   video/         vera, screen, palette, tile
   sprite/        sprite
@@ -925,10 +709,10 @@ src_acme/    THE REFERENCE IMPLEMENTATION
   string/        string, ctype, case, find, slice
   util/          fixed, bcd, collide, bits, number, int16, int32, float,
                  math, clip, buffers, zx0, tscrunch
-src_ca65/    native ca65 port        } generated + a few hand files;
-src_64tass/  native 64tass port      } byte-identical output, same
-src_kick/    native KickAssembler    } suite -- see each tree's README
-src_dasm/    native dasm port        }
+src_ca65/    native ca65 port        } generated + a few hand files
+src_64tass/  native 64tass port      } plus generated tutorial/ docs;
+src_kick/    native KickAssembler    } byte-identical output, same
+src_dasm/    native dasm port        } suite -- see each tree's README
 src_mads/    native MADS port        }
 src_vasm/    native vasm port        }
 examples/    hello.asm, bounce.asm, numbers.asm, hello-mads.asm,
@@ -943,8 +727,8 @@ test_kick/   the converted runners (same suite)
 test_dasm/   the converted runners (same suite)
 test_mads/   the converted runners (same suite)
 test_vasm/   the converted runners (same suite)
-tools/       acme2ca65.py, acme2tass.py, acme2kick.py, acme2dasm.py,
-             acme2mads.py, acme2vasm.py -- the converters
+tools/       acme2*.py source/test converters and acme_doc2*.py
+             tutorial converters
 dist/        the prebuilt-binary + bindings pipeline (dist.ps1)
 build_acme.ps1
 build_ca65.ps1
@@ -955,6 +739,7 @@ build_mads.ps1
 build_vasm.ps1
 ```
 
-ROM entry points in `core/const_rom.asm` carry a `rom_` prefix (`rom_ym_init`,
-`rom_psg_init`), leaving the unprefixed names free for the library's own
-routines.
+| Naming rule | Detail |
+|---|---|
+| ROM entry points | Names in `core/const_rom.asm` carry a `rom_` prefix, such as `rom_ym_init` and `rom_psg_init`. |
+| Library names | Unprefixed names stay available for this library's own routines. |

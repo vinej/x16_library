@@ -169,4 +169,3 @@ tsc_decompress__long
     rol tsc_decompress__lzto+1
     ldx #3
     bne tsc_decompress__lz_put                 ; always
-

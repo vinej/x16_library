@@ -30,6 +30,7 @@ the generated files here -- fix src_acme/, then regenerate:
 
     python tools\acme2kick.py src_acme src_kick
     python tools\acme2kick.py test_acme test_kick
+    python tools\acme_doc2kick.py
     (then delete test_kick\blobsmoke.asm -- it tests the dist blob,
     which has its own pipeline)
 

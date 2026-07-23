@@ -108,4 +108,3 @@ key_wait__loop
 key_peek
     jmp KBDBUF_PEEK
 .endif
-

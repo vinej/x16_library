@@ -374,4 +374,3 @@ i32_buf
 i32_digits .byte 0
 i32_lo     .byte 0
 i32_hi     .byte 0
-

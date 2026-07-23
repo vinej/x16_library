@@ -116,4 +116,3 @@ fs_vload
     adc #2                      ; LOAD A: bank 0 -> 2, bank 1 -> 3
     stz X16_P4                  ; SETLFS SA = 0 (does not disturb A)
     bra load_load_common
-

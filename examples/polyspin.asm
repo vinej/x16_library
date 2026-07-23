@@ -44,9 +44,9 @@ FILL = 2
 
 ; ---------------------------------------------------------------------
 main
-    jsr gfx2_init
+    jsr gfx2h_init
     lda #BG
-    jsr gfx2_clear
+    jsr gfx2h_clear
     jsr set_palette
     jsr irq_install             ; start the VSYNC counter vsync_wait reads
     stz angle
@@ -114,7 +114,7 @@ clear_box
     lda #>BOX_S
     sta X16_P7
     lda #BG
-    jmp gfx2_rect
+    jmp gfx2h_rect
 
 ; a 0RGB colour for each slot (pal_set: X = slot, A = G<<4|B, Y = R)
 set_palette
