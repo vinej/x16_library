@@ -121,6 +121,8 @@
 ;                     ym_pan, ym_drum, ym_get_pan, ym_get_vol
 ;   X16_USE_AUDIO_ROM ar_* wrappers for the full BANK_AUDIO API:
 ;                     note conversion, ROM PSG/YM shadows, play strings
+;   X16_USE_ZSM       zsm_init/tick/play/stop/status; compact ZSM
+;                     stream player for PSG/YM plus PCM ctrl/rate
 ;   X16_USE_PCM       pcm_ctrl, pcm_rate, pcm_reset, pcm_full/empty,
 ;                     pcm_put, pcm_write
 ;   X16_USE_PCM_STREAM  pcm_stream_start/stop/active (AFLOW-driven;
@@ -406,6 +408,9 @@
 ; audio/rom.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_AUDIO_ROM {
 }
+; audio/zsm.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_ZSM {
+}
 !ifdef X16_USE_PCM_STREAM {
     !ifndef X16_USE_PCM { X16_USE_PCM = 1 }
     !ifndef X16_USE_IRQ { X16_USE_IRQ = 1 }
@@ -481,6 +486,7 @@
 !ifdef X16_USE_PSG     { !source "audio/psg.asm" }
 !ifdef X16_USE_YM      { !source "audio/ym.asm" }
 !ifdef X16_USE_AUDIO_ROM { !source "audio/rom.asm" }
+!ifdef X16_USE_ZSM     { !source "audio/zsm.asm" }
 !ifdef X16_USE_PCM     { !source "audio/pcm.asm" }
 !ifdef X16_USE_INPUT_ANY { !source "input/input.asm" }
 !ifdef X16_USE_KEYBOARD { !source "input/keyboard.asm" }

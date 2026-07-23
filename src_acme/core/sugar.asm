@@ -3196,6 +3196,65 @@
 }
 
 ; =====================================================================
+; audio/zsm  (compact ZSM stream player)
+; =====================================================================
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_init .header {
+    lda #<(.header)
+    sta r0L
+    lda #>(.header)
+    sta r0H
+    jsr zsm_init
+}
+}
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_init_stream .stream, .loop {
+    lda #<(.stream)
+    sta r0L
+    lda #>(.stream)
+    sta r0H
+    lda #<(.loop)
+    sta r1L
+    lda #>(.loop)
+    sta r1H
+    jsr zsm_init_stream
+}
+}
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_play {
+    jsr zsm_play
+}
+}
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_stop {
+    jsr zsm_stop
+}
+}
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_rewind {
+    jsr zsm_rewind
+}
+}
+; -> A = low byte, X = high byte
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_get_tickrate {
+    jsr zsm_get_tickrate
+}
+}
+; -> A = ZSM_FLAG_* bits, carry set if active
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_status {
+    jsr zsm_status
+}
+}
+; -> A = ZSM_FLAG_* bits, carry set if active
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_tick {
+    jsr zsm_tick
+}
+}
+
+; =====================================================================
 ; audio/pcm
 ; =====================================================================
 !ifdef X16_USE_PCM {
