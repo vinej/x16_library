@@ -2767,6 +2767,435 @@
 }
 
 ; =====================================================================
+; audio/rom  (full BANK_AUDIO API)
+; =====================================================================
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_audio_init {
+    jsr ar_audio_init
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_playstring_voice .voice {
+    lda #(.voice)
+    jsr ar_playstring_voice
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmplaystring .str, .len {
+    lda #(.len)
+    ldx #<(.str)
+    ldy #>(.str)
+    jsr ar_fmplaystring
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmchordstring .str, .len {
+    lda #(.len)
+    ldx #<(.str)
+    ldy #>(.str)
+    jsr ar_fmchordstring
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psgplaystring .str, .len {
+    lda #(.len)
+    ldx #<(.str)
+    ldy #>(.str)
+    jsr ar_psgplaystring
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psgchordstring .str, .len {
+    lda #(.len)
+    ldx #<(.str)
+    ldy #>(.str)
+    jsr ar_psgchordstring
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmfreq .channel, .hz {
+    lda #(.channel)
+    ldx #<(.hz)
+    ldy #>(.hz)
+    clc
+    jsr ar_fmfreq
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmfreq_no_retrigger .channel, .hz {
+    lda #(.channel)
+    ldx #<(.hz)
+    ldy #>(.hz)
+    sec
+    jsr ar_fmfreq
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmnote .channel, .note, .kf {
+    lda #(.channel)
+    ldx #(.note)
+    ldy #(.kf)
+    clc
+    jsr ar_fmnote
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmnote_no_retrigger .channel, .note, .kf {
+    lda #(.channel)
+    ldx #(.note)
+    ldy #(.kf)
+    sec
+    jsr ar_fmnote
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_fmvib .speed, .depth {
+    lda #(.speed)
+    ldx #(.depth)
+    jsr ar_fmvib
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psgfreq .voice, .hz {
+    lda #(.voice)
+    ldx #<(.hz)
+    ldy #>(.hz)
+    jsr ar_psgfreq
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psgnote .voice, .note, .kf {
+    lda #(.voice)
+    ldx #(.note)
+    ldy #(.kf)
+    jsr ar_psgnote
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psgwav .voice, .wave {
+    lda #(.voice)
+    ldx #(.wave)
+    jsr ar_psgwav
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_bas2fm .note {
+    ldx #(.note)
+    jsr ar_note_bas2fm
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_bas2midi .note {
+    ldx #(.note)
+    jsr ar_note_bas2midi
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_bas2psg .note, .kf {
+    ldx #(.note)
+    ldy #(.kf)
+    jsr ar_note_bas2psg
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_fm2bas .kc {
+    ldx #(.kc)
+    jsr ar_note_fm2bas
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_fm2midi .kc {
+    ldx #(.kc)
+    jsr ar_note_fm2midi
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_fm2psg .kc, .kf {
+    ldx #(.kc)
+    ldy #(.kf)
+    jsr ar_note_fm2psg
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_freq2bas .hz {
+    ldx #<(.hz)
+    ldy #>(.hz)
+    jsr ar_note_freq2bas
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_freq2fm .hz {
+    ldx #<(.hz)
+    ldy #>(.hz)
+    jsr ar_note_freq2fm
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_freq2midi .hz {
+    ldx #<(.hz)
+    ldy #>(.hz)
+    jsr ar_note_freq2midi
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_freq2psg .hz {
+    ldx #<(.hz)
+    ldy #>(.hz)
+    jsr ar_note_freq2psg
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_midi2bas .note {
+    lda #(.note)
+    jsr ar_note_midi2bas
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_midi2fm .note {
+    ldx #(.note)
+    jsr ar_note_midi2fm
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_midi2psg .note, .kf {
+    ldx #(.note)
+    ldy #(.kf)
+    jsr ar_note_midi2psg
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_psg2bas .freq {
+    ldx #<(.freq)
+    ldy #>(.freq)
+    jsr ar_note_psg2bas
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_psg2fm .freq {
+    ldx #<(.freq)
+    ldy #>(.freq)
+    jsr ar_note_psg2fm
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_note_psg2midi .freq {
+    ldx #<(.freq)
+    ldy #>(.freq)
+    jsr ar_note_psg2midi
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_init {
+    jsr ar_psg_init
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_playfreq .voice, .freq {
+    lda #(.voice)
+    ldx #<(.freq)
+    ldy #>(.freq)
+    jsr ar_psg_playfreq
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_read_raw .reg {
+    ldx #(.reg)
+    clc
+    jsr ar_psg_read
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_read_cooked .reg {
+    ldx #(.reg)
+    sec
+    jsr ar_psg_read
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_setatten .voice, .atten {
+    lda #(.voice)
+    ldx #(.atten)
+    jsr ar_psg_setatten
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_setfreq .voice, .freq {
+    lda #(.voice)
+    ldx #<(.freq)
+    ldy #>(.freq)
+    jsr ar_psg_setfreq
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_setpan .voice, .pan {
+    lda #(.voice)
+    ldx #(.pan)
+    jsr ar_psg_setpan
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_setvol .voice, .vol {
+    lda #(.voice)
+    ldx #(.vol)
+    jsr ar_psg_setvol
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_write .reg, .value {
+    lda #(.value)
+    ldx #(.reg)
+    jsr ar_psg_write
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_write_fast .reg, .value {
+    lda #(.value)
+    ldx #(.reg)
+    jsr ar_psg_write_fast
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_getatten .voice {
+    lda #(.voice)
+    jsr ar_psg_getatten
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_psg_getpan .voice {
+    lda #(.voice)
+    jsr ar_psg_getpan
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_init {
+    jsr ar_ym_init
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_loaddefpatches {
+    jsr ar_ym_loaddefpatches
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_loadpatch_rom .channel, .patch {
+    lda #(.channel)
+    ldx #(.patch)
+    sec
+    jsr ar_ym_loadpatch
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_loadpatchlfn .channel, .lfn {
+    lda #(.channel)
+    ldx #(.lfn)
+    jsr ar_ym_loadpatchlfn
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_playdrum .channel, .note {
+    lda #(.channel)
+    ldx #(.note)
+    jsr ar_ym_playdrum
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_playnote .channel, .kc, .kf {
+    lda #(.channel)
+    ldx #(.kc)
+    ldy #(.kf)
+    clc
+    jsr ar_ym_playnote
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_setatten .channel, .atten {
+    lda #(.channel)
+    ldx #(.atten)
+    jsr ar_ym_setatten
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_setdrum .channel, .note {
+    lda #(.channel)
+    ldx #(.note)
+    jsr ar_ym_setdrum
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_setnote .channel, .kc, .kf {
+    lda #(.channel)
+    ldx #(.kc)
+    ldy #(.kf)
+    jsr ar_ym_setnote
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_setpan .channel, .pan {
+    lda #(.channel)
+    ldx #(.pan)
+    jsr ar_ym_setpan
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_read_raw .reg {
+    ldx #(.reg)
+    clc
+    jsr ar_ym_read
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_read_cooked .reg {
+    ldx #(.reg)
+    sec
+    jsr ar_ym_read
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_release .channel {
+    lda #(.channel)
+    jsr ar_ym_release
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_trigger .channel {
+    lda #(.channel)
+    clc
+    jsr ar_ym_trigger
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_trigger_no_retrigger .channel {
+    lda #(.channel)
+    sec
+    jsr ar_ym_trigger
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_write .reg, .value {
+    lda #(.value)
+    ldx #(.reg)
+    jsr ar_ym_write
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_getatten .channel {
+    lda #(.channel)
+    jsr ar_ym_getatten
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_getpan .channel {
+    lda #(.channel)
+    jsr ar_ym_getpan
+}
+}
+!ifdef X16_USE_AUDIO_ROM {
+!macro xm_ar_ym_get_chip_type {
+    jsr ar_ym_get_chip_type
+}
+}
+
+; =====================================================================
 ; audio/pcm
 ; =====================================================================
 !ifdef X16_USE_PCM {
