@@ -123,6 +123,8 @@
 ;                     note conversion, ROM PSG/YM shadows, play strings
 ;   X16_USE_ZSM       zsm_init/tick/play/stop/status; compact ZSM
 ;                     stream player for PSG/YM plus PCM ctrl/rate
+;   X16_USE_ZSM_PCM   + PCM instrument triggers from a ZSM PCM table
+;                     using the AFLOW PCM streamer (pulls PCM_STREAM)
 ;   X16_USE_PCM       pcm_ctrl, pcm_rate, pcm_reset, pcm_full/empty,
 ;                     pcm_put, pcm_write
 ;   X16_USE_PCM_STREAM  pcm_stream_start/stop/active (AFLOW-driven;
@@ -410,6 +412,12 @@
 }
 ; audio/zsm.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_ZSM {
+}
+; audio/zsm.asm's PCM sample layer is also pay-per-use. Enabling this
+; gate pulls in ZSM plus the AFLOW PCM streamer, but not through USE_ALL.
+!ifdef X16_USE_ZSM_PCM {
+    !ifndef X16_USE_ZSM { X16_USE_ZSM = 1 }
+    !ifndef X16_USE_PCM_STREAM { X16_USE_PCM_STREAM = 1 }
 }
 !ifdef X16_USE_PCM_STREAM {
     !ifndef X16_USE_PCM { X16_USE_PCM = 1 }

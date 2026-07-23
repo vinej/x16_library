@@ -3253,6 +3253,18 @@
     jsr zsm_tick
 }
 }
+; -> carry set if a supported PCM table is present
+!ifdef X16_USE_ZSM_PCM {
+!macro xm_zsm_pcm_present {
+    jsr zsm_pcm_present
+}
+}
+!ifdef X16_USE_ZSM_PCM {
+!macro xm_zsm_pcm_trigger .instrument {
+    lda #(.instrument)
+    jsr zsm_pcm_trigger
+}
+}
 
 ; =====================================================================
 ; audio/pcm
