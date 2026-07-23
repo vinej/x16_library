@@ -100,6 +100,121 @@
 }
 
 ; =====================================================================
+; video/vdc  (VERA display composer)
+; =====================================================================
+; -> A = DC_VIDEO
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_get_video {
+    jsr vdc_get_video
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_video .video {
+    lda #(.video)
+    jsr vdc_set_video
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_output .mode {
+    lda #(.mode)
+    jsr vdc_set_output
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_layers .mask {
+    lda #(.mask)
+    jsr vdc_set_layers
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_layer_on .mask {
+    lda #(.mask)
+    jsr vdc_layer_on
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_layer_off .mask {
+    lda #(.mask)
+    jsr vdc_layer_off
+}
+}
+; -> A = HSCALE, X = VSCALE
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_get_scale {
+    jsr vdc_get_scale
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_scale .hscale, .vscale {
+    lda #(.hscale)
+    ldx #(.vscale)
+    jsr vdc_set_scale
+}
+}
+; -> A = border palette index
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_get_border {
+    jsr vdc_get_border
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_border .color {
+    lda #(.color)
+    jsr vdc_set_border
+}
+}
+; -> A = HSTART, X = HSTOP, Y = VSTART, r0L = VSTOP
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_get_active_raw {
+    jsr vdc_get_active_raw
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_active_raw .hstart, .hstop, .vstart, .vstop {
+    lda #(.hstart)
+    ldx #(.hstop)
+    ldy #(.vstart)
+    pha
+    lda #(.vstop)
+    sta r0L
+    pla
+    jsr vdc_set_active_raw
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_set_active .hstart, .hstop, .vstart, .vstop {
+    lda #<(.hstart)
+    sta X16_P0
+    lda #>(.hstart)
+    sta X16_P1
+    lda #<(.hstop)
+    sta X16_P2
+    lda #>(.hstop)
+    sta X16_P3
+    lda #<(.vstart)
+    sta X16_P4
+    lda #>(.vstart)
+    sta X16_P5
+    lda #<(.vstop)
+    sta X16_P6
+    lda #>(.vstop)
+    sta X16_P7
+    jsr vdc_set_active
+}
+}
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_fullscreen {
+    jsr vdc_fullscreen
+}
+}
+; -> carry set if valid, A = major, X = minor, Y = build
+!ifdef X16_USE_VERA_DC {
+!macro xm_vdc_get_version {
+    jsr vdc_get_version
+}
+}
+
+; =====================================================================
 ; video/screen
 ; =====================================================================
 ; -> carry set if the mode is unsupported

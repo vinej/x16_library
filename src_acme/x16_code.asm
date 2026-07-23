@@ -19,6 +19,8 @@
 ; ---------------------------------------------------------------------
 ; Module            Provides
 ;   X16_USE_VERA      vera_set_addr0/1, vera_fill, vera_copy, vera_has_fx
+;   X16_USE_VERA_DC   vdc_get/set_video, vdc_set_output/layers,
+;                     vdc_get/set_scale/border/active, vdc_get_version
 ;   X16_USE_SCREEN    screen_set_mode/get_mode/reset/cls/chrout/color/
 ;                     border, screen_locate, screen_get_cursor,
 ;                     screen_charset, screen_puts
@@ -296,6 +298,9 @@
 ; comms/spi.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_VERA_SPI {
 }
+; video/vdc.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_VERA_DC {
+}
 ; system/clock.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_CLOCK {
 }
@@ -437,6 +442,7 @@
 
 ; --- modules ---------------------------------------------------------
 !ifdef X16_USE_VERA_ANY { !source "video/vera.asm" }
+!ifdef X16_USE_VERA_DC { !source "video/vdc.asm" }
 !ifdef X16_USE_SCREEN_ANY { !source "video/screen.asm" }
 !ifdef X16_USE_PALETTE { !source "video/palette.asm" }
 !ifdef X16_USE_TILE    { !source "video/tile.asm" }
