@@ -1438,6 +1438,158 @@
 }
 
 ; =====================================================================
+; gfx/fb  (KERNAL framebuffer API)
+; =====================================================================
+!ifdef X16_USE_FB {
+!macro xm_fb_init {
+    jsr fb_init
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_get_info {
+    jsr fb_get_info
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_set_palette .data, .start, .count {
+    lda #<(.data)
+    sta r0L
+    lda #>(.data)
+    sta r0H
+    lda #(.start)
+    ldx #(.count)
+    jsr fb_set_palette
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_cursor_position .x, .y {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    jsr fb_cursor_position
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_cursor_next_line {
+    jsr fb_cursor_next_line
+}
+}
+; -> A = color
+!ifdef X16_USE_FB {
+!macro xm_fb_get_pixel .x, .y {
+    +xm_fb_cursor_position .x, .y
+    jsr fb_get_pixel
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_set_pixel .x, .y, .color {
+    +xm_fb_cursor_position .x, .y
+    lda #(.color)
+    jsr fb_set_pixel
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_get_pixels .dest, .count {
+    lda #<(.dest)
+    sta r0L
+    lda #>(.dest)
+    sta r0H
+    lda #<(.count)
+    sta r1L
+    lda #>(.count)
+    sta r1H
+    jsr fb_get_pixels
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_set_pixels .src, .count {
+    lda #<(.src)
+    sta r0L
+    lda #>(.src)
+    sta r0H
+    lda #<(.count)
+    sta r1L
+    lda #>(.count)
+    sta r1H
+    jsr fb_set_pixels
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_set_8_pixels .pattern, .color {
+    lda #(.pattern)
+    ldx #(.color)
+    jsr fb_set_8_pixels
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_set_8_pixels_opaque .mask, .pattern, .fg, .bg {
+    lda #<(.pattern)
+    sta r0L
+    lda #(.mask)
+    ldx #(.fg)
+    ldy #(.bg)
+    jsr fb_set_8_pixels_opaque
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_fill_pixels .count, .step, .color {
+    lda #<(.count)
+    sta r0L
+    lda #>(.count)
+    sta r0H
+    lda #<(.step)
+    sta r1L
+    lda #>(.step)
+    sta r1H
+    lda #(.color)
+    jsr fb_fill_pixels
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_filter_pixels .count, .filter {
+    lda #<(.count)
+    sta r0L
+    lda #>(.count)
+    sta r0H
+    lda #<(.filter)
+    sta r1L
+    lda #>(.filter)
+    sta r1H
+    jsr fb_filter_pixels
+}
+}
+!ifdef X16_USE_FB {
+!macro xm_fb_move_pixels .sx, .sy, .tx, .ty, .count {
+    lda #<(.sx)
+    sta r0L
+    lda #>(.sx)
+    sta r0H
+    lda #<(.sy)
+    sta r1L
+    lda #>(.sy)
+    sta r1H
+    lda #<(.tx)
+    sta r2L
+    lda #>(.tx)
+    sta r2H
+    lda #<(.ty)
+    sta r3L
+    lda #>(.ty)
+    sta r3H
+    lda #<(.count)
+    sta r4L
+    lda #>(.count)
+    sta r4H
+    jsr fb_move_pixels
+}
+}
+
+; =====================================================================
 ; gfx/shapes  (engine-agnostic; bind SHP_* to pick the engine)
 ; =====================================================================
 !ifdef X16_USE_SHAPES {
