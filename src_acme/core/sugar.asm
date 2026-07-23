@@ -2891,6 +2891,78 @@
 }
 
 ; =====================================================================
+; system/clock
+; =====================================================================
+; -> A/X/Y = 24-bit 60 Hz timer, low to high
+!ifdef X16_USE_CLOCK {
+!macro xm_clock_get_timer {
+    jsr clock_get_timer
+}
+}
+!ifdef X16_USE_CLOCK {
+!macro xm_clock_set_timer .ticks {
+    lda #<(.ticks)
+    ldx #>((.ticks) >> 8)
+    ldy #>((.ticks) >> 16)
+    jsr clock_set_timer
+}
+}
+!ifdef X16_USE_CLOCK {
+!macro xm_clock_update {
+    jsr clock_update
+}
+}
+; -> r0..r3 = year/month/day/hour/min/sec/jiffy/weekday
+!ifdef X16_USE_CLOCK {
+!macro xm_clock_get_date_time {
+    jsr clock_get_date_time
+}
+}
+; .year1900 is the KERNAL byte value: full year minus 1900.
+!ifdef X16_USE_CLOCK {
+!macro xm_clock_set_date_time_raw .year1900, .month, .day, .hours, .minutes, .seconds, .jiffies, .weekday {
+    lda #<(.year1900)
+    sta r0L
+    lda #<(.month)
+    sta r0H
+    lda #<(.day)
+    sta r1L
+    lda #<(.hours)
+    sta r1H
+    lda #<(.minutes)
+    sta r2L
+    lda #<(.seconds)
+    sta r2H
+    lda #<(.jiffies)
+    sta r3L
+    lda #<(.weekday)
+    sta r3H
+    jsr clock_set_date_time
+}
+}
+; Friendly form: .year is the full year, e.g. 2026; jiffies are set to 0.
+!ifdef X16_USE_CLOCK {
+!macro xm_clock_set_date_time .year, .month, .day, .hours, .minutes, .seconds, .weekday {
+    lda #<((.year) - 1900)
+    sta r0L
+    lda #<(.month)
+    sta r0H
+    lda #<(.day)
+    sta r1L
+    lda #<(.hours)
+    sta r1H
+    lda #<(.minutes)
+    sta r2L
+    lda #<(.seconds)
+    sta r2H
+    stz r3L
+    lda #<(.weekday)
+    sta r3H
+    jsr clock_set_date_time
+}
+}
+
+; =====================================================================
 ; comms/i2c
 ; =====================================================================
 ; -> A = value, carry set on NAK/error

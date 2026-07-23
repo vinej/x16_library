@@ -68,6 +68,8 @@
 ;                     gfx4h_pattern_set, gfx4h_pattern_rect,
 ;                     gfx4h_blit, gfx4h_blitm, gfx4h_copy
 ;                     (640x480@4bpp; MiSTer VERA_2 SDRAM layer)
+;   X16_USE_CLOCK     clock_update, clock_get/set_timer,
+;                     clock_get/set_date_time
 ;   X16_USE_SHAPES    shape_circle, shape_disc, shape_ellipse,
 ;                     shape_fellipse, shape_flood -- engine-
 ;                     agnostic: they draw through SHP_PSET/SHP_READ/
@@ -274,6 +276,9 @@
 ; comms/i2c.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_I2C {
 }
+; system/clock.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_CLOCK {
+}
 ; comms/zimodem.asm layers the ESP32 WiFi AT-command protocol over SERIAL.
 ; Also pay-per-use (out of X16_USE_ALL); pulls SERIAL in.
 !ifdef X16_USE_SERIAL_ZIMODEM {
@@ -408,6 +413,7 @@
 ; module's symbols are not defined twice.
 !ifdef X16_USE_SHAPES { !ifndef X16_SKIP_SHAPES { !source "gfx/shapes.asm" } }
 !ifdef X16_USE_VERAFX_ANY { !source "gfx/verafx.asm" }
+!ifdef X16_USE_CLOCK   { !source "system/clock.asm" }
 !ifdef X16_USE_IRQ_ANY { !source "system/irq.asm" }
 !ifdef X16_USE_PSG     { !source "audio/psg.asm" }
 !ifdef X16_USE_YM      { !source "audio/ym.asm" }
