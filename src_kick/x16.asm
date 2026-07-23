@@ -8,7 +8,7 @@
 //
 //      #import "x16.asm"
 //      #define X16_USE_VERA            // pick modules (#define
-//      #define X16_USE_ALL             // X16_USE_ALL for everything)
+//      #define X16_USE_VIDEO           // or pick modules / section gates
 //      .pc = $0801 "code"
 //      ...your code...
 //      #import "x16_code.asm"          // library routines land here

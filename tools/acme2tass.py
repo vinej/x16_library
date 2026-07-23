@@ -302,7 +302,7 @@ def gen_x16_code(src, include_map):
     def xn(g):                          # X16_USE_VERA_COPY -> xuse_vera_copy
         return "xuse_" + g[len("X16_USE_"):].lower()
 
-    public = [g for g in order if not g.endswith("_ANY") and g != "X16_USE_ALL"]
+    public = [g for g in order if not g.endswith("_ANY")]
 
     # config gates: an X16_* symbol tested with !ifndef but not X16_USE_*
     # and not already given a home elsewhere -- an include-once guard
@@ -321,9 +321,9 @@ def gen_x16_code(src, include_map):
                     if not g.startswith("X16_USE_") and g not in owned)
 
     # topological order for the xuse_* lines: a gate follows every gate it
-    # references. xuse_all is emitted first, so ALL counts as done.
-    emitted = {"X16_USE_ALL"}
-    seq, remaining = [], [g for g in order if g != "X16_USE_ALL"]
+    # references.
+    emitted = set()
+    seq, remaining = [], order[:]
     while remaining:
         wave = [g for g in remaining if all(c in emitted for c in impl.get(g, []))]
         if not wave:                    # DAG, so this cannot loop; be safe
@@ -344,13 +344,11 @@ def gen_x16_code(src, include_map):
            "; encode. Add a gate in src_acme and it appears here on regen.",
            "; " + "=" * 69,
            "",
-           ".weak",
-           "X16_USE_ALL        = 0"]
+           ".weak"]
     out += [f"{g} = 0" for g in public + config]
     out += [".endweak",
             "",
-            "; --- the dependency closure (generated from the ACME gates) ---",
-            "xuse_all = X16_USE_ALL != 0"]
+            "; --- the dependency closure (generated from the ACME gates) ---"]
     for g in seq:
         conds = impl.get(g, [])
         terms = ([xn(conds[0])] if conds else [])
@@ -358,7 +356,7 @@ def gen_x16_code(src, include_map):
             terms.append(f"{g} != 0")
         terms += [xn(c) for c in conds[1:]]
         if not terms:
-            terms = ["xuse_all", f"{g} != 0"]
+            terms = [f"{g} != 0"]
         out.append(f"{xn(g)} = " + " || ".join(terms))
     out += ["", "; --- modules (the ACME tree's order) ---"]
     # A module include is `!ifdef X16_USE_X { !source "f" }`, optionally wrapped

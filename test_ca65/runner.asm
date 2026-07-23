@@ -11,7 +11,7 @@
 
 .include "x16.asm"
 
-; Not X16_USE_ALL: with every module the code alone would push this PRG
+; Not a section-bundle build: with every module the code alone would push this PRG
 ; past the $9EFF load ceiling. The modules tested HERE are gated
 ; explicitly; newer modules (bitmap2, ...) live in runner2.asm, and
 ; .\build.ps1 -Test runs every runner.

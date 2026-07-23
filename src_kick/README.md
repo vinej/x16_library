@@ -12,7 +12,7 @@ Module gates are PREPROCESSOR symbols here, mirroring ACME's
 definedness semantics; define them before the x16_code.asm import:
 
     #import "x16.asm"
-    #define X16_USE_ALL
+    #define X16_USE_VIDEO
     .pc = $0801 "code"
     ...
     #import "x16_code.asm"

@@ -6,7 +6,7 @@
 //
 // This gate complements the compact mouse helpers in X16_USE_INPUT. It
 // exposes the full stable KERNAL mouse surface with distinct mse_* names
-// so it can be enabled alongside X16_USE_INPUT / X16_USE_ALL.
+// so it can be enabled alongside X16_USE_INPUT or a section bundle.
 //
 // MOUSE_CONFIG:
 //       A = $00 hide mouse

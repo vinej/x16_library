@@ -7,17 +7,33 @@
 ;
 ; ACME has no linker, so unused routines cannot be stripped for you.
 ; Instead, pick the modules you need by defining X16_USE_* before
-; sourcing this file -- or define X16_USE_ALL to pull in everything.
+; sourcing this file. You can select individual modules, or select one
+; of the section gates below and let it expand to that whole area.
 ;
 ;       X16_USE_VERA = 1
 ;       !source "x16_code.asm"
 ;
-; or from the build script:  acme -DX16_USE_ALL=1 ...
+; or from the build script:  acme -DX16_USE_VIDEO=1 ...
 ;
 ; These gates must be resolvable on the FIRST pass, so always define
 ; them ahead of this !source, never after it.
 ; ---------------------------------------------------------------------
 ; Module            Provides
+;   Section bundles:
+;   X16_USE_VIDEO    VERA, VERA_DC, SCREEN, PALETTE, TILE, SPRITE
+;   X16_USE_GRAPHICS bitmaps, shapes, framebuffer, GRAPH/CONSOLE,
+;                    VERAFX and VERAFX_UTILS
+;   X16_USE_AUDIO    PSG, YM, AUDIO_ROM, ZSM/ZSM_PCM, PCM/PCM_STREAM,
+;                    ADPCM
+;   X16_USE_INPUT_DEVICES  INPUT, KEYBOARD, MOUSE
+;   X16_USE_COMMUNICATIONS I2C, VERA_SPI, SERIAL, SERIAL_ZIMODEM
+;   X16_USE_STORAGE  BANK, BANKALLOC, STACK, RINGBUFFER, MEM, FILEIO,
+;                    IEC, LOAD, DOS, BMX
+;   X16_USE_UTILITIES MATH, CLIP, BUFFERS, compression, fixed/BCD,
+;                    collide/bits/number, INT16/INT32, FLOAT, DOUBLE
+;   X16_USE_STRINGS  all five string/ gates
+;   X16_USE_SYSTEM   IRQ, CLOCK
+;
 ;   X16_USE_VERA      vera_set_addr0/1, vera_fill, vera_copy, vera_has_fx
 ;   X16_USE_VERA_DC   vdc_get/set_video, vdc_set_output/layers,
 ;                     vdc_get/set_scale/border/active, vdc_get_version
@@ -212,41 +228,96 @@
 ;                      INT16/INT32, FLOAT, DOUBLE.)
 ; =====================================================================
 
-; Gates are set with !ifndef so that asking for a module twice -- say via
-; X16_USE_ALL and again through a dependency -- is not a redefinition
-; error, and so an explicit X16_USE_* in your program still works.
-!ifdef X16_USE_ALL {
+; Section gates are set with !ifndef so that asking for a module twice --
+; say via a section gate and again through a dependency -- is not a
+; redefinition error, and so an explicit X16_USE_* in your program still
+; works.
+!ifdef X16_USE_VIDEO {
     !ifndef X16_USE_VERA    { X16_USE_VERA    = 1 }
+    !ifndef X16_USE_VERA_DC { X16_USE_VERA_DC = 1 }
     !ifndef X16_USE_SCREEN  { X16_USE_SCREEN  = 1 }
     !ifndef X16_USE_PALETTE { X16_USE_PALETTE = 1 }
     !ifndef X16_USE_TILE    { X16_USE_TILE    = 1 }
     !ifndef X16_USE_SPRITE  { X16_USE_SPRITE  = 1 }
-    !ifndef X16_USE_VERAFX  { X16_USE_VERAFX  = 1 }
-    !ifndef X16_USE_IRQ     { X16_USE_IRQ     = 1 }
-    !ifndef X16_USE_PSG     { X16_USE_PSG     = 1 }
-    !ifndef X16_USE_YM      { X16_USE_YM      = 1 }
-    !ifndef X16_USE_PCM     { X16_USE_PCM     = 1 }
+}
+!ifdef X16_USE_GRAPHICS {
+    !ifndef X16_USE_BITMAP8L { X16_USE_BITMAP8L = 1 }
+    !ifndef X16_USE_BITMAP8H { X16_USE_BITMAP8H = 1 }
+    !ifndef X16_USE_BITMAP2H { X16_USE_BITMAP2H = 1 }
+    !ifndef X16_USE_BITMAP2L { X16_USE_BITMAP2L = 1 }
+    !ifndef X16_USE_BITMAP4L { X16_USE_BITMAP4L = 1 }
+    !ifndef X16_USE_BITMAP4H { X16_USE_BITMAP4H = 1 }
+    !ifndef X16_USE_FB       { X16_USE_FB       = 1 }
+    !ifndef X16_USE_GRAPH    { X16_USE_GRAPH    = 1 }
+    !ifndef X16_USE_CONSOLE  { X16_USE_CONSOLE  = 1 }
+    !ifndef X16_USE_SHAPES   { X16_USE_SHAPES   = 1 }
+    !ifndef X16_USE_SHAPES_POLY { X16_USE_SHAPES_POLY = 1 }
+    !ifndef X16_USE_SHAPES_RRECT { X16_USE_SHAPES_RRECT = 1 }
+    !ifndef X16_USE_SHAPES_ARC { X16_USE_SHAPES_ARC = 1 }
+    !ifndef X16_USE_SHAPES_PIE { X16_USE_SHAPES_PIE = 1 }
+    !ifndef X16_USE_SHAPES_BEZIER { X16_USE_SHAPES_BEZIER = 1 }
+    !ifndef X16_USE_VERAFX  { X16_USE_VERAFX = 1 }
+    !ifndef X16_USE_VERAFX_UTILS { X16_USE_VERAFX_UTILS = 1 }
+}
+!ifdef X16_USE_AUDIO {
+    !ifndef X16_USE_PSG       { X16_USE_PSG       = 1 }
+    !ifndef X16_USE_YM        { X16_USE_YM        = 1 }
+    !ifndef X16_USE_AUDIO_ROM { X16_USE_AUDIO_ROM = 1 }
+    !ifndef X16_USE_ZSM       { X16_USE_ZSM       = 1 }
+    !ifndef X16_USE_ZSM_PCM   { X16_USE_ZSM_PCM   = 1 }
+    !ifndef X16_USE_PCM       { X16_USE_PCM       = 1 }
     !ifndef X16_USE_PCM_STREAM { X16_USE_PCM_STREAM = 1 }
-    !ifndef X16_USE_INPUT   { X16_USE_INPUT   = 1 }
-    !ifndef X16_USE_BANK    { X16_USE_BANK    = 1 }
-    !ifndef X16_USE_BANKALLOC { X16_USE_BANKALLOC = 1 }
-    !ifndef X16_USE_MEM     { X16_USE_MEM     = 1 }
-    !ifndef X16_USE_LOAD    { X16_USE_LOAD    = 1 }
-    !ifndef X16_USE_DOS     { X16_USE_DOS     = 1 }
-    !ifndef X16_USE_BMX     { X16_USE_BMX     = 1 }
+    !ifndef X16_USE_ADPCM     { X16_USE_ADPCM     = 1 }
+}
+!ifdef X16_USE_INPUT_DEVICES {
+    !ifndef X16_USE_INPUT    { X16_USE_INPUT    = 1 }
+    !ifndef X16_USE_KEYBOARD { X16_USE_KEYBOARD = 1 }
+    !ifndef X16_USE_MOUSE    { X16_USE_MOUSE    = 1 }
+}
+!ifdef X16_USE_COMMUNICATIONS {
+    !ifndef X16_USE_I2C      { X16_USE_I2C      = 1 }
+    !ifndef X16_USE_VERA_SPI { X16_USE_VERA_SPI = 1 }
+    !ifndef X16_USE_SERIAL   { X16_USE_SERIAL   = 1 }
+    !ifndef X16_USE_SERIAL_ZIMODEM { X16_USE_SERIAL_ZIMODEM = 1 }
+}
+!ifdef X16_USE_STORAGE {
+    !ifndef X16_USE_BANK       { X16_USE_BANK       = 1 }
+    !ifndef X16_USE_BANKALLOC  { X16_USE_BANKALLOC  = 1 }
+    !ifndef X16_USE_STACK      { X16_USE_STACK      = 1 }
+    !ifndef X16_USE_RINGBUFFER { X16_USE_RINGBUFFER = 1 }
+    !ifndef X16_USE_MEM        { X16_USE_MEM        = 1 }
+    !ifndef X16_USE_FILEIO     { X16_USE_FILEIO     = 1 }
+    !ifndef X16_USE_IEC        { X16_USE_IEC        = 1 }
+    !ifndef X16_USE_LOAD       { X16_USE_LOAD       = 1 }
+    !ifndef X16_USE_DOS        { X16_USE_DOS        = 1 }
+    !ifndef X16_USE_BMX        { X16_USE_BMX        = 1 }
+}
+!ifdef X16_USE_UTILITIES {
     !ifndef X16_USE_MATH    { X16_USE_MATH    = 1 }
     !ifndef X16_USE_CLIP    { X16_USE_CLIP    = 1 }
     !ifndef X16_USE_BUFFERS { X16_USE_BUFFERS = 1 }
-    !ifndef X16_USE_ADPCM   { X16_USE_ADPCM   = 1 }
     !ifndef X16_USE_ZX0     { X16_USE_ZX0     = 1 }
     !ifndef X16_USE_TSC     { X16_USE_TSC     = 1 }
     !ifndef X16_USE_FIXED   { X16_USE_FIXED   = 1 }
+    !ifndef X16_USE_BCD     { X16_USE_BCD     = 1 }
     !ifndef X16_USE_COLLIDE { X16_USE_COLLIDE = 1 }
     !ifndef X16_USE_BITS    { X16_USE_BITS    = 1 }
     !ifndef X16_USE_NUMBER  { X16_USE_NUMBER  = 1 }
     !ifndef X16_USE_INT16   { X16_USE_INT16   = 1 }
     !ifndef X16_USE_INT32   { X16_USE_INT32   = 1 }
     !ifndef X16_USE_FLOAT   { X16_USE_FLOAT   = 1 }
+    !ifndef X16_USE_DOUBLE  { X16_USE_DOUBLE  = 1 }
+}
+!ifdef X16_USE_STRINGS {
+    !ifndef X16_USE_STRING       { X16_USE_STRING       = 1 }
+    !ifndef X16_USE_STRING_CTYPE { X16_USE_STRING_CTYPE = 1 }
+    !ifndef X16_USE_STRING_CASE  { X16_USE_STRING_CASE  = 1 }
+    !ifndef X16_USE_STRING_FIND  { X16_USE_STRING_FIND  = 1 }
+    !ifndef X16_USE_STRING_SLICE { X16_USE_STRING_SLICE = 1 }
+}
+!ifdef X16_USE_SYSTEM {
+    !ifndef X16_USE_IRQ   { X16_USE_IRQ   = 1 }
+    !ifndef X16_USE_CLOCK { X16_USE_CLOCK = 1 }
 }
 
 ; --- dependencies ----------------------------------------------------
@@ -291,61 +362,60 @@
 ; util/double.asm stands alone (no module dependencies). This otherwise
 ; empty gate block is what makes the 64tass gate-model generator register
 ; xuse_double -- it scans the dependency section here, not the module
-; !source lines below. DOUBLE is deliberately kept OUT of X16_USE_ALL so
-; the dist blob stays under the $9EFF low-RAM ceiling.
+; !source lines below.
 !ifdef X16_USE_DOUBLE {
 }
 ; comms/serial.asm stands alone too -- same empty-block trick to register
-; xuse_serial in the 64tass gate model. Kept OUT of X16_USE_ALL / the dist
-; blob: it drives a specific add-on card, so you enable the gate to pay for
-; it, and a program that never talks serial carries none of it.
+; xuse_serial in the 64tass gate model. It is not part of the dist blob:
+; it drives a specific add-on card, so you enable the gate to pay for it,
+; and a program that never talks serial carries none of it.
 !ifdef X16_USE_SERIAL {
 }
-; comms/i2c.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; comms/i2c.asm is pay-per-use.
 !ifdef X16_USE_I2C {
 }
-; comms/spi.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; comms/spi.asm is pay-per-use.
 !ifdef X16_USE_VERA_SPI {
 }
-; video/vdc.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; video/vdc.asm is pay-per-use.
 !ifdef X16_USE_VERA_DC {
 }
-; system/clock.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; system/clock.asm is pay-per-use.
 !ifdef X16_USE_CLOCK {
 }
-; storage/fileio.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; storage/fileio.asm is pay-per-use.
 !ifdef X16_USE_FILEIO {
 }
-; input/keyboard.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; input/keyboard.asm is pay-per-use.
 !ifdef X16_USE_KEYBOARD {
 }
-; input/mouse.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; input/mouse.asm is pay-per-use.
 !ifdef X16_USE_MOUSE {
 }
-; gfx/fb.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; gfx/fb.asm is pay-per-use.
 !ifdef X16_USE_FB {
 }
-; gfx/graph.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; gfx/graph.asm is pay-per-use.
 !ifdef X16_USE_GRAPH {
 }
-; gfx/console.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; gfx/console.asm is pay-per-use.
 !ifdef X16_USE_CONSOLE {
 }
-; storage/iec.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; storage/iec.asm is pay-per-use.
 !ifdef X16_USE_IEC {
 }
 ; comms/zimodem.asm layers the ESP32 WiFi AT-command protocol over SERIAL.
-; Also pay-per-use (out of X16_USE_ALL); pulls SERIAL in.
+; Also pay-per-use; pulls SERIAL in.
 !ifdef X16_USE_SERIAL_ZIMODEM {
     !ifndef X16_USE_SERIAL { X16_USE_SERIAL = 1 }
 }
 ; util/bcd.asm stands alone (decimal-mode add/sub). Empty block registers
-; xuse_bcd in the 64tass gate model; kept OUT of X16_USE_ALL (pay-per-use).
+; xuse_bcd in the 64tass gate model.
 !ifdef X16_USE_BCD {
 }
 ; storage/stack.asm and storage/ringbuffer.asm each own an 8 KB HIRAM bank.
 ; Standalone; empty blocks register xuse_stack / xuse_ringbuffer in the
-; 64tass gate model. Both pay-per-use (out of X16_USE_ALL).
+; 64tass gate model.
 !ifdef X16_USE_STACK {
 }
 !ifdef X16_USE_RINGBUFFER {
@@ -404,13 +474,13 @@
 !ifdef X16_USE_VERAFX_LINE   { !ifndef X16_USE_VERAFX_LINETRI { X16_USE_VERAFX_LINETRI = 1 } }
 !ifdef X16_USE_VERAFX_TRI    { !ifndef X16_USE_VERAFX_LINETRI { X16_USE_VERAFX_LINETRI = 1 } }
 ; gfx/verafx_utils.asm is pay-per-use and deliberately kept OUT of
-; X16_USE_VERAFX and X16_USE_ALL.
+; X16_USE_VERAFX.
 !ifdef X16_USE_VERAFX_UTILS {
 }
-; audio/rom.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; audio/rom.asm is pay-per-use.
 !ifdef X16_USE_AUDIO_ROM {
 }
-; audio/zsm.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+; audio/zsm.asm is pay-per-use.
 !ifdef X16_USE_ZSM {
 }
 ; audio/zsm.asm's PCM sample layer is also pay-per-use. Enabling this

@@ -73,7 +73,7 @@ parameters, behaviour) applies to all four unchanged.
 ; MADS: assemble for 65C02
     icl "x16.asm"  ; constants + macros. Emits no code.
 
-X16_USE_SCREEN = 1  ; pick your modules (or X16_USE_ALL = 1)
+X16_USE_SCREEN = 1  ; pick modules or a section gate
 
     org $0801
     basic_stub  ; 10 SYS 2061
@@ -106,12 +106,22 @@ Two rules, both enforced by ACME's pass model:
 ### Picking modules
 
 ACME has no linker, so unused routines can't be stripped automatically.
-Instead, define only the gates you need — each pulls in one source module —
-or define `X16_USE_ALL = 1` for the stable all-in bundle. Dependencies resolve themselves
-(e.g. `X16_USE_SPRITE` pulls in `X16_USE_VERA`; `X16_USE_PCM_STREAM` pulls
-in PCM and IRQ). Some newer pay-per-use modules, including the bitmap family
-and hardware-specific helpers, deliberately stay out of `X16_USE_ALL`; enable
-their gates explicitly.
+Instead, define only the gates you need. Each fine-grained gate pulls in one
+source module, and section gates expand to a whole library area.
+Dependencies resolve themselves (e.g. `X16_USE_SPRITE` pulls in
+`X16_USE_VERA`; `X16_USE_PCM_STREAM` pulls in PCM and IRQ).
+
+| Section gate | Enables |
+|---|---|
+| `X16_USE_VIDEO` | VERA, display composer, screen, palette, tile, and sprite modules. |
+| `X16_USE_GRAPHICS` | Bitmap engines, shapes, framebuffer, graph, console, VERA FX, and VERA FX utilities. |
+| `X16_USE_AUDIO` | PSG, YM, ROM audio wrappers, ZSM, PCM streaming, and ADPCM. |
+| `X16_USE_INPUT_DEVICES` | Legacy input, keyboard, and mouse modules. |
+| `X16_USE_COMMUNICATIONS` | I2C, VERA SPI, serial, and ZiModem modules. |
+| `X16_USE_STORAGE` | Banked RAM, bank allocator, HIRAM stack/ring, memory, file I/O, IEC, LOAD/SAVE, DOS, and BMX. |
+| `X16_USE_UTILITIES` | Math, clipping, buffers, compression, fixed point, BCD, collision, bits, number, integer, float, and double modules. |
+| `X16_USE_STRINGS` | All five string modules. |
+| `X16_USE_SYSTEM` | IRQ and clock modules. |
 
 ### Using another assembler
 
@@ -723,8 +733,8 @@ hides the sprite without losing its setup.
 
 Bitmap gates are now explicit about resolution and storage. Low (`L`) engines
 use normal VERA VRAM; high (`H`) engines use the MiSTer VERA_2 SDRAM bitmap
-layer. Bitmap gates are not part of `X16_USE_ALL`; select the exact format you
-want.
+layer. Select the exact format you want, or use `X16_USE_GRAPHICS` when a
+whole graphics-section build is really what you need.
 
 | Gate | File | Geometry | Prefix |
 |---|---|---|---|
@@ -1570,8 +1580,8 @@ access without `X16_USE_INPUT`.
 
 `X16_USE_SERIAL` — `comms/serial.asm`. The serial / WiFi card carries up to
 two 16C550 UARTs in the expansion window; the standard card sits at `$9F60`
-(UART 0) and `$9F68` (UART 1). Pay-per-use: set the gate to pull it in (it
-is not in `X16_USE_ALL`). `ser_init` remembers the UART you hand it, so the
+(UART 0) and `$9F68` (UART 1). Pay-per-use: set the gate directly or use
+`X16_USE_COMMUNICATIONS`. `ser_init` remembers the UART you hand it, so the
 byte routines take no address afterwards. Receiving is non-blocking by
 default. Baud rates are `SER_BAUD_*` constants (`SER_BAUD_300` …
 `SER_BAUD_921600`).

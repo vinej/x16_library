@@ -65,7 +65,7 @@ Or drive the PowerShell script directly, which is what the batch files do:
 !cpu 65c02
 !source "x16.asm"           ; constants + macros. Emits no code.
 
-X16_USE_VERA = 1            ; pick your modules (or X16_USE_ALL = 1)
+X16_USE_VERA = 1            ; pick modules or a section gate
 
 * = $0801
     +basic_stub             ; 10 SYS 2061
@@ -92,6 +92,18 @@ acme -I src_acme -f cbm -o OUT.PRG myprog.asm
 | Source order | `x16.asm` must come before any code, because ACME macros have to be defined before they are called. |
 | Library placement | `x16_code.asm` goes wherever you want the library machine code to sit, and must be sourced exactly once. |
 | Module selection | ACME has no linker, so unused routines cannot be stripped automatically. Use `X16_USE_*` gates to choose what is emitted. |
+
+| Section Gate | Enables |
+|---|---|
+| `X16_USE_VIDEO` | VERA, display composer, screen, palette, tile, and sprite modules. |
+| `X16_USE_GRAPHICS` | Bitmap engines, shapes, framebuffer, graph, console, VERA FX, and VERA FX utilities. |
+| `X16_USE_AUDIO` | PSG, YM, ROM audio wrappers, ZSM, PCM streaming, and ADPCM. |
+| `X16_USE_INPUT_DEVICES` | Legacy input, keyboard, and mouse modules. |
+| `X16_USE_COMMUNICATIONS` | I2C, VERA SPI, serial, and ZiModem modules. |
+| `X16_USE_STORAGE` | Banked RAM, bank allocator, HIRAM stack/ring, memory, file I/O, IEC, LOAD/SAVE, DOS, and BMX. |
+| `X16_USE_UTILITIES` | Math, clipping, buffers, compression, fixed point, BCD, collision, bits, number, integer, float, and double modules. |
+| `X16_USE_STRINGS` | All five string modules. |
+| `X16_USE_SYSTEM` | IRQ and clock modules. |
 
 ### Friendly macros (optional): `core/sugar.asm`
 
@@ -350,11 +362,11 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 | `X16_USE_PCM` | `pcm_ctrl`, `pcm_rate`, `pcm_reset`, `pcm_full`/`empty`, `pcm_put`, `pcm_write` |
 | `X16_USE_PCM_STREAM` | `pcm_stream_start`/`start_bank`/`stop`/`active`, `pcm_str_loop` — AFLOW-interrupt streaming beyond the 4 KB FIFO, from low or banked RAM, looping (pulls in PCM and IRQ) |
 | `X16_USE_INPUT` | `joy_scan`, `joy_get`, `mouse_show`/`hide`/`get`, `key_get`, `key_wait`, `key_peek` |
-| `X16_USE_SERIAL` | The serial / WiFi card's 16C550 UARTs (up to two, at `$9F60`/`$9F68`): `ser_detect` (scan the expansion window, `ser_u0`/`ser_u1` = the bases found), `ser_init` (8N1, FIFOs, auto-flow, no IRQ; takes the base in `A`/`X` and a `SER_BAUD_*` divisor in `P0`/`P1`), `ser_avail`, `ser_get` (non-blocking, carry set = nothing waiting), `ser_get_wait`, `ser_put`, `ser_puts`, `ser_write` (counted, binary-safe), `ser_read_until`/`ser_discard_until` (blocking, match a needle). Self-contained (no other module). It drives a specific add-on card, so — like `DOUBLE` — it is pay-per-use: **not** in `X16_USE_ALL` or the prebuilt blob; set the gate to pull it in. |
-| `X16_USE_SERIAL_ZIMODEM` | The WiFi half — an ESP32 running ZiModem, driven as an AT-command modem over UART 0: `zi_init` (reset the board to a known state), `zi_cmd` (send an `AT…` line + CR/LF), `zi_wait_ok`, `zi_reset`, `zi_get_ip` (IPv4 via ATI2), hex-mode file download (`zi_hex_open` → `zi_hex_chunk` → `zi_hex_close`), and `zi_hexdecode` (the payload decoder). A thin AT-framing skin over the `ser_*` primitives. Pulls in `X16_USE_SERIAL`; pay-per-use (not in `X16_USE_ALL`). |
+| `X16_USE_SERIAL` | The serial / WiFi card's 16C550 UARTs (up to two, at `$9F60`/`$9F68`): `ser_detect` (scan the expansion window, `ser_u0`/`ser_u1` = the bases found), `ser_init` (8N1, FIFOs, auto-flow, no IRQ; takes the base in `A`/`X` and a `SER_BAUD_*` divisor in `P0`/`P1`), `ser_avail`, `ser_get` (non-blocking, carry set = nothing waiting), `ser_get_wait`, `ser_put`, `ser_puts`, `ser_write` (counted, binary-safe), `ser_read_until`/`ser_discard_until` (blocking, match a needle). Self-contained (no other module). It drives a specific add-on card, so — like `DOUBLE` — it is pay-per-use and not in the prebuilt blob. |
+| `X16_USE_SERIAL_ZIMODEM` | The WiFi half — an ESP32 running ZiModem, driven as an AT-command modem over UART 0: `zi_init` (reset the board to a known state), `zi_cmd` (send an `AT…` line + CR/LF), `zi_wait_ok`, `zi_reset`, `zi_get_ip` (IPv4 via ATI2), hex-mode file download (`zi_hex_open` → `zi_hex_chunk` → `zi_hex_close`), and `zi_hexdecode` (the payload decoder). A thin AT-framing skin over the `ser_*` primitives. Pulls in `X16_USE_SERIAL`; pay-per-use. |
 | `X16_USE_BANK` | `bank_set`/`get`, `bank_peek`/`poke`, `mem_to_bank`, `bank_to_mem`, `bank_copy_far` |
 | `X16_USE_BANKALLOC` | `bank_alloc_init`, `bank_alloc`, `bank_free`, `bank_reserve` |
-| `X16_USE_STACK` | An 8 KB LIFO stack living in one HIRAM bank: `stack_init` (takes the bank in `A`), `stack_push`/`stack_pushw`, `stack_pop`/`stack_popw` (byte and word), `stack_size`/`stack_free`, `stack_isempty`/`stack_isfull`. Saves/restores `RAM_BANK`. The 256-byte version that needs no bank is `stk_*` in `X16_USE_BUFFERS`. Pay-per-use (not in `X16_USE_ALL`). |
+| `X16_USE_STACK` | An 8 KB LIFO stack living in one HIRAM bank: `stack_init` (takes the bank in `A`), `stack_push`/`stack_pushw`, `stack_pop`/`stack_popw` (byte and word), `stack_size`/`stack_free`, `stack_isempty`/`stack_isfull`. Saves/restores `RAM_BANK`. The 256-byte version that needs no bank is `stk_*` in `X16_USE_BUFFERS`. Pay-per-use. |
 | `X16_USE_RINGBUFFER` | An 8 KB FIFO ring living in one HIRAM bank: `ring_init` (bank in `A`), `ring_put`/`ring_putw`, `ring_get`/`ring_getw`, `ring_size`/`ring_free`, `ring_isempty`/`ring_isfull`. Saves/restores `RAM_BANK`. The 256-byte version is `rb_*` in `X16_USE_BUFFERS`. Pay-per-use. |
 | `X16_USE_MEM` | `mem_fill`, `mem_copy`, `mem_crc`, `mem_decompress` (KERNAL block ops, LZSA2) |
 | `X16_USE_LOAD` | `fs_setname`, `fs_load`, `fs_save`, `fs_vload` |
@@ -367,14 +379,14 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 | `X16_USE_ZX0` | `zx0_decompress` — ZX0 v2 (salvador/zx0 output); packs tighter than the ROM's LZSA2 |
 | `X16_USE_TSC` | `tsc_decompress` — TSCrunch; unpacks faster than either, packs a little looser |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
-| `X16_USE_BCD` | Packed-BCD (decimal-mode) arithmetic on `bcd_a`/`bcd_b` registers: `bcd_add8`/`16`/`32`, `bcd_sub8`/`16`/`32` (carry out = overflow/borrow), and `bcd_addto`/`bcd_subfrom` (32-bit, in place through a pointer). `$0987 + $1111 = $2098` — the hex digits *are* the decimal digits, so a score or clock stays print-ready without binary→decimal conversion. Pay-per-use (not in `X16_USE_ALL`). |
+| `X16_USE_BCD` | Packed-BCD (decimal-mode) arithmetic on `bcd_a`/`bcd_b` registers: `bcd_add8`/`16`/`32`, `bcd_sub8`/`16`/`32` (carry out = overflow/borrow), and `bcd_addto`/`bcd_subfrom` (32-bit, in place through a pointer). `$0987 + $1111 = $2098` — the hex digits *are* the decimal digits, so a score or clock stays print-ready without binary→decimal conversion. Pay-per-use. |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
 | `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
 | `X16_USE_INT16` | 16-bit integers: `i16_add`/`sub`/`neg`/`abs`/`mul`/`divmod`/`divmod_s`, `i16_cmps`/`cmpu`, `i16_shl`/`shr`/`asr`, `i16_sqrt`, `i16_from_u8`/`s8`, `i16_to_dec`/`dec_s`, `+i16_const` |
 | `X16_USE_INT32` | 32-bit integers: `i32_add`/`sub`/`neg`/`abs`/`mul`/`divmod`, `i32_cmps`/`cmpu`, `i32_shl`/`shr`/`asr`, `i32_from_u16`/`s16`, `i32_to_s16`, `i32_to_dec`, `+i32_const` |
 | `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` — the ROM's 5-byte float (~9 digits) |
-| `X16_USE_DOUBLE` | Software IEEE-754 **binary64** (~15-16 digits) where the ROM float is too coarse — a `d_ac` accumulator like FLOAT's `FAC`: `d_load`/`store`, `d_from_s16`/`s32`, `d_to_s32`, `d_neg`/`abs`, `d_cmp`, `d_add`/`sub`/`mul`/`div`, `d_sqrt`, `d_exp`, `d_ln`, `d_pow`, `d_sin`/`cos`/`tan`/`atan`, `d_sinh`/`cosh`/`tanh`, `d_from_str`/`d_to_str` (decimal I/O). A full scientific-calculator core in software. Self-contained (no ROM), so it is not in `X16_USE_ALL` / the prebuilt blob — enable the gate to use it. |
+| `X16_USE_DOUBLE` | Software IEEE-754 **binary64** (~15-16 digits) where the ROM float is too coarse — a `d_ac` accumulator like FLOAT's `FAC`: `d_load`/`store`, `d_from_s16`/`s32`, `d_to_s32`, `d_neg`/`abs`, `d_cmp`, `d_add`/`sub`/`mul`/`div`, `d_sqrt`, `d_exp`, `d_ln`, `d_pow`, `d_sin`/`cos`/`tan`/`atan`, `d_sinh`/`cosh`/`tanh`, `d_from_str`/`d_to_str` (decimal I/O). A full scientific-calculator core in software. Self-contained and not in the prebuilt blob. |
 | `X16_USE_STRING` | NUL-terminated string fundamentals (`string/string.asm`): `str_length`, `str_copy`, `str_ncopy`, `str_append`, `str_nappend`, `str_compare`, `str_hash`. Strings passed by pointer in `A`/`X`, a second string in `X16_P0/P1`; lengths are bytes (≤ 255). |
 | `X16_USE_STRING_CTYPE` | Character predicates (`string/ctype.asm`), char in `A` → carry: `str_isdigit`, `str_isxdigit`, `str_islower`, `str_isspace` (encoding-agnostic) and `str_isupper`/`str_isletter`/`str_isprint` with `_iso` variants for the letters PETSCII and ISO place differently. |
 | `X16_USE_STRING_CASE` | Case folding (`string/case.asm`): `str_lower`/`str_upper` (whole string, in place) and `str_lowerchar`/`str_upperchar` (one char), each with an `_iso` variant, plus `str_compare_nocase`/`_iso`. |
@@ -389,7 +401,7 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 |---|---|
 | Dependencies | Gates pull in their dependencies, such as `X16_USE_SPRITE` implying `X16_USE_VERA`. |
 | Repeated gates | Asking for a module twice is not an error. |
-| `X16_USE_ALL` | Optional hardware- or size-heavy gates stay pay-per-use when noted in the module table. |
+| Section gates | `X16_USE_VIDEO`, `X16_USE_GRAPHICS`, `X16_USE_AUDIO`, `X16_USE_INPUT_DEVICES`, `X16_USE_COMMUNICATIONS`, `X16_USE_STORAGE`, `X16_USE_UTILITIES`, `X16_USE_STRINGS`, and `X16_USE_SYSTEM` expand to their area gates. |
 
 **Tile And Screen**
 
