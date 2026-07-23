@@ -2231,6 +2231,112 @@
 }
 
 ; =====================================================================
+; storage/iec
+; =====================================================================
+!ifdef X16_USE_IEC {
+!macro xm_iec_listen .device {
+    lda #(.device)
+    jsr iec_listen
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_talk .device {
+    lda #(.device)
+    jsr iec_talk
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_second .command {
+    lda #(.command)
+    jsr iec_second
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_tksa .command {
+    lda #(.command)
+    jsr iec_tksa
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_ciout .byte {
+    lda #(.byte)
+    jsr iec_ciout
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_acptr {
+    jsr iec_acptr
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_unlisten {
+    jsr iec_unlisten
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_untalk {
+    jsr iec_untalk
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_set_timeout .control {
+    lda #(.control)
+    jsr iec_set_timeout
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_readst {
+    jsr iec_readst
+}
+}
+; -> X/Y = bytes read, carry set when unsupported/error
+!ifdef X16_USE_IEC {
+!macro xm_iec_macptr .dest, .count {
+    lda #(.count)
+    ldx #<(.dest)
+    ldy #>(.dest)
+    jsr iec_macptr
+}
+}
+; -> X/Y = bytes written, carry set when unsupported/error
+!ifdef X16_USE_IEC {
+!macro xm_iec_mciout .src, .count {
+    lda #(.count)
+    ldx #<(.src)
+    ldy #>(.src)
+    jsr iec_mciout
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_open_channel .device, .secondary {
+    lda #(.device)
+    ldy #(.secondary)
+    jsr iec_open_channel
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_data_channel .device, .secondary {
+    lda #(.device)
+    ldy #(.secondary)
+    jsr iec_data_channel
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_talk_channel .device, .secondary {
+    lda #(.device)
+    ldy #(.secondary)
+    jsr iec_talk_channel
+}
+}
+!ifdef X16_USE_IEC {
+!macro xm_iec_close_channel .device, .secondary {
+    lda #(.device)
+    ldy #(.secondary)
+    jsr iec_close_channel
+}
+}
+
+; =====================================================================
 ; storage/fileio
 ; =====================================================================
 !ifdef X16_USE_FILEIO {

@@ -138,6 +138,8 @@
 ;                     (KERNAL block ops; they stream to/from VERA too)
 ;   X16_USE_FILEIO    fio_set_lfs/name, fio_open/close,
 ;                     fio_chkin/chkout, fio_chrin/chrout, fio_readst
+;   X16_USE_IEC       iec_listen/talk/second/tksa, iec_ciout/acptr,
+;                     iec_unlisten/untalk, iec_macptr/mciout
 ;   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
 ;   X16_USE_DOS       dos_cmd, dos_status, dos_delete, dos_rename,
 ;                     dos_mkdir, dos_rmdir, dos_chdir
@@ -283,6 +285,9 @@
 }
 ; storage/fileio.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
 !ifdef X16_USE_FILEIO {
+}
+; storage/iec.asm is pay-per-use and deliberately kept OUT of X16_USE_ALL.
+!ifdef X16_USE_IEC {
 }
 ; comms/zimodem.asm layers the ESP32 WiFi AT-command protocol over SERIAL.
 ; Also pay-per-use (out of X16_USE_ALL); pulls SERIAL in.
@@ -433,6 +438,7 @@
 !ifdef X16_USE_RINGBUFFER { !source "storage/ringbuffer.asm" }
 !ifdef X16_USE_MEM     { !source "storage/mem.asm" }
 !ifdef X16_USE_FILEIO  { !source "storage/fileio.asm" }
+!ifdef X16_USE_IEC     { !source "storage/iec.asm" }
 !ifdef X16_USE_LOAD    { !source "storage/load.asm" }
 !ifdef X16_USE_DOS     { !source "storage/dos.asm" }
 !ifdef X16_USE_BMX     { !source "storage/bmx.asm" }
