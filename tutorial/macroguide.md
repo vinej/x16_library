@@ -37,12 +37,8 @@ just fills in the argument block.
 3. [Before and after](#before-and-after)
 4. [Run-time values and argument-free calls](#run-time-values-and-argument-free-calls)
 5. [Reference](#reference)
-   - [VERA](#vera-x16_use_vera) · [Screen](#screen-x16_use_screen) · [Palette](#palette-x16_use_palette) · [Tiles](#tiles-and-layers-x16_use_tile) · [Sprites](#sprites-x16_use_sprite)
-   - [Bitmap 8bpp](#bitmap-8bpp-x16_use_bitmap) · [Bitmap 2bpp](#bitmap-2bpp-x16_use_bitmap2) · [Shapes](#shapes-x16_use_shapes) · [VERA FX](#vera-fx-x16_use_verafx)
-   - [Interrupts](#interrupts-x16_use_irq) · [PSG](#psg-x16_use_psg) · [YM2151](#ym2151-x16_use_ym) · [PCM](#pcm-x16_use_pcm) · [ADPCM](#adpcm-x16_use_adpcm) · [Input](#input-x16_use_input) · [Serial](#serial-x16_use_serial) · [ZiModem](#zimodem-x16_use_serial_zimodem)
-   - [Banked RAM](#banked-ram-x16_use_bank) · [Bank allocator](#bank-allocator-x16_use_bankalloc) · [Block memory](#block-memory-x16_use_mem) · [Load/save](#loadsave-x16_use_load) · [DOS](#dos-x16_use_dos) · [BMX](#bmx-x16_use_bmx)
-   - [Math](#math-x16_use_math) · [Collision](#collision-x16_use_collide) · [Bits](#bits-x16_use_bits) · [Number](#number-x16_use_number) · [Fixed point](#fixed-point-x16_use_fixed)
-   - [Integers 16/32](#integers-x16_use_int16-x16_use_int32) · [Float](#float-x16_use_float) · [Double](#double-x16_use_double) · [Clip](#clip-x16_use_clip) · [Buffers](#buffers-x16_use_buffers) · [Compression](#compression-x16_use_zx0-x16_use_tsc) · [Strings](#strings-x16_use_string-and-friends)
+   - Modules are listed there as bold entries, for example
+     `**VERA (X16_USE_VERA)**`.
 6. [Worked examples](#worked-examples)
 7. [Other assemblers](#other-assemblers)
 
@@ -57,7 +53,7 @@ Set your `X16_USE_*` gates first, then source the layer — **after** the gates 
 !cpu 65c02
 !source "x16.asm"
 
-X16_USE_BITMAP2      = 1        ; your gates first
+X16_USE_BITMAP2H     = 1        ; your gates first
 X16_USE_SHAPES_RRECT = 1
 X16_USE_PALETTE      = 1
 
@@ -66,8 +62,8 @@ X16_USE_PALETTE      = 1
 * = $0801
     +basic_stub
 main
-    +xm_gfx2_init
-    +xm_gfx2_clear 0
+    +xm_gfx2h_init
+    +xm_gfx2h_clear 0
     +xm_pal_set 1, $0F00        ; entry 1 = red
     +xm_shape_frrect 40, 40, 200, 110, 28, 1
     rts
@@ -186,7 +182,9 @@ the macro. A `→` note is what the routine returns — the macro does not captu
 it, so read it from the registers/flags/P-block afterwards. Angles are the
 `sin8`/`cos8` byte convention: `0` = east, `64` = south.
 
-### VERA (`X16_USE_VERA`)
+**VERA (X16_USE_VERA)**
+
+[Detailed macro reference](macro_vera.md)
 
 | Macro | Does |
 |---|---|
@@ -195,7 +193,24 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `+xm_vera_fill val, count` | write `val` `count` times from the current address |
 | `+xm_vera_copy count` | copy `count` bytes port 0 → port 1 (both pre-pointed) |
 
-### Screen (`X16_USE_SCREEN`)
+**Display composer (X16_USE_VERA_DC)**
+
+[Detailed macro reference](macro_display_composer.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_vdc_get_video` / `+xm_vdc_set_video video` | read/write `DC_VIDEO` |
+| `+xm_vdc_set_output mode` | set output mode while preserving other video bits |
+| `+xm_vdc_set_layers mask` / `+xm_vdc_layer_on mask` / `+xm_vdc_layer_off mask` | layer/sprite enables |
+| `+xm_vdc_get_scale` / `+xm_vdc_set_scale hscale, vscale` | read/write composer scale |
+| `+xm_vdc_get_border` / `+xm_vdc_set_border color` | border palette index |
+| `+xm_vdc_get_active_raw` / `+xm_vdc_set_active_raw hstart, hstop, vstart, vstop` | raw active-display registers |
+| `+xm_vdc_set_active hstart, hstop, vstart, vstop` / `+xm_vdc_fullscreen` | pixel-coordinate active display |
+| `+xm_vdc_get_version` | VERA bitstream version (-> carry set if valid) |
+
+**Screen (X16_USE_SCREEN)**
+
+[Detailed macro reference](macro_screen.md)
 
 | Macro | Does |
 |---|---|
@@ -209,14 +224,18 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `+xm_screen_charset cs` | select a charset |
 | `+xm_screen_puts addr` | print a NUL-terminated string |
 
-### Palette (`X16_USE_PALETTE`)
+**Palette (X16_USE_PALETTE)**
+
+[Detailed macro reference](macro_palette.md)
 
 | Macro | Does |
 |---|---|
 | `+xm_pal_set index, rgb` | set one entry; `rgb` is a 12-bit `$0RGB` value |
 | `+xm_pal_load src, first, count` | bulk-load `count` entries from RAM |
 
-### Tiles and layers (`X16_USE_TILE`)
+**Tiles and layers (X16_USE_TILE)**
+
+[Detailed macro reference](macro_tiles.md)
 
 | Macro | Does |
 |---|---|
@@ -228,7 +247,9 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `+xm_tile_put col, row, code, attr` | write one cell |
 | `+xm_tile_get col, row` | read one cell (→ A = code, X = attribute) |
 
-### Sprites (`X16_USE_SPRITE`)
+**Sprites (X16_USE_SPRITE)**
+
+[Detailed macro reference](macro_sprites.md)
 
 | Macro | Does |
 |---|---|
@@ -241,44 +262,82 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `+xm_sprite_z sprite, z` | change only the Z-depth |
 | `+xm_sprite_size sprite, wcode, hcode, paloff` | size codes + palette offset |
 
-### Bitmap 8bpp (`X16_USE_BITMAP`)
+**Bitmap graphics (X16_USE_BITMAP8L/2H/2L/4L/4H/8H)**
+
+[Detailed macro reference](macro_bitmap.md)
+
+| Gate / prefix | Does |
+|---|---|
+| `X16_USE_BITMAP8L` / `gfx8l` | 320x240, 8 bpp, VERA VRAM; init, clear, pset/read, hline/vline, rect/frame, line, pattern, blit/blitm, char/text |
+| `X16_USE_BITMAP4L` / `gfx4l` | 320x240, 4 bpp, VERA VRAM; same as 8L, with 4-bit pixels |
+| `X16_USE_BITMAP2L` / `gfx2l` | 320x240, 2 bpp, VERA VRAM; init, clear, setptr, pset/read, hline/vline, rect/frame, line, pattern, blit/blitm |
+| `X16_USE_BITMAP2H` / `gfx2h` | 640x480, 2 bpp, MiSTer VERA_2 SDRAM; same as 2L at high resolution |
+| `X16_USE_BITMAP4H` / `gfx4h` | 640x480, 4 bpp, MiSTer VERA_2 SDRAM; `has/init/off`, passthru, palette, clear, pset/read, hline/vline, rect/frame, line, pattern, blit/blitm, copy |
+| `X16_USE_BITMAP8H` / `gfx8h` | 640x480, 8 bpp, MiSTer VERA_2 SDRAM; same as 4H, with 8-bit pixels |
+
+**Framebuffer (X16_USE_FB)**
+
+[Detailed macro reference](macro_framebuffer.md)
 
 | Macro | Does |
 |---|---|
-| `+xm_gfx_init` / `+xm_gfx_clear col` | 320×240×256 mode / clear |
-| `+xm_gfx_pset x, y, col` | one pixel, clipped |
-| `+xm_gfx_read x, y` | read one pixel (→ A = colour) |
-| `+xm_gfx_hline x, y, len, col` / `+xm_gfx_vline …` | spans (no clip) |
-| `+xm_gfx_rect x, y, w, h, col` / `+xm_gfx_frame …` | filled / outline rectangle |
-| `+xm_gfx_line x0, y0, x1, y1, col` | Bresenham line |
-| `+xm_gfx_pattern_set pat` / `+xm_gfx_pattern_rect x, y, w, h` | 8×8 pattern fill |
-| `+xm_gfx_char code, x, y, col` / `+xm_gfx_text str, x, y, col` | glyph / string |
+| `+xm_fb_init` / `+xm_fb_get_info` | active KERNAL framebuffer driver |
+| `+xm_fb_set_palette data, start, count` | set palette entries |
+| `+xm_fb_cursor_position x, y` / `+xm_fb_cursor_next_line` | framebuffer cursor |
+| `+xm_fb_get_pixel x, y` / `+xm_fb_set_pixel x, y, color` | one pixel |
+| `+xm_fb_get_pixels dest, count` / `+xm_fb_set_pixels src, count` | pixel runs |
+| `+xm_fb_set_8_pixels pattern, color` / `+xm_fb_set_8_pixels_opaque mask, pattern, fg, bg` | 8-pixel pattern helpers |
+| `+xm_fb_fill_pixels count, step, color` / `+xm_fb_filter_pixels count, filter` | fill/filter from cursor |
+| `+xm_fb_move_pixels sx, sy, tx, ty, count` | move a horizontal span |
 
-### Bitmap 2bpp (`X16_USE_BITMAP2`)
+**GRAPH (X16_USE_GRAPH)**
 
-Same family at 640×480×4 (colour in `A`; width and height are 16-bit):
-`+xm_gfx2_init`, `+xm_gfx2_clear col`, `+xm_gfx2_pset x, y, col`,
-`+xm_gfx2_read x, y` (→ A = colour, carry set if off screen),
-`+xm_gfx2_hline / _vline x, y, len, col`, `+xm_gfx2_rect / _frame x, y, w, h, col`,
-`+xm_gfx2_line x0, y0, x1, y1, col`, `+xm_gfx2_pattern_set pat`,
-`+xm_gfx2_pattern_rect x, y, w, h`.
+[Detailed macro reference](macro_graph.md)
 
-### Shapes (`X16_USE_SHAPES` + sub-gates)
-
-Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
-
-| Macro | Gate |
+| Macro | Does |
 |---|---|
-| `+xm_shape_circle cx, cy, r, col` / `+xm_shape_disc …` | `SHAPES` |
-| `+xm_shape_ellipse cx, cy, rx, ry, col` / `+xm_shape_fellipse …` | `SHAPES` |
-| `+xm_shape_flood x, y, col` (→ carry = stack overflowed) | `SHAPES` |
-| `+xm_shape_polygon cx, cy, r, sides, rot, col` / `+xm_shape_fpolygon …` | `SHAPES_POLY` |
-| `+xm_shape_rrect x, y, w, h, r, col` / `+xm_shape_frrect …` | `SHAPES_RRECT` |
-| `+xm_shape_arc cx, cy, r, a0, a1, col` | `SHAPES_ARC` |
-| `+xm_shape_pie cx, cy, r, a0, a1, col` | `SHAPES_PIE` |
-| `+xm_shape_bezier x0, y0, x1, y1, x2, y2, x3, y3, col` | `SHAPES_BEZIER` |
+| `+xm_graph_init_default` / `+xm_graph_init driver` | init GRAPH with default/custom FB driver |
+| `+xm_graph_clear` / `+xm_graph_set_window x, y, w, h` | clear/window |
+| `+xm_graph_set_colors stroke, fill, background` | drawing colours |
+| `+xm_graph_draw_line x1, y1, x2, y2` | line |
+| `+xm_graph_draw_rect_outline/fill x, y, w, h, radius` | rectangles |
+| `+xm_graph_move_rect sx, sy, tx, ty, w, h` | move rectangle |
+| `+xm_graph_draw_oval_outline/fill x, y, w, h` | ovals |
+| `+xm_graph_draw_image x, y, image, w, h` | image bytes |
+| `+xm_graph_set_font_default` / `+xm_graph_set_font font` | font |
+| `+xm_graph_get_char_size char, style` / `+xm_graph_put_char char, x, y` | text metrics/draw |
 
-### VERA FX (`X16_USE_VERAFX`)
+**Console (X16_USE_CONSOLE)**
+
+[Detailed macro reference](macro_console.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_con_init_fullscreen` / `+xm_con_init x, y, w, h` | initialize console |
+| `+xm_con_set_paging_message msg` / `+xm_con_disable_paging` | paging controls |
+| `+xm_con_put_char_wrap char` / `+xm_con_put_char_word char` | print with wrapping |
+| `+xm_con_get_char` | read one console character |
+| `+xm_con_put_image image, w, h` | draw console image data |
+
+**Shapes (X16_USE_SHAPES + sub-gates)**
+
+[Detailed macro reference](macro_shapes.md)
+
+| Macro | Does |
+|---|---|
+| `SHP_*` bindings | engine selection; default is 2 bpp |
+| `+xm_shape_circle cx, cy, r, col` / `+xm_shape_disc ...` | `SHAPES` gate |
+| `+xm_shape_ellipse cx, cy, rx, ry, col` / `+xm_shape_fellipse ...` | `SHAPES` gate |
+| `+xm_shape_flood x, y, col` | `SHAPES` gate; → carry set = stack overflowed |
+| `+xm_shape_polygon cx, cy, r, sides, rot, col` / `+xm_shape_fpolygon ...` | `SHAPES_POLY` gate |
+| `+xm_shape_rrect x, y, w, h, r, col` / `+xm_shape_frrect ...` | `SHAPES_RRECT` gate |
+| `+xm_shape_arc cx, cy, r, a0, a1, col` | `SHAPES_ARC` gate |
+| `+xm_shape_pie cx, cy, r, a0, a1, col` | `SHAPES_PIE` gate |
+| `+xm_shape_bezier x0, y0, x1, y1, x2, y2, x3, y3, col` | `SHAPES_BEZIER` gate |
+
+**VERA FX (X16_USE_VERAFX)**
+
+[Detailed macro reference](macro_verafx.md)
 
 | Macro | Does |
 |---|---|
@@ -289,7 +348,26 @@ Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
 | `+xm_fx_transp_on` / `+xm_fx_transp_off` | transparent VRAM writes |
 | `+xm_fx_line x0, y0, x1, y1, col` | hardware-assisted line |
 
-### Interrupts (`X16_USE_IRQ`)
+**VERA FX utilities (X16_USE_VERAFX_UTILS)**
+
+[Detailed macro reference](macro_verafx_utils.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_fxu_off` / `+xm_fxu_get_ctrl` / `+xm_fxu_set_ctrl ctrl` | FX control |
+| `+xm_fxu_ctrl_on mask` / `+xm_fxu_ctrl_off mask` | set/clear FX bits |
+| `+xm_fxu_addr1_mode mode` | ADDR1 mode bits |
+| `+xm_fxu_cache_write_on/off`, `+xm_fxu_cache_fill_on/off`, `+xm_fxu_cache_cycle_on/off` | cache modes |
+| `+xm_fxu_transparent_on/off`, `+xm_fxu_4bit_on/off`, `+xm_fxu_hop_on/off` | transparent, 4-bit, 16-bit hop |
+| `+xm_fxu_set_mult mult` / `+xm_fxu_set_cache b0, b1, b2, b3` | multiplier/cache registers |
+| `+xm_fxu_reset_accum` / `+xm_fxu_accumulate` | accumulator helpers |
+| `+xm_fxu_cache_fill0/1` / `+xm_fxu_cache_write0/1 mask` | cache fill/write primitives |
+| `+xm_fxu_set_incr xinc, yinc` / `+xm_fxu_set_pos xpos, ypos` / `+xm_fxu_set_subpos xsub, ysub` | affine stepping state |
+| `+xm_fxu_get_poly_fill` / `+xm_fxu_set_tilebase value` / `+xm_fxu_set_mapbase value` | polygon/tile/map helpers |
+
+**Interrupts (X16_USE_IRQ)**
+
+[Detailed macro reference](macro_interrupts.md)
 
 | Macro | Does |
 |---|---|
@@ -298,7 +376,9 @@ Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
 | `+xm_irq_line_install handler` | call a handler at a scanline |
 | `+xm_irq_sprcol_install handler` (`handler` = 0 polls) / `+xm_irq_sprcol_remove` | sprite-collision interrupt |
 
-### PSG (`X16_USE_PSG`)
+**PSG (X16_USE_PSG)**
+
+[Detailed macro reference](macro_psg.md)
 
 | Macro | Does |
 |---|---|
@@ -310,7 +390,9 @@ Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
 | `+xm_psg_env_start / _release / _stop voice` | ASR envelope control |
 | `+xm_psg_env_tick` | advance every armed envelope (once a frame) |
 
-### YM2151 (`X16_USE_YM`)
+**YM2151 (X16_USE_YM)**
+
+[Detailed macro reference](macro_ym2151.md)
 
 | Macro | Does |
 |---|---|
@@ -323,19 +405,55 @@ Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
 | `+xm_ym_vol channel, atten` / `+xm_ym_pan channel, pan` | volume / pan |
 | `+xm_ym_drum channel, note` | a drum voice |
 
-### PCM (`X16_USE_PCM`, `X16_USE_PCM_STREAM`)
+**ROM audio (X16_USE_AUDIO_ROM)**
 
-| Macro | Gate |
+[Detailed macro reference](macro_rom_audio.md)
+
+| Macro | Does |
 |---|---|
-| `+xm_pcm_ctrl byte` / `+xm_pcm_rate rate` / `+xm_pcm_reset` | `PCM` |
-| `+xm_pcm_put sample` / `+xm_pcm_write src, count` | `PCM` |
-| `+xm_pcm_stream_start src, count, loop` / `+xm_pcm_stream_stop` | `PCM_STREAM` |
+| Scope | thin ROM `BANK_AUDIO` wrappers; separate from local PSG/YM modules |
+| `+xm_ar_audio_init`, `+xm_ar_playstring_voice voice` | general ROM audio helpers |
+| `+xm_ar_fmplaystring str, len`, `+xm_ar_fmchordstring str, len`, `+xm_ar_psgplaystring str, len`, `+xm_ar_psgchordstring str, len` | play strings/chords |
+| `+xm_ar_fmfreq channel, hz`, `+xm_ar_fmfreq_no_retrigger channel, hz`, `+xm_ar_fmnote channel, note, kf`, `+xm_ar_fmnote_no_retrigger channel, note, kf`, `+xm_ar_fmvib speed, depth` | FM helpers |
+| `+xm_ar_psgfreq voice, hz`, `+xm_ar_psgnote voice, note, kf`, `+xm_ar_psgwav voice, wave` | PSG helpers |
+| `+xm_ar_note_bas2fm`, `bas2midi`, `bas2psg`, `fm2bas`, `fm2midi`, `fm2psg`, `freq2bas/fm/midi/psg`, `midi2bas/fm/psg`, `psg2bas/fm/midi` | note conversion |
+| `+xm_ar_psg_init`, `+xm_ar_psg_playfreq`, `+xm_ar_psg_read_raw/cooked`, `+xm_ar_psg_setatten/freq/pan/vol`, `+xm_ar_psg_write`, `+xm_ar_psg_write_fast`, `+xm_ar_psg_getatten/pan` | ROM PSG shadows |
+| `+xm_ar_ym_init`, `+xm_ar_ym_loaddefpatches`, `+xm_ar_ym_loadpatch_rom`, `+xm_ar_ym_loadpatchlfn`, `+xm_ar_ym_playdrum/playnote`, `+xm_ar_ym_setatten/drum/note/pan`, `+xm_ar_ym_read_raw/cooked`, `+xm_ar_ym_release`, `+xm_ar_ym_trigger`, `+xm_ar_ym_trigger_no_retrigger`, `+xm_ar_ym_write`, `+xm_ar_ym_getatten/pan`, `+xm_ar_ym_get_chip_type` | ROM YM shadows |
 
-### ADPCM (`X16_USE_ADPCM`)
+**PCM (X16_USE_PCM, X16_USE_PCM_STREAM)**
 
-`+xm_adpcm_init`, `+xm_adpcm_nibble code`, `+xm_adpcm_block src, dst, count`.
+[Detailed macro reference](macro_pcm.md)
 
-### Input (`X16_USE_INPUT`)
+| Macro | Does |
+|---|---|
+| `+xm_pcm_ctrl byte` / `+xm_pcm_rate rate` / `+xm_pcm_reset` | `PCM` gate |
+| `+xm_pcm_put sample` / `+xm_pcm_write src, count` | `PCM` gate |
+| `+xm_pcm_stream_start src, count, loop` / `+xm_pcm_stream_stop` | `PCM_STREAM` gate |
+
+**ZSM (X16_USE_ZSM, X16_USE_ZSM_PCM)**
+
+[Detailed macro reference](macro_zsm.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_zsm_init header` / `+xm_zsm_init_stream stream, loop` | `ZSM` gate |
+| `+xm_zsm_play` / `+xm_zsm_stop` / `+xm_zsm_rewind` | `ZSM` gate |
+| `+xm_zsm_get_tickrate` / `+xm_zsm_status` / `+xm_zsm_tick` | `ZSM` gate |
+| `+xm_zsm_pcm_present` / `+xm_zsm_pcm_trigger instrument` | `ZSM_PCM` gate |
+
+**ADPCM (X16_USE_ADPCM)**
+
+[Detailed macro reference](macro_adpcm.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_adpcm_init` | initialize ADPCM state |
+| `+xm_adpcm_nibble code` | decode one ADPCM nibble |
+| `+xm_adpcm_block src, dst, count` | decode a block |
+
+**Input (X16_USE_INPUT)**
+
+[Detailed macro reference](macro_input.md)
 
 | Macro | Does |
 |---|---|
@@ -343,13 +461,33 @@ Engine-agnostic; bind `SHP_*` to pick the engine (defaults to 2bpp).
 | `+xm_mouse_show cursor` / `+xm_mouse_hide` / `+xm_mouse_get` | mouse (→ P0/1 = x, P2/3 = y, A = buttons) |
 | `+xm_key_get` / `+xm_key_wait` / `+xm_key_peek` | keyboard (→ A = PETSCII) |
 
-### Serial (`X16_USE_SERIAL`)
+**Keyboard (X16_USE_KEYBOARD)**
 
-The serial / WiFi card's 16C550 UARTs. `base` is a UART address (from
-`ser_detect`, or `$9F60`); `divisor` is a `SER_BAUD_*` constant.
+[Detailed macro reference](macro_keyboard.md)
 
 | Macro | Does |
 |---|---|
+| `+xm_kbd_scan` / `+xm_kbd_peek` / `+xm_kbd_put key` | keyboard scan/read/write helpers |
+| `+xm_kbd_get_modifiers` | read modifier state |
+| `+xm_kbd_get_keymap` / `+xm_kbd_set_keymap name` | keymap helpers |
+
+**Mouse (X16_USE_MOUSE)**
+
+[Detailed macro reference](macro_mouse.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_mse_config cursor, width8, height8` | configure mouse cursor |
+| `+xm_mse_scan` / `+xm_mse_get` / `+xm_mse_get_to zp` | mouse sample/read helpers |
+| `+xm_mse_show cursor` / `+xm_mse_show_keep` / `+xm_mse_hide` | mouse visibility helpers |
+
+**Serial (X16_USE_SERIAL)**
+
+[Detailed macro reference](macro_serial.md)
+
+| Macro | Does |
+|---|---|
+| `base` / `divisor` | `base` is from `ser_detect` or `$9F60`; `divisor` is a `SER_BAUD_*` constant |
 | `+xm_ser_detect` | scan for UARTs (→ A = count, `ser_u0`/`ser_u1` = bases) |
 | `+xm_ser_init base, divisor` | 8N1, FIFOs, auto-flow; selects that UART |
 | `+xm_ser_avail` | → carry set if a byte is waiting |
@@ -361,14 +499,13 @@ The serial / WiFi card's 16C550 UARTs. `base` is a UART address (from
 | `+xm_ser_read_until match, buffer, max` | read into buffer until `match` (→ P4/5 = count) |
 | `+xm_ser_discard_until match` | read and discard until `match` |
 
-### ZiModem (`X16_USE_SERIAL_ZIMODEM`)
+**ZiModem (X16_USE_SERIAL_ZIMODEM)**
 
-The ESP32 WiFi modem on top of Serial. Most of these block on the board's
-reply, so they are for real hardware; `+xm_zi_hexdecode` is pure and
-handy on its own.
+[Detailed macro reference](macro_zimodem.md)
 
 | Macro | Does |
 |---|---|
+| Scope | ESP32 WiFi modem helpers on top of Serial; most block on real hardware replies |
 | `+xm_zi_init base, divisor` | reset the modem to a known state |
 | `+xm_zi_cmd addr` | send an `AT…` command line (+ CR/LF) |
 | `+xm_zi_wait_ok` | read/discard the reply up to `OK\r\n` |
@@ -379,7 +516,36 @@ handy on its own.
 | `+xm_zi_hex_close` | swallow the trailing `OK` |
 | `+xm_zi_hexdecode src, digits, dest` | pack ASCII hex → bytes (→ A = `digits`/2) |
 
-### Banked RAM (`X16_USE_BANK`)
+**I2C (X16_USE_I2C)**
+
+[Detailed macro reference](macro_i2c.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_i2c_read_byte device, offset` | read one byte |
+| `+xm_i2c_write_byte value, device, offset` | write one byte |
+| `+xm_i2c_batch_read device, buffer, count` | read a sequence |
+| `+xm_i2c_batch_read_fixed device, buffer, count` | read from a fixed register |
+| `+xm_i2c_batch_write device, buffer, count` | write a sequence |
+
+**VERA SPI (X16_USE_VERA_SPI)**
+
+[Detailed macro reference](macro_vera_spi.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_spi_get_ctrl` / `+xm_spi_set_ctrl ctrl` | read/write SPI control |
+| `+xm_spi_select` / `+xm_spi_deselect` | chip select helpers |
+| `+xm_spi_slow` / `+xm_spi_fast` | clock speed helpers |
+| `+xm_spi_autotx_on` / `+xm_spi_autotx_off` | auto-transmit controls |
+| `+xm_spi_wait` | wait for SPI ready |
+| `+xm_spi_transfer byte` | transfer one byte |
+| `+xm_spi_read` / `+xm_spi_write byte` / `+xm_spi_autotx_read` | byte I/O helpers |
+| `+xm_spi_read_bytes buffer, count` / `+xm_spi_write_bytes buffer, count` | block I/O helpers |
+
+**Banked RAM (X16_USE_BANK)**
+
+[Detailed macro reference](macro_banked_ram.md)
 
 | Macro | Does |
 |---|---|
@@ -387,12 +553,20 @@ handy on its own.
 | `+xm_bank_peek bank, offset` (→ A = byte) / `+xm_bank_poke bank, offset, byte` | one byte |
 | `+xm_mem_to_bank src, bank, offset, count` | copy low RAM into a bank |
 
-### Bank allocator (`X16_USE_BANKALLOC`)
+**Bank allocator (X16_USE_BANKALLOC)**
 
-`+xm_bank_alloc_init first, last`, `+xm_bank_alloc` (→ carry clear, A = bank),
-`+xm_bank_free bank`, `+xm_bank_reserve bank`.
+[Detailed macro reference](macro_bank_allocator.md)
 
-### Block memory (`X16_USE_MEM`)
+| Macro | Does |
+|---|---|
+| `+xm_bank_alloc_init first, last` | initialize allocator range |
+| `+xm_bank_alloc` | allocate one bank; → carry clear, A = bank |
+| `+xm_bank_free bank` | free one bank |
+| `+xm_bank_reserve bank` | reserve one bank |
+
+**Block memory (X16_USE_MEM)**
+
+[Detailed macro reference](macro_block_memory.md)
 
 | Macro | Does |
 |---|---|
@@ -401,20 +575,77 @@ handy on its own.
 | `+xm_mem_crc addr, count` | CRC-16 (→ A/X) |
 | `+xm_mem_decompress src, dst` | LZSA2 (→ A/X = one past the end) |
 
-### Load/save (`X16_USE_LOAD`)
+**Load/save (X16_USE_LOAD)**
 
-`+xm_fs_setname name, len`, `+xm_fs_load name, len, device, sa, dst`
-(→ carry set = error, A = code), `+xm_fs_vload name, len, device, vbank, vaddr`.
+[Detailed macro reference](macro_load.md)
 
-### DOS (`X16_USE_DOS`)
+| Macro | Does |
+|---|---|
+| `+xm_fs_setname name, len` | set KERNAL filename |
+| `+xm_fs_load name, len, device, sa, dst` | load to RAM; → carry set = error, A = code |
+| `+xm_fs_vload name, len, device, vbank, vaddr` | load to VRAM |
 
-`+xm_dos_cmd cmd, len` (→ A = status), `+xm_dos_status`, `+xm_dos_delete name, len`.
+**File I/O (X16_USE_FILEIO)**
 
-### BMX (`X16_USE_BMX`)
+[Detailed macro reference](macro_fileio.md)
 
-`+xm_bmx_load name, len, device, vbank, vaddr`.
+| Macro | Does |
+|---|---|
+| `+xm_fio_set_lfs logical, device, secondary` / `+xm_fio_set_name name, len` | KERNAL file setup |
+| `+xm_fio_open_named/open_read/open_write name, len, logical, device, secondary` | open helpers |
+| `+xm_fio_close logical` / `+xm_fio_close_named logical` | close helpers |
+| `+xm_fio_chkin logical` / `+xm_fio_chkout logical` / `+xm_fio_clrchn` | channel helpers |
+| `+xm_fio_chrin` / `+xm_fio_chrout byte` / `+xm_fio_getin` | byte I/O helpers |
+| `+xm_fio_readst` | read KERNAL status |
+| `+xm_fio_close_all` / `+xm_fio_close_device device` | bulk close helpers |
 
-### Math (`X16_USE_MATH`)
+**IEC (X16_USE_IEC)**
+
+[Detailed macro reference](macro_iec.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_iec_listen device` / `+xm_iec_talk device` | bus attention helpers |
+| `+xm_iec_second command` / `+xm_iec_tksa command` | secondary address helpers |
+| `+xm_iec_ciout byte` / `+xm_iec_acptr` | byte I/O helpers |
+| `+xm_iec_unlisten` / `+xm_iec_untalk` | release bus helpers |
+| `+xm_iec_set_timeout control` / `+xm_iec_readst` | timeout/status helpers |
+| `+xm_iec_macptr dest, count` / `+xm_iec_mciout src, count` | block I/O helpers |
+| `+xm_iec_open_channel device, secondary` / `+xm_iec_data_channel device, secondary` / `+xm_iec_talk_channel device, secondary` / `+xm_iec_close_channel device, secondary` | channel helpers |
+
+**DOS (X16_USE_DOS)**
+
+[Detailed macro reference](macro_dos.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_dos_cmd cmd, len` | execute command; → A = status |
+| `+xm_dos_status` | read DOS status |
+| `+xm_dos_delete name, len` | delete file |
+
+**BMX (X16_USE_BMX)**
+
+[Detailed macro reference](macro_bmx.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_bmx_load name, len, device, vbank, vaddr` | load BMX image to VRAM |
+
+**Clock (X16_USE_CLOCK)**
+
+[Detailed macro reference](macro_clock.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_clock_update` | update clock state |
+| `+xm_clock_get_timer` / `+xm_clock_set_timer ticks` | jiffy timer helpers |
+| `+xm_clock_get_date_time` | read date/time |
+| `+xm_clock_set_date_time_raw year1900, month, day, hours, minutes, seconds, jiffies, weekday` | set raw date/time |
+| `+xm_clock_set_date_time year, month, day, hours, minutes, seconds, weekday` | set date/time |
+
+**Math (X16_USE_MATH)**
+
+[Detailed macro reference](macro_math.md)
 
 | Macro | Does |
 |---|---|
@@ -424,41 +655,61 @@ handy on its own.
 | `+xm_atan2 dx, dy` | → A = angle 0–255 (`dx`,`dy` signed bytes) |
 | `+xm_lerp8 a, b, t` | → A = interpolated value |
 
-### Collision (`X16_USE_COLLIDE`)
+**Collision (X16_USE_COLLIDE)**
 
-`+xm_collide8 ax, ay, aw, ah, bx, by, bw, bh` (8-bit) and
-`+xm_collide16 …` (16-bit) — both → carry set if the two boxes overlap.
-
-### Bits (`X16_USE_BITS`)
-
-`+xm_catnib hi, lo`, `+xm_hinib byte`, `+xm_lonib byte`,
-`+xm_bit_set addr, mask`, `+xm_bit_clr addr, mask`, `+xm_bit_test addr, mask`.
-
-### Number (`X16_USE_NUMBER`)
-
-`+xm_u16_to_dec value` / `+xm_u16_to_hex value` (→ A/X = buffer, Y = length),
-`+xm_dec_to_u16 str, len` (→ P4/5 = value, carry set on a bad digit).
-
-### Fixed point (`X16_USE_FIXED`)
-
-`+xm_umul16 a, b` (→ P4..P7 = product), `+xm_mul88 a, b` (signed 8.8 → P0/1).
-
-### Integers (`X16_USE_INT16`, `X16_USE_INT32`)
-
-The operations (`i16_add`, `i16_mul`, `i32_divmod`, …) take no arguments — load
-`i16_a`/`i16_b`, `i32_a`/`i32_b` with `+i16_const`/`+i32_const`, then `jsr`. The
-loaders that DO take a register:
-`+xm_i16_from_u8 byte`, `+xm_i16_from_s8 byte`,
-`+xm_i32_from_u16 value`, `+xm_i32_from_s16 value`.
-
-### Float (`X16_USE_FLOAT`)
-
-The accumulator is `FAC`; `addr` points at a 5-byte float in memory. Unary
-operations (`f_sqrt`, `f_sin`, `f_ln`, `f_int`, …) take no argument — call them
-directly.
+[Detailed macro reference](macro_collision.md)
 
 | Macro | Does |
 |---|---|
+| `+xm_collide8 ax, ay, aw, ah, bx, by, bw, bh` | 8-bit AABB test; → carry set if overlap |
+| `+xm_collide16 ...` | 16-bit AABB test; → carry set if overlap |
+
+**Bits (X16_USE_BITS)**
+
+[Detailed macro reference](macro_bits.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_catnib hi, lo` | combine two nibbles |
+| `+xm_hinib byte` / `+xm_lonib byte` | extract high/low nibble |
+| `+xm_bit_set addr, mask` / `+xm_bit_clr addr, mask` / `+xm_bit_test addr, mask` | bit operations |
+
+**Number (X16_USE_NUMBER)**
+
+[Detailed macro reference](macro_number.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_u16_to_dec value` / `+xm_u16_to_hex value` | format unsigned 16-bit; → A/X = buffer, Y = length |
+| `+xm_dec_to_u16 str, len` | parse decimal; → P4/5 = value, carry set on bad digit |
+
+**Fixed point (X16_USE_FIXED)**
+
+[Detailed macro reference](macro_fixed.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_umul16 a, b` | unsigned 16x16 multiply; → P4..P7 = product |
+| `+xm_mul88 a, b` | signed 8.8 multiply; → P0/1 |
+
+**Integers (X16_USE_INT16, X16_USE_INT32)**
+
+[Detailed macro reference](macro_integers.md)
+
+| Macro / routine | Does |
+|---|---|
+| `i16_add`, `i16_mul`, `i32_divmod`, … | argument-free routines; load `i16_a`/`i16_b` or `i32_a`/`i32_b`, then `jsr` |
+| `+xm_i16_from_u8 byte` / `+xm_i16_from_s8 byte` | integer loaders |
+| `+xm_i32_from_u16 value` / `+xm_i32_from_s16 value` | integer loaders |
+
+**Float (X16_USE_FLOAT)**
+
+[Detailed macro reference](macro_float.md)
+
+| Macro | Does |
+|---|---|
+| `FAC` / `addr` | accumulator / pointer to a 5-byte float in memory |
+| `f_sqrt`, `f_sin`, `f_ln`, `f_int`, … | argument-free unary routines; call directly |
 | `+xm_f_from_u8 byte` / `+xm_f_from_s16 value` | build FAC from an integer |
 | `+xm_f_from_str str, len` | parse a string into FAC |
 | `+xm_f_load addr` / `+xm_f_store addr` | FAC ↔ memory |
@@ -467,41 +718,55 @@ directly.
 | `+xm_f_pow addr` | FAC = FAC ^ mem |
 | `+xm_f_cmp addr` | → A = −1 / 0 / 1 |
 
-### Double (`X16_USE_DOUBLE`)
+**Double (X16_USE_DOUBLE)**
 
-The accumulator is `d_ac`; `addr` points at an 8-byte double. As with float, the
-unary transcendentals (`d_exp`, `d_sqrt`, `d_sin`, …) are called directly.
+[Detailed macro reference](macro_double.md)
 
 | Macro | Does |
 |---|---|
+| `d_ac` / `addr` | accumulator / pointer to an 8-byte double in memory |
+| `d_exp`, `d_sqrt`, `d_sin`, … | argument-free unary routines; call directly |
 | `+xm_d_from_s16 value` / `+xm_d_from_str str, len` | build d_ac |
 | `+xm_d_load addr` / `+xm_d_store addr` | d_ac ↔ memory |
 | `+xm_d_add / _sub / _mul / _div addr` | d_ac ⊕ mem |
 | `+xm_d_pow addr` | d_ac = d_ac ^ mem |
 | `+xm_d_cmp addr` | → A = −1 / 0 / 1 |
 
-### Clip (`X16_USE_CLIP`)
+**Clip (X16_USE_CLIP)**
 
-`+xm_clip_set xmin, ymin, xmax, ymax` — set the clip rectangle.
-
-### Buffers (`X16_USE_BUFFERS`)
-
-Ring buffer: `+xm_rb_init`, `+xm_rb_put byte` (→ carry = full), `+xm_rb_get`
-(→ A = byte, carry = empty), `+xm_rb_count`. Byte stack: `+xm_stk_init`,
-`+xm_stk_push byte`, `+xm_stk_pop`, `+xm_stk_depth`.
-
-### Compression (`X16_USE_ZX0`, `X16_USE_TSC`)
-
-`+xm_zx0_decompress src, dst` and `+xm_tsc_decompress src, dst` — both
-→ A/X = one past the last output byte.
-
-### Strings (`X16_USE_STRING` and friends)
-
-Each of the five string gates has its own macros; set the gates you use.
-`str`/`src`/`dst` are string addresses; `ch` and lengths are immediates.
+[Detailed macro reference](macro_clip.md)
 
 | Macro | Does |
 |---|---|
+| `+xm_clip_set xmin, ymin, xmax, ymax` | set the clip rectangle |
+
+**Buffers (X16_USE_BUFFERS)**
+
+[Detailed macro reference](macro_buffers.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_rb_init` / `+xm_rb_count` | ring buffer init / count |
+| `+xm_rb_put byte` | ring buffer put; → carry set = full |
+| `+xm_rb_get` | ring buffer get; → A = byte, carry set = empty |
+| `+xm_stk_init` / `+xm_stk_push byte` / `+xm_stk_pop` / `+xm_stk_depth` | byte stack helpers |
+
+**Compression (X16_USE_ZX0, X16_USE_TSC)**
+
+[Detailed macro reference](macro_compression.md)
+
+| Macro | Does |
+|---|---|
+| `+xm_zx0_decompress src, dst` | decompress ZX0; → A/X = one past the last output byte |
+| `+xm_tsc_decompress src, dst` | decompress TSC; → A/X = one past the last output byte |
+
+**Strings (X16_USE_STRING and friends)**
+
+[Detailed macro reference](macro_strings.md)
+
+| Macro | Does |
+|---|---|
+| Gates / arguments | each string gate is separate; `str`/`src`/`dst` are addresses, `ch` and lengths are immediates |
 | `+xm_str_length str` | → Y = length |
 | `+xm_str_copy src, dst` | copy (→ Y = length) |
 | `+xm_str_ncopy src, dst, max` | copy, capped |
@@ -519,10 +784,7 @@ Each of the five string gates has its own macros; set the gates you use.
 | `+xm_str_left src, dst, len` / `+xm_str_right …` | copy an end |
 | `+xm_str_slice src, dst, start, len` | copy a middle run |
 | `+xm_str_ltrim str` / `+xm_str_rtrim str` / `+xm_str_trim str` | trim whitespace in place |
-
-The single-character predicates (`str_isdigit` …) and char folders
-(`str_lowerchar` …) take the character in `A` already, so call them
-directly rather than through a macro.
+| `str_isdigit`, `str_lowerchar`, … | character already in `A`; call directly |
 
 ---
 
@@ -531,14 +793,14 @@ directly rather than through a macro.
 A four-colour scene, entirely through the layer:
 
 ```asm
-X16_USE_BITMAP2       = 1
+X16_USE_BITMAP2H      = 1
 X16_USE_SHAPES_RRECT  = 1
 X16_USE_SHAPES_ARC    = 1
 X16_USE_PALETTE       = 1
 !source "core/sugar.asm"
 ; ...
-    +xm_gfx2_init
-    +xm_gfx2_clear 0
+    +xm_gfx2h_init
+    +xm_gfx2h_clear 0
     +xm_pal_set 1, $0FFF        ; white
     +xm_pal_set 2, $00F0        ; green
     +xm_shape_frrect 40, 40, 200, 110, 28, 2    ; a green panel

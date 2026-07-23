@@ -19,37 +19,47 @@ parameters, behaviour) applies to all four unchanged.
 2. [Core conventions](#core-conventions)
 3. [Macros](#macros)
 4. [VERA data ports (`X16_USE_VERA`)](#vera-data-ports)
-5. [Screen and text (`X16_USE_SCREEN`)](#screen-and-text)
-6. [Palette (`X16_USE_PALETTE`)](#palette)
-7. [Tiles and layers (`X16_USE_TILE`)](#tiles-and-layers)
-8. [Sprites (`X16_USE_SPRITE`)](#sprites)
-9. [Bitmap graphics (`X16_USE_BITMAP`)](#bitmap-graphics)
-10. [VERA FX (`X16_USE_VERAFX`)](#vera-fx)
-11. [Interrupts (`X16_USE_IRQ`)](#interrupts)
-12. [PSG audio (`X16_USE_PSG`)](#psg-audio)
-13. [YM2151 FM synthesis (`X16_USE_YM`)](#ym2151-fm-synthesis)
-14. [PCM audio (`X16_USE_PCM`, `X16_USE_PCM_STREAM`)](#pcm-audio)
-15. [ADPCM decoding (`X16_USE_ADPCM`)](#adpcm-decoding)
-16. [Input (`X16_USE_INPUT`)](#input)
-17. [Serial and WiFi (`X16_USE_SERIAL`, `X16_USE_SERIAL_ZIMODEM`)](#serial-and-wifi)
-18. [Banked RAM (`X16_USE_BANK`)](#banked-ram)
-19. [Bank allocator (`X16_USE_BANKALLOC`)](#bank-allocator)
-20. [Block memory operations (`X16_USE_MEM`)](#block-memory-operations)
-21. [Loading and saving (`X16_USE_LOAD`)](#loading-and-saving)
-22. [DOS commands (`X16_USE_DOS`)](#dos-commands)
-23. [BMX images (`X16_USE_BMX`)](#bmx-images)
-24. [Game math (`X16_USE_MATH`)](#game-math)
-25. [Line clipping (`X16_USE_CLIP`)](#line-clipping)
-26. [Ring buffer and stack (`X16_USE_BUFFERS`)](#ring-buffer-and-stack)
-27. [Compression (`X16_USE_ZX0`, `X16_USE_TSC`)](#compression)
-28. [Fixed point (`X16_USE_FIXED`)](#fixed-point)
-29. [Collision (`X16_USE_COLLIDE`)](#collision)
-30. [Bit helpers (`X16_USE_BITS`)](#bit-helpers)
-31. [Number formatting (`X16_USE_NUMBER`)](#number-formatting)
-32. [16-bit integers (`X16_USE_INT16`)](#16-bit-integers)
-33. [32-bit integers (`X16_USE_INT32`)](#32-bit-integers)
-34. [Floating point (`X16_USE_FLOAT`)](#floating-point)
-35. [Strings (`X16_USE_STRING` and friends)](#strings)
+5. [VERA display composer (`X16_USE_VERA_DC`)](#vera-display-composer)
+6. [Screen and text (`X16_USE_SCREEN`)](#screen-and-text)
+7. [Palette (`X16_USE_PALETTE`)](#palette)
+8. [Tiles and layers (`X16_USE_TILE`)](#tiles-and-layers)
+9. [Sprites (`X16_USE_SPRITE`)](#sprites)
+10. [Bitmap graphics (`X16_USE_BITMAP8L/2H/2L/4L/4H/8H`)](#bitmap-graphics)
+11. [Framebuffer, GRAPH and console (`X16_USE_FB`, `X16_USE_GRAPH`, `X16_USE_CONSOLE`)](#framebuffer-graph-and-console)
+12. [Shapes (`X16_USE_SHAPES` and sub-gates)](#shapes)
+13. [VERA FX (`X16_USE_VERAFX`)](#vera-fx)
+14. [VERA FX utilities (`X16_USE_VERAFX_UTILS`)](#vera-fx-utilities)
+15. [Interrupts (`X16_USE_IRQ`)](#interrupts)
+16. [PSG audio (`X16_USE_PSG`)](#psg-audio)
+17. [YM2151 FM synthesis (`X16_USE_YM`)](#ym2151-fm-synthesis)
+18. [ROM audio API (`X16_USE_AUDIO_ROM`)](#rom-audio-api)
+19. [PCM audio (`X16_USE_PCM`, `X16_USE_PCM_STREAM`)](#pcm-audio)
+20. [ZSM playback (`X16_USE_ZSM`, `X16_USE_ZSM_PCM`)](#zsm-playback)
+21. [ADPCM decoding (`X16_USE_ADPCM`)](#adpcm-decoding)
+22. [Input (`X16_USE_INPUT`, `X16_USE_KEYBOARD`, `X16_USE_MOUSE`)](#input)
+23. [Serial, WiFi, I2C and SPI](#serial-wifi-i2c-and-spi)
+24. [Banked RAM (`X16_USE_BANK`)](#banked-ram)
+25. [Bank allocator (`X16_USE_BANKALLOC`)](#bank-allocator)
+26. [HIRAM stack and ringbuffer (`X16_USE_STACK`, `X16_USE_RINGBUFFER`)](#hiram-stack-and-ringbuffer)
+27. [Block memory operations (`X16_USE_MEM`)](#block-memory-operations)
+28. [Loading, saving, file I/O and IEC](#loading-saving-file-io-and-iec)
+29. [DOS commands (`X16_USE_DOS`)](#dos-commands)
+30. [BMX images (`X16_USE_BMX`)](#bmx-images)
+31. [Clock and RTC (`X16_USE_CLOCK`)](#clock-and-rtc)
+32. [Game math (`X16_USE_MATH`)](#game-math)
+33. [Line clipping (`X16_USE_CLIP`)](#line-clipping)
+34. [Ring buffer and stack (`X16_USE_BUFFERS`)](#ring-buffer-and-stack)
+35. [Compression (`X16_USE_ZX0`, `X16_USE_TSC`)](#compression)
+36. [Fixed point (`X16_USE_FIXED`)](#fixed-point)
+37. [Collision (`X16_USE_COLLIDE`)](#collision)
+38. [Bit helpers (`X16_USE_BITS`)](#bit-helpers)
+39. [Number formatting (`X16_USE_NUMBER`)](#number-formatting)
+40. [BCD arithmetic (`X16_USE_BCD`)](#bcd-arithmetic)
+41. [16-bit integers (`X16_USE_INT16`)](#16-bit-integers)
+42. [32-bit integers (`X16_USE_INT32`)](#32-bit-integers)
+43. [Floating point (`X16_USE_FLOAT`)](#floating-point)
+44. [Double precision (`X16_USE_DOUBLE`)](#double-precision)
+45. [Strings (`X16_USE_STRING` and friends)](#strings)
 
 ---
 
@@ -95,10 +105,11 @@ Two rules, both enforced by ACME's pass model:
 
 ACME has no linker, so unused routines can't be stripped automatically.
 Instead, define only the gates you need — each pulls in one source module —
-or define `X16_USE_ALL = 1` for everything. Dependencies resolve themselves
+or define `X16_USE_ALL = 1` for the stable all-in bundle. Dependencies resolve themselves
 (e.g. `X16_USE_SPRITE` pulls in `X16_USE_VERA`; `X16_USE_PCM_STREAM` pulls
-in PCM and IRQ). The full gate list is in the table of contents above: each
-section of this guide is one gate.
+in PCM and IRQ). Some newer pay-per-use modules, including the bitmap family
+and hardware-specific helpers, deliberately stay out of `X16_USE_ALL`; enable
+their gates explicitly.
 
 ### Using another assembler
 
@@ -282,6 +293,10 @@ auto-incrementing data ports; these routines are the runtime counterparts
 of the `+vera_addr` macro plus the two bulk primitives everything else
 builds on.
 
+Fine-grained gates exist for size-sensitive builds: `X16_USE_VERA_CORE`
+provides address setup/fill/probing, and `X16_USE_VERA_COPY` adds
+`vera_copy`. The umbrella `X16_USE_VERA` enables both.
+
 ### `vera_set_addr0` / `vera_set_addr1` — point a port at a runtime address
 
 - **In:** `A` = `ADDR_L`, `X` = `ADDR_M`, `Y` = `ADDR_H` (bank bit |
@@ -342,12 +357,46 @@ KERNAL afterwards (or print via `screen_chrout`, which does it for you).
 
 ---
 
+## VERA display composer
+
+`X16_USE_VERA_DC` - `video/vdc.asm`. These helpers wrap the display composer
+registers behind `DCSEL`: output mode, visible layers, scale, border, active
+display area and bitstream version. They leave `DCSEL = 0`.
+
+### Video control and output
+
+- `vdc_get_video` - out: `A = DC_VIDEO`.
+- `vdc_set_video` - in: `A = DC_VIDEO`; bit 7 is ignored so it cannot reset VERA.
+- `vdc_set_output` - in: `A = VERA_VIDEO_MODE_*`; preserves layer/chroma bits.
+- `vdc_set_layers` - in: `A = VERA_VIDEO_LAYER0_EN | LAYER1_EN | SPRITES_EN`.
+- `vdc_layer_on` / `vdc_layer_off` - set/clear layer enable bits in `A`.
+
+### Scale, border and active display
+
+- `vdc_get_scale` - out: `A = HSCALE`, `X = VSCALE`.
+- `vdc_set_scale` - in: `A = HSCALE`, `X = VSCALE` (`$80` is 1:1).
+- `vdc_get_border` / `vdc_set_border` - get/set the border palette index in `A`.
+- `vdc_get_active_raw` - out: `A = HSTART`, `X = HSTOP`, `Y = VSTART`, `r0L = VSTOP`.
+- `vdc_set_active_raw` - in: `A/X/Y/r0L` in the same raw register format.
+- `vdc_set_active` - in: `X16_P0/P1 = hstart`, `P2/P3 = hstop`,
+  `P4/P5 = vstart`, `P6/P7 = vstop`, in pixels.
+- `vdc_fullscreen` - active area 0,0 to 640,480.
+- `vdc_get_version` - carry set if valid; out: `A = major`, `X = minor`, `Y = build`.
+
+Use the raw form when you already have VERA register values. Use
+`vdc_set_active` for pixel coordinates; it converts horizontal `/4` and
+vertical `/2` for you.
+
 ## Screen and text
 
 `X16_USE_SCREEN` — `video/screen.asm`. Text output, screen modes, colours.
 These wrappers exist because several KERNAL screen routines silently
 require `ADDRSEL = 0`; every routine here that enters the KERNAL
 establishes that first.
+
+`X16_USE_SCREEN` enables both `X16_USE_SCREEN_CORE` and
+`X16_USE_SCREEN_EXTRA`; the split gates exist for generated/prebuilt
+size models.
 
 ### `screen_set_mode` — set the screen mode
 
@@ -670,152 +719,137 @@ hides the sprite without losing its setup.
 
 ## Bitmap graphics
 
-`X16_USE_BITMAP` — `gfx/bitmap.asm`. Drawing on the 320×240@8bpp
-framebuffer at VRAM `$00000` (one byte per pixel, rows of 320).
-`gfx_pset`, `gfx_circle`, `gfx_disc`, `gfx_char`/`gfx_text` and
-`gfx_flood` clip; the line and rectangle primitives do **not** — keep
-their arguments on screen, or clip first with `clip_line`
-([Line clipping](#line-clipping)).
+Bitmap gates are now explicit about resolution and storage. Low (`L`) engines
+use normal VERA VRAM; high (`H`) engines use the MiSTer VERA_2 SDRAM bitmap
+layer. Bitmap gates are not part of `X16_USE_ALL`; select the exact format you
+want.
 
-### `gfx_init` — switch to bitmap mode
+| Gate | File | Geometry | Prefix |
+|---|---|---|---|
+| `X16_USE_BITMAP8L` | `gfx/bitmap8l.asm` | 320x240, 8 bpp | `gfx8l_*` |
+| `X16_USE_BITMAP4L` | `gfx/bitmap4l.asm` | 320x240, 4 bpp | `gfx4l_*` |
+| `X16_USE_BITMAP2L` | `gfx/bitmap2l.asm` | 320x240, 2 bpp | `gfx2l_*` |
+| `X16_USE_BITMAP2H` | `gfx/bitmap2h.asm` | 640x480, 2 bpp | `gfx2h_*` |
+| `X16_USE_BITMAP4H` | `gfx/bitmap4h.asm` | 640x480, 4 bpp | `gfx4h_*` |
+| `X16_USE_BITMAP8H` | `gfx/bitmap8h.asm` | 640x480, 8 bpp | `gfx8h_*` |
 
-320×240@256c bitmap on layer 0, 40×30 text on layer 1. Call once; the
-drawing routines themselves only touch VRAM.
+### Low-resolution bitmap engines
 
-```asm
-    jsr gfx_init
-    lda #0
-    jsr gfx_clear               ; black screen
-```
+`gfx8l_*`, `gfx4l_*` and `gfx2l_*` cover 320x240 drawing. The 8L and 4L
+families include bitmap text helpers; the 2L family is pixel/shape oriented.
 
-### `gfx_clear` — fill the whole screen
+- `gfx8l_init`, `gfx4l_init`, `gfx2l_init` - initialize the corresponding bitmap mode.
+- `*_clear` - in: `A = colour`.
+- `*_setptr` where present - point VERA port 0 at `(x,y)` with an increment.
+- `*_pset` - in: `X16_P0/P1 = x`, `X16_P2 = y`, `X16_P3 = colour`.
+- `*_read` - in: coordinates as above; out: `A = colour`.
+- `*_hline` / `*_vline` - line spans.
+- `*_rect` / `*_frame` - filled and outline rectangles.
+- `*_line` - Bresenham line.
+- `*_pattern_set` / `*_pattern_rect` - 8x8 pattern fill.
+- `gfx8l_char/text` and `gfx4l_char/text` - bitmap glyph and string drawing.
+- `*_blit` / `*_blitm` - source-image blit; `blitm` uses colour-key masking.
 
-- **In:** `A` = colour
+The shape module defaults to `gfx2h_*`, but you can bind `SHP_PSET`, `SHP_READ`,
+`SHP_HLINE`, `SHP_W` and `SHP_H` before sourcing code to draw through another
+engine; see [Shapes](#shapes).
 
-### `gfx_setptr` — point port 0 at pixel (x, y)
+### High-resolution bitmap engines
 
-- **In:** `A` = increment index (`VERA_INC_*`), `X16_P0/P1` = x,
-  `X16_P2` = y
+`gfx2h_*`, `gfx4h_*` and `gfx8h_*` target 640x480. The 4H and 8H gates use the
+new VERA_2 SDRAM layer and provide capability/setup helpers:
 
-The building block for custom effects: with `VERA_INC_320` the port then
-walks straight down a column.
+- `gfx4h_has` / `gfx8h_has` - carry set if the required VERA_2 layer is present.
+- `gfx4h_init` / `gfx8h_init` and `gfx4h_off` / `gfx8h_off` - enable/disable.
+- `gfx4h_passthru_on/off` / `gfx8h_passthru_on/off` - pass-through controls.
+- `gfx4h_pal_set/load` / `gfx8h_pal_set/load` - SDRAM-layer palette helpers.
+- `gfx4h_copy` / `gfx8h_copy` - copy SDRAM bitmap bytes.
 
-### `gfx_pset` — set one pixel (clipped)
-
-- **In:** `X16_P0/P1` = x, `X16_P2` = y, `X16_P3` = colour
-
-```asm
-    lda #<100 : sta X16_P0
-    lda #>100 : sta X16_P1
-    lda #50   : sta X16_P2      ; (100, 50)
-    lda #2    : sta X16_P3      ; red
-    jsr gfx_pset
-```
-
-### `gfx_hline` / `gfx_vline` — horizontal / vertical line
-
-- **In:** `X16_P0/P1` = x, `X16_P2` = y, `X16_P3` = colour,
-  `X16_P4/P5` = length (`gfx_vline`: `X16_P4` only, 1–255)
-
-```asm
-    lda #<10 : sta X16_P0
-    lda #>10 : sta X16_P1
-    lda #100 : sta X16_P2
-    lda #7   : sta X16_P3
-    lda #<300 : sta X16_P4
-    lda #>300 : sta X16_P5
-    jsr gfx_hline               ; 300px line from (10,100)
-```
-
-### `gfx_rect` / `gfx_frame` — filled rectangle / outline
-
-- **In:** `X16_P0/P1` = x, `X16_P2` = y, `X16_P3` = colour,
-  `X16_P4/P5` = width, `X16_P6` = height
-
-```asm
-    lda #<60 : sta X16_P0
-    lda #>60 : sta X16_P1
-    lda #40  : sta X16_P2
-    lda #5   : sta X16_P3       ; green
-    lda #<200 : sta X16_P4
-    lda #>200 : sta X16_P5
-    lda #100 : sta X16_P6
-    jsr gfx_rect                ; 200x100 box at (60,40)
-```
-
-### `gfx_line` — Bresenham line, any direction
-
-- **In:** `X16_P0/P1` = x0, `X16_P2` = y0, `X16_P3/P4` = x1, `X16_P5` = y1,
-  `X16_P6` = colour
-
-```asm
-    stz X16_P0 : stz X16_P1     ; (0,0)
-    stz X16_P2
-    lda #<319 : sta X16_P3
-    lda #>319 : sta X16_P4
-    lda #239  : sta X16_P5      ; to (319,239)
-    lda #1    : sta X16_P6      ; white
-    jsr gfx_line
-```
-
-### `gfx_circle` / `gfx_disc` — circle outline / filled circle
-
-- **In:** `X16_P0/P1` = centre x, `X16_P2` = centre y, `X16_P3` = colour,
-  `X16_P4` = radius (0–120). Both clip; both preserve `X16_P0..P4`.
-
-```asm
-    lda #<160 : sta X16_P0
-    lda #>160 : sta X16_P1
-    lda #120  : sta X16_P2
-    lda #8    : sta X16_P3
-    lda #50   : sta X16_P4
-    jsr gfx_disc                ; filled circle, centre screen
-```
-
-### `gfx_char` — draw one glyph into the bitmap
-
-- **In:** `A` = screen code, `X16_P0/P1` = x, `X16_P2` = y,
-  `X16_P3` = colour. Preserves `X16_P0..P3`.
-
-Reads the 8×8 glyph from the KERNAL's charset in VRAM; set bits become
-colour pixels (clipped), clear bits stay transparent.
-
-### `gfx_text` — draw a NUL-terminated string
-
-- **In:** `A` = string low, `X` = string high; `X16_P0..P3` as `gfx_char`.
-  ASCII `'A'`–`'Z'` are converted to screen codes. Leaves `X16_P0/P1` one
-  past the final character (so calls chain).
-
-```asm
-    lda #<20 : sta X16_P0
-    lda #>20 : sta X16_P1
-    lda #10  : sta X16_P2       ; (20,10)
-    lda #1   : sta X16_P3       ; white
-    lda #<label : ldx #>label
-    jsr gfx_text
-    ...
-label !text "GAME OVER", $00
-```
-
-### `gfx_flood` — scanline flood fill
-
-- **In:** `X16_P0/P1` = seed x, `X16_P2` = seed y, `X16_P3` = fill colour
-- **Out:** carry clear = filled completely; carry set = the 170-entry span
-  stack overflowed and the fill is incomplete (pathological shapes)
-
-Fills the 4-connected region of the seed's colour. Filling with the colour
-already under the seed is a no-op.
-
-```asm
-    lda #<160 : sta X16_P0
-    lda #>160 : sta X16_P1
-    lda #120  : sta X16_P2
-    lda #3    : sta X16_P3      ; cyan
-    jsr gfx_flood               ; fill the enclosed shape under (160,120)
-```
+The drawing family otherwise mirrors the low engines: `clear`, `setptr`,
+`pset`, `read`, `hline`, `vline`, `rect`, `frame`, `line`, `pattern_set`,
+`pattern_rect`, `blit` and `blitm`.
 
 ---
 
+## Framebuffer, GRAPH and console
+
+These three gates are thin wrappers around stable ROM/KERNAL APIs. They are
+separate opt-ins so a program can use one layer without carrying the others.
+
+### Framebuffer (`X16_USE_FB`)
+
+`gfx/fb.asm` wraps the active KERNAL framebuffer driver. The default ROM driver
+is 320x240 at 8 bpp, but GRAPH can install another driver.
+
+- `fb_init` - initialize the active framebuffer driver.
+- `fb_get_info` - out: `r0 = width`, `r1 = height`, `A = colour depth`.
+- `fb_set_palette` - in: `r0 = palette data`, `A = start`, `X = count` (`0 = 256`).
+- `fb_cursor_position` - in: `r0 = x`, `r1 = y`.
+- `fb_cursor_next_line` - advance to the next scanline.
+- `fb_get_pixel` / `fb_set_pixel` - read/write at the current cursor (`A = colour`).
+- `fb_get_pixels` / `fb_set_pixels` - in: `r0 = memory pointer`, `r1 = count`.
+- `fb_set_8_pixels` - in: `A = pattern`, `X = foreground`.
+- `fb_set_8_pixels_opaque` - in: `A = mask`, `r0L = pattern`, `X = foreground`, `Y = background`.
+- `fb_fill_pixels` - in: `r0 = count`, `r1 = step`, `A = colour`.
+- `fb_filter_pixels` - in: `r0 = count`, `r1 = filter routine`; filter maps `A old -> A new`.
+- `fb_move_pixels` - in: `r0 = sx`, `r1 = sy`, `r2 = tx`, `r3 = ty`, `r4 = count`.
+
+### GRAPH (`X16_USE_GRAPH`)
+
+`gfx/graph.asm` wraps the ROM GRAPH layer on top of the current framebuffer.
+
+- `graph_init` - in: `r0 = FB_* driver pointer`, or `0` for default 320x240@8bpp.
+- `graph_clear` - clear current GRAPH window to background colour.
+- `graph_set_window` - in: `r0 = x`, `r1 = y`, `r2 = width`, `r3 = height`; all zero resets to full screen.
+- `graph_set_colors` - in: `A = primary/stroke`, `X = secondary/fill`, `Y = background`.
+- `graph_draw_line` - in: `r0 = x1`, `r1 = y1`, `r2 = x2`, `r3 = y2`.
+- `graph_draw_rect` - in: `r0 = x`, `r1 = y`, `r2 = width`, `r3 = height`, `r4 = radius`; carry clear outline, carry set fill.
+- `graph_move_rect` - in: `r0 = sx`, `r1 = sy`, `r2 = tx`, `r3 = ty`, `r4 = width`, `r5 = height`.
+- `graph_draw_oval` - same rectangle input; carry clear outline, carry set fill.
+- `graph_draw_image` - in: `r0 = x`, `r1 = y`, `r2 = image`, `r3 = width`, `r4 = height`.
+- `graph_set_font` - in: `r0 = font pointer`, or `0` for system font.
+- `graph_get_char_size` - in: `A = character`, `X = GRAPH_STYLE_*`; out: printable `C=0`, `A = baseline`, `X = width`, `Y = height`; control `C=1`, `X = new style`.
+- `graph_put_char` - in: `A = character`, `r0 = x`, `r1 = y`; out: updated `r0/r1`, carry set if outside bounds.
+
+### Console (`X16_USE_CONSOLE`)
+
+`gfx/console.asm` wraps the ROM console API. It renders through GRAPH but is a
+separate gate.
+
+- `con_init` - in: `r0 = x`, `r1 = y`, `r2 = width`, `r3 = height`; all zero uses the full GRAPH window.
+- `con_set_paging_message` - in: `r0 = zero-terminated prompt`.
+- `con_disable_paging` - disable the pause prompt.
+- `con_put_char` - in: `A = character`, carry clear character-wrap, carry set word-wrap.
+- `con_get_char` - out: `A = character`.
+- `con_put_image` - in: `r0 = image`, `r1 = width`, `r2 = height`.
+
+---
+## Shapes
+
+`X16_USE_SHAPES` - `gfx/shapes.asm`. The shape routines are engine-agnostic:
+they draw through `SHP_PSET`, `SHP_READ` and `SHP_HLINE`, and read bounds from
+`SHP_W`/`SHP_H`. By default those bind to the high-resolution 2 bpp bitmap
+engine (`gfx2h_*`). Predefine those symbols before sourcing `x16_code.asm` to
+bind shapes to another bitmap engine.
+
+### Core shapes (`X16_USE_SHAPES`)
+
+- `shape_circle` / `shape_disc` - in: `X16_P0/P1 = cx`, `P2/P3 = cy`, `P4 = radius`, `A = colour`. Circle plots through `SHP_PSET`; disc fills spans through `SHP_HLINE`.
+- `shape_ellipse` / `shape_fellipse` - in: `P0/P1 = cx`, `P2/P3 = cy`, `P4 = rx`, `P5 = ry`, `A = colour`.
+- `shape_flood` - in: `P0/P1 = x`, `P2/P3 = y`, `A = colour`; carry set if the seed stack overflowed.
+
+### Shape sub-gates
+
+- `X16_USE_SHAPES_POLY` - `shape_polygon` / `shape_fpolygon`; regular convex N-gons, uses `X16_USE_MATH` for `sin8`/`cos8`.
+- `X16_USE_SHAPES_RRECT` - `shape_rrect` / `shape_frrect`; rounded rectangle outline/fill.
+- `X16_USE_SHAPES_ARC` - `shape_arc`; circle arc between two byte angles, pulls the shared line helper.
+- `X16_USE_SHAPES_PIE` - `shape_pie`; filled wedge, pulls `SHAPES_ARC`.
+- `X16_USE_SHAPES_BEZIER` - `shape_bezier`; cubic Bezier through four control points.
+
+Angles use the same byte convention as `sin8`: `0 = east`, `64 = south`, one
+full turn is 256.
+
+---
 ## VERA FX
 
 `X16_USE_VERAFX` — `gfx/verafx.asm`. Hardware multiply, cached
@@ -823,6 +857,12 @@ fills/copies, line/polygon/affine helpers. Requires VERA firmware v0.3.1+
 (emulator R44+) — **probe with `vera_has_fx` first**; on older VERA these
 write to registers that do not exist. Every routine leaves FX disabled and
 `DCSEL` back at 0.
+
+X16_USE_VERAFX is the umbrella gate. Size-sensitive programs can select
+X16_USE_VERAFX_MULT, X16_USE_VERAFX_FILL, X16_USE_VERAFX_COPY,
+X16_USE_VERAFX_TRANSP, X16_USE_VERAFX_AFFINE, X16_USE_VERAFX_LINE or
+X16_USE_VERAFX_TRI; X16_USE_VERAFX_LINETRI is an internal shared helper
+pulled by line/triangle.
 
 ### `fx_off` — disable FX
 
@@ -895,7 +935,8 @@ off again: enable, blit, disable.
   `X16_P5` y1, `X16_P6` colour)
 
 VERA tracks the Bresenham error itself; the CPU does one store per pixel.
-Assumes `gfx_init`'s framebuffer. Does **not** clip.
+Assumes the standard 320x240 bitmap framebuffer, such as after `gfx8l_init`.
+Does **not** clip.
 
 ### `fx_triangle` — filled triangle via the polygon helper
 
@@ -947,11 +988,36 @@ from `sin8`/`cos8` and your zoom factor:
 
 ---
 
+## VERA FX utilities
+
+`X16_USE_VERAFX_UTILS` - `gfx/verafx_utils.asm`. These are lower-level helpers
+for the FX register set: cache modes, accumulator and multiplier access,
+16-bit hop, and polygon/tile/map primitives. They are separate from
+`X16_USE_VERAFX` so programs can pay only for the utility layer they use.
+
+- `fxu_off` - disable FX, leaving `DCSEL/ADDRSEL = 0`.
+- `fxu_get_ctrl` / `fxu_set_ctrl` - read/write `FX_CTRL`.
+- `fxu_ctrl_on` / `fxu_ctrl_off` - set/clear a mask in `FX_CTRL`.
+- `fxu_addr1_mode` - set ADDR1 mode bits.
+- `fxu_cache_write_on/off`, `fxu_cache_fill_on/off`, `fxu_cache_cycle_on/off` - cache mode bits.
+- `fxu_transparent_on/off`, `fxu_4bit_on/off`, `fxu_hop_on/off` - transparent writes, 4-bit mode and 16-bit hop.
+- `fxu_set_mult` - set multiplier; `fxu_set_cache` - write cache bytes.
+- `fxu_reset_accum` / `fxu_accumulate` - accumulator helpers.
+- `fxu_cache_fill0/1` and `fxu_cache_write0/1` - direct cache primitives.
+- `fxu_set_incr`, `fxu_set_pos`, `fxu_set_subpos` - affine increment/position state.
+- `fxu_get_poly_fill`, `fxu_set_tilebase`, `fxu_set_mapbase` - polygon fill and tile/map helpers.
+
+---
 ## Interrupts
 
 `X16_USE_IRQ` — `system/irq.asm`. Chains onto the KERNAL's `CINV` vector,
 so the keyboard, mouse and cursor keep working. Callbacks run **inside**
 the interrupt: keep them short, and save any VERA state you touch.
+
+X16_USE_IRQ enables X16_USE_IRQ_CORE, X16_USE_IRQ_VSYNC,
+X16_USE_IRQ_SPRCOL and X16_USE_IRQ_SPRCOL_API. The split gates are
+available when you only need the handler core, VSYNC wait, collision
+capture, or collision API.
 
 ### `irq_install` — hook the interrupt and start counting frames
 
@@ -1218,6 +1284,48 @@ through the driver, not raw `ym_write`.
 
 ---
 
+## ROM audio API
+
+`X16_USE_AUDIO_ROM` - `audio/rom.asm`. These routines call the ROM `BANK_AUDIO`
+API and are useful when you want the ROM's PSG/YM shadows, note conversion,
+play-string/chord parser, or YM chip probing rather than only the local raw PSG
+and YM helpers.
+
+### General and play strings
+
+- `ar_audio_init` - initialize YM, PSG and default patches.
+- `ar_playstring_voice` - in: `A = voice/channel` for the next play-string call.
+- `ar_fmplaystring`, `ar_fmchordstring`, `ar_psgplaystring`, `ar_psgchordstring` - in: `A = length`, `X/Y = string pointer`.
+
+### FM and PSG note helpers
+
+- `ar_fmfreq` / `ar_fmfreq_no_retrigger` - in: `A = channel`, `X/Y = Hz`.
+- `ar_fmnote` / `ar_fmnote_no_retrigger` - in: `A = channel`, `X = (octave<<4)|note`, `Y = KF`.
+- `ar_fmvib` - in: `A = LFO speed`, `X = depth`.
+- `ar_psgfreq` - in: `A = voice`, `X/Y = Hz`.
+- `ar_psgnote` - in: `A = voice`, `X = (octave<<4)|note`, `Y = KF`.
+- `ar_psgwav` - in: `A = voice`, `X = waveform+duty`.
+
+### Note conversion
+
+Converters cover BASIC, FM key-code, MIDI, frequency and PSG frequency forms:
+`ar_note_bas2fm/midi/psg`, `ar_note_fm2bas/midi/psg`,
+`ar_note_freq2bas/fm/midi/psg`, `ar_note_midi2bas/fm/psg`, and
+`ar_note_psg2bas/fm/midi`. Inputs and outputs follow the comments in
+`audio/rom.asm`: BASIC/MIDI/FM notes are in `X` or `A/X`; frequencies are in
+`X/Y`; PSG conversions return `X/Y = PSG freq`; conversions with fine pitch use
+`Y = KF`.
+
+### ROM PSG and YM shadows
+
+- PSG: `ar_psg_init`, `ar_psg_playfreq`, `ar_psg_read`, `ar_psg_setatten`, `ar_psg_setfreq`, `ar_psg_setpan`, `ar_psg_setvol`, `ar_psg_write`, `ar_psg_write_fast`, `ar_psg_getatten`, `ar_psg_getpan`.
+- YM: `ar_ym_init`, `ar_ym_loaddefpatches`, `ar_ym_loadpatch`, `ar_ym_loadpatchlfn`, `ar_ym_playdrum`, `ar_ym_playnote`, `ar_ym_setatten`, `ar_ym_setdrum`, `ar_ym_setnote`, `ar_ym_setpan`, `ar_ym_read`, `ar_ym_release`, `ar_ym_trigger`, `ar_ym_write`, `ar_ym_getatten`, `ar_ym_getpan`, `ar_ym_get_chip_type`.
+
+`ar_psg_read` and `ar_ym_read` use carry set for the cooked/shadowed form and
+carry clear for raw reads. `ar_ym_get_chip_type` returns `A = 0` none, `1` OPP,
+`2` OPM, `3` unexpected.
+
+---
 ## PCM audio
 
 `X16_USE_PCM` — `audio/pcm.asm`. VERA's 4 KB sample FIFO. Samples are
@@ -1299,6 +1407,39 @@ wait
 
 ---
 
+## ZSM playback
+
+`X16_USE_ZSM` - `audio/zsm.asm`. Compact tick-driven ZSM revision 1 player for
+streams loaded in normal 16-bit address space. It handles PSG writes, YM2151
+register batches, delay commands, EOF/loop, and PCM channel 0 control/rate
+commands.
+
+### Base player (`X16_USE_ZSM`)
+
+- `zsm_init` - in: `r0 = pointer to 16-byte ZSM header`; out: carry clear on success, carry set with `A = ZSM_ERR_*` on failure.
+- `zsm_init_stream` - in: `r0 = raw stream pointer`, `r1 = loop pointer or 0`; assumes 60 Hz.
+- `zsm_play` / `zsm_stop` / `zsm_rewind` - playback state controls.
+- `zsm_get_tickrate` - out: `A = low`, `X = high` ticks/sec from the header.
+- `zsm_status` - out: `A = ZSM_FLAG_*`, carry set if active.
+- `zsm_tick` - call once per player tick; out is the same as `zsm_status`.
+
+Only 16-bit loop offsets are supported. A loop offset with bit 16 set returns
+`ZSM_ERR_RANGE`.
+
+### PCM instruments (`X16_USE_ZSM_PCM`)
+
+`X16_USE_ZSM_PCM` pulls in `X16_USE_ZSM` and `X16_USE_PCM_STREAM`. It parses the
+optional ZSM PCM table and handles PCM EXTCMD channel 0 command `2` by starting
+the referenced instrument through the AFLOW PCM streamer.
+
+- `zsm_pcm_present` - carry set if a supported PCM table was found by `zsm_init`.
+- `zsm_pcm_trigger` - in: `A = instrument index`; starts that sample if valid.
+
+This first PCM layer supports memory-resident sample data in the normal 16-bit
+address space. 24-bit PCM sample offsets or lengths are rejected/ignored for now;
+large banked sample sets belong in a richer sample-management layer.
+
+---
 ## ADPCM decoding
 
 `X16_USE_ADPCM` — `audio/adpcm.asm`. IMA ADPCM: 16-bit samples stored as
@@ -1337,6 +1478,9 @@ Pointers advance and state carries across calls, so slicing a block works.
 
 `X16_USE_INPUT` — `input/input.asm`. Joystick, mouse, keyboard, through
 the KERNAL.
+
+X16_USE_INPUT enables X16_USE_INPUT_CORE plus X16_USE_INPUT_KEYWAIT;
+the split gates let a build omit the blocking/peek keyboard helpers.
 
 ### `joy_get` — read a joystick
 
@@ -1395,7 +1539,32 @@ poll
 
 ---
 
-## Serial and WiFi
+### Standalone keyboard (`X16_USE_KEYBOARD`)
+
+`input/keyboard.asm` wraps the KERNAL keyboard queue/keymap calls and modifier
+state. Use it when you want keyboard-only ROM access without the whole
+`X16_USE_INPUT` bundle.
+
+- `kbd_scan` - scan/update keyboard state.
+- `kbd_peek` - out: `A = next key`, `X = queue depth`, non-consuming.
+- `kbd_put` - in: `A = key`; push a key into the queue.
+- `kbd_get_modifiers` - out: `A = KBD_MOD_*` (`SHIFT`, `ALT`, `CTRL`, `CAPS`, `ALTGR`).
+- `kbd_get_keymap` - out: `r0 = current keymap name pointer`.
+- `kbd_set_keymap` - in: `r0 = zero-terminated keymap name`.
+
+### Standalone mouse (`X16_USE_MOUSE`)
+
+`input/mouse.asm` wraps the KERNAL mouse API. Use it when you want mouse-only
+access without `X16_USE_INPUT`.
+
+- `mse_config` - in: `A = cursor`, `X = width/8`, `Y = height/8`.
+- `mse_scan` - sample/update mouse state.
+- `mse_get` - out: `r0 = x`, `r1 = y`, `A = buttons`.
+- `mse_get_to` - in: `A = zero-page destination`; writes x/y/buttons there.
+- `mse_show`, `mse_show_keep`, `mse_hide` - pointer visibility controls.
+
+---
+## Serial, WiFi, I2C and SPI
 
 `X16_USE_SERIAL` — `comms/serial.asm`. The serial / WiFi card carries up to
 two 16C550 UARTs in the expansion window; the standard card sits at `$9F60`
@@ -1511,6 +1680,34 @@ assemblers.
 
 ---
 
+### I2C (`X16_USE_I2C`)
+
+`comms/i2c.asm` wraps the KERNAL I2C jump table. Carry set means NAK/error.
+
+- `i2c_read_byte` - in: `X = 7-bit device`, `Y = offset`; out: `A = value`, carry set on error.
+- `i2c_write_byte` - in: `A = value`, `X = 7-bit device`, `Y = offset`; carry set on error.
+- `i2c_batch_read` - in: `X = device`, `r0 = buffer`, `r1 = count`, carry clear to advance `r0`, carry set to keep it fixed; carry set on error.
+- `i2c_batch_write` - in: `X = device`, `r0 = buffer`, `r1 = count`; out: `r2 = bytes written`, carry set on error.
+
+### VERA SPI (`X16_USE_VERA_SPI`)
+
+`comms/spi.asm` controls the VERA SPI registers. Writing `VERA_SPI_DATA` starts a
+full-duplex transfer; `VERA_SPI_BUSY` clears when the received byte is ready.
+Buffer routines use `r0 = pointer`, `r1 = count`; they advance `r0` and leave
+`r1 = 0`.
+
+- `spi_get_ctrl` / `spi_set_ctrl` - read/write `VERA_SPI_*` control bits.
+- `spi_wait` - wait for the active transfer to finish.
+- `spi_select` / `spi_deselect` - assert/release chip select.
+- `spi_slow` / `spi_fast` - choose the slow or fast SPI clock.
+- `spi_autotx_on` / `spi_autotx_off` - Auto-TX mode for reads.
+- `spi_transfer` - in: `A = byte`; out: `A = received byte`.
+- `spi_write` - in: `A = byte`; discard received byte.
+- `spi_read` - transmit `$FF`, out: `A = received byte`.
+- `spi_autotx_read` - wait/read in Auto-TX mode, starting the next `$FF` transfer.
+- `spi_read_bytes` / `spi_write_bytes` - block transfers through `r0/r1`.
+
+---
 ## Banked RAM
 
 `X16_USE_BANK` — `storage/bank.asm`. `RAM_BANK` (`$00`) selects which
@@ -1600,6 +1797,44 @@ hands out whole bank **numbers** (it never touches `RAM_BANK` itself).
 
 ---
 
+## HIRAM stack and ringbuffer
+
+`X16_USE_STACK` and `X16_USE_RINGBUFFER` provide 8 KB containers backed by one
+whole HIRAM bank at `$A000-$BFFF`. Every routine saves and restores `RAM_BANK`,
+so the container can live in one bank while your main code temporarily maps
+another. There are no implicit over/underflow guards; check the state routines
+before pushing or popping when capacity matters.
+
+### Stack (`X16_USE_STACK`)
+
+`storage/stack.asm` is a last-in-first-out stack. It grows downward from offset
+8191 and has 8191 usable bytes.
+
+- `stack_init` - in: `A = HIRAM bank number`; empties the stack.
+- `stack_push` - in: `A = byte`.
+- `stack_pushw` - in: `A = low`, `X = high`.
+- `stack_pop` - out: `A = byte`.
+- `stack_popw` - out: `A = low`, `X = high`.
+- `stack_size` / `stack_free` - out: `A/X = bytes used/free`.
+- `stack_isempty` / `stack_isfull` - carry set if empty/full.
+
+### Ringbuffer (`X16_USE_RINGBUFFER`)
+
+`storage/ringbuffer.asm` is a first-in-first-out queue. Capacity is 8191 bytes;
+one slot remains unused so full and empty stay distinct.
+
+- `ring_init` - in: `A = HIRAM bank number`; empties the queue.
+- `ring_put` - in: `A = byte`.
+- `ring_putw` - in: `A = low`, `X = high`.
+- `ring_get` - out: `A = byte`.
+- `ring_getw` - out: `A = low`, `X = high`.
+- `ring_size` / `ring_free` - out: `A/X = bytes queued/free`.
+- `ring_isempty` / `ring_isfull` - carry set if empty/full.
+
+For tiny low-RAM containers that do not use a bank, see
+[Ring buffer and stack](#ring-buffer-and-stack) (`X16_USE_BUFFERS`).
+
+---
 ## Block memory operations
 
 `X16_USE_MEM` — `storage/mem.asm`. KERNAL block routines with one special
@@ -1652,7 +1887,7 @@ into VRAM with no staging buffer.
 
 ---
 
-## Loading and saving
+## Loading, saving, file I/O and IEC
 
 `X16_USE_LOAD` — `storage/load.asm`. KERNAL LOAD/SAVE on device 8 (the SD
 card). Filenames are (address, length), not NUL-terminated.
@@ -1726,6 +1961,39 @@ The low-level piece (`fs_load`/`fs_save` call it for you).
 
 ---
 
+### File I/O (`X16_USE_FILEIO`)
+
+`storage/fileio.asm` wraps the KERNAL logical-file API and adds small named-open
+helpers. It is lower level than `fs_load`/`fs_save`: you manage logical file
+numbers, secondary addresses and current input/output channels yourself.
+
+- `fio_set_lfs` - in: `A = logical file`, `X = device`, `Y = secondary`.
+- `fio_set_name` - in: `A/X = filename pointer`, `Y = length`.
+- `fio_open` / `fio_close` - KERNAL open/close by current logical file.
+- `fio_open_named` - in: filename in `A/X/Y`, plus `X16_P0 = logical`, `P1 = device`, `P2 = secondary`.
+- `fio_open_read` / `fio_open_write` - named open with read/write secondary setup.
+- `fio_close_named` - close logical file and clear channels.
+- `fio_chkin`, `fio_chkout`, `fio_clrchn`, `fio_chrin`, `fio_chrout`, `fio_readst`, `fio_getin` - channel byte I/O.
+- `fio_close_all` / `fio_close_device` - close many files.
+
+Constants: `FIO_DEV_KEYBOARD`, `FIO_DEV_SCREEN`, `FIO_DEV_DISK`,
+`FIO_LFN_COMMAND`, `FIO_SA_NONE`, `FIO_SA_COMMAND`.
+
+### IEC (`X16_USE_IEC`)
+
+`storage/iec.asm` exposes the low-level serial-bus KERNAL calls. Use this for
+custom IEC protocols or when you need more control than logical files provide.
+
+- `iec_listen`, `iec_talk`, `iec_second`, `iec_tksa`, `iec_ciout`, `iec_acptr`, `iec_unlisten`, `iec_untalk` - raw IEC bus calls.
+- `iec_set_timeout` - in: `A = timeout control`.
+- `iec_readst` - out: `A = status`.
+- `iec_macptr` - in: `r0 = destination`, `r1 = count`; receive multiple bytes.
+- `iec_mciout` - in: `r0 = source`, `r1 = count`; transmit multiple bytes.
+- `iec_open_channel`, `iec_data_channel`, `iec_talk_channel`, `iec_close_channel` - in: `A = device`, `X = secondary`; compose common IEC channel commands.
+
+Constants include `IEC_CMD_DATA`, `IEC_CMD_CLOSE` and `IEC_CMD_OPEN`.
+
+---
 ## DOS commands
 
 `X16_USE_DOS` — `storage/dos.asm`. `fs_load`/`fs_save` report *that* they
@@ -1805,7 +2073,7 @@ compressed BMX unsupported.
   `bmx_width/height/bpp/palstart/palcount/border` reflect the file.
 
 ```asm
-    jsr gfx_init                ; bitmap mode
+    jsr gfx8l_init              ; 320x240@8bpp bitmap mode
     lda #<pic : sta X16_P0
     lda #>pic : sta X16_P1
     lda #9    : sta X16_P2
@@ -1845,6 +2113,43 @@ shot !text "SHOT.BMX"
 
 ---
 
+## Clock and RTC
+
+`X16_USE_CLOCK` - `system/clock.asm`. Thin wrappers for the KERNAL timer and RTC
+entry points.
+
+### `clock_update` - advance KERNAL time state
+
+Calls `UDTIM`, the classic KERNAL clock update routine.
+
+### `clock_get_timer` / `clock_set_timer` - 24-bit 60 Hz timer
+
+- `clock_get_timer` out: `A = low`, `X = middle`, `Y = high`.
+- `clock_set_timer` in: `A = low`, `X = middle`, `Y = high`.
+
+```asm
+    jsr clock_get_timer
+    sta t0
+    stx t1
+    sty t2
+```
+
+### `clock_get_date_time` / `clock_set_date_time` - RTC date/time
+
+Both use the KERNAL `r0..r3` layout:
+
+| Register | Value |
+|---|---|
+| `r0L` | year since 1900 |
+| `r0H` | month |
+| `r1L` | day |
+| `r1H` | hours |
+| `r2L` | minutes |
+| `r2H` | seconds |
+| `r3L` | jiffies |
+| `r3H` | weekday |
+
+---
 ## Game math
 
 `X16_USE_MATH` — `util/math.asm`. Angles are bytes: a full circle is 256,
@@ -2154,6 +2459,35 @@ input !text "123"
 
 ---
 
+## BCD arithmetic
+
+`X16_USE_BCD` - `util/bcd.asm`. Packed-BCD add/subtract for game scores,
+clocks and counters that need to print as decimal cheaply. Each byte stores two
+decimal digits, low byte first: `$0987 + $1111 = $2098`.
+
+Values live in named registers:
+
+- `bcd_a` - accumulator, overwritten by add/sub routines.
+- `bcd_b` - operand.
+
+Routines:
+
+- `bcd_add8`, `bcd_add16`, `bcd_add32` - `bcd_a += bcd_b`; carry set on overflow.
+- `bcd_sub8`, `bcd_sub16`, `bcd_sub32` - `bcd_a -= bcd_b`; carry clear on borrow.
+- `bcd_addto` - in: `A/X = pointer` to a 4-byte packed-BCD value; adds `bcd_b` in place.
+- `bcd_subfrom` - in: `A/X = pointer`; subtracts `bcd_b` in place.
+
+These routines enter decimal mode during the operation and clear it before
+returning. If your own interrupt handler does `ADC`/`SBC`, make it decimal-safe
+or bracket BCD calls with interrupts disabled.
+
+```asm
+    +i32_const bcd_a, $00000987
+    +i32_const bcd_b, $00001111
+    jsr bcd_add32              ; bcd_a = $00002098
+```
+
+---
 ## 16-bit integers
 
 `X16_USE_INT16` — `util/int16.asm` (pulls in `X16_USE_NUMBER`). Values
@@ -2319,6 +2653,33 @@ fb !fill 5, 0
 
 ---
 
+## Double precision
+
+`X16_USE_DOUBLE` - `util/double.asm`. Software IEEE-754 binary64: 8-byte
+little-endian doubles with about 15-16 significant digits. The accumulator is
+`d_ac`; a memory operand is an 8-byte value addressed by `A = low`, `Y = high`.
+
+### Loading and conversion
+
+- `d_load` / `d_store` - load/store `d_ac` from/to an 8-byte memory value.
+- `d_from_s16` - in: `A = low`, `X = high`; signed 16-bit to `d_ac`.
+- `d_from_s32` - in: `X16_P0..P3`; signed 32-bit to `d_ac`.
+- `d_to_s32` - out: `X16_P0..P3`; carry set on overflow or NaN.
+- `d_from_str` - in: `A/Y = string`, `X = length`; parse decimal text.
+- `d_to_str` - out: `A/X = NUL-terminated text buffer`.
+
+### Operations
+
+- `d_neg`, `d_abs` - sign operations on `d_ac`.
+- `d_cmp` - in: `A/Y = operand`; out: `A = $FF`, `0`, or `1`.
+- `d_add`, `d_sub`, `d_mul`, `d_div` - `d_ac` with memory operand.
+- `d_sqrt`, `d_exp`, `d_ln`, `d_pow` - scientific functions.
+- `d_sin`, `d_cos`, `d_tan`, `d_atan`, `d_sinh`, `d_cosh`, `d_tanh` - trig/hyperbolic functions.
+
+Use `X16_USE_FLOAT` for fast ROM 5-byte BASIC floats; use `X16_USE_DOUBLE` when
+range and precision matter more than code size.
+
+---
 ## Strings
 
 Five independent, pay-per-use gates over `string/`. NUL-terminated strings
