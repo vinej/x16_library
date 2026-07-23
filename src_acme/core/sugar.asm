@@ -1702,6 +1702,94 @@
 }
 
 ; =====================================================================
+; gfx/console  (KERNAL console API)
+; =====================================================================
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_init_fullscreen {
+    stz r0L
+    stz r0H
+    stz r1L
+    stz r1H
+    stz r2L
+    stz r2H
+    stz r3L
+    stz r3H
+    jsr con_init
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_init .x, .y, .w, .h {
+    lda #<(.x)
+    sta r0L
+    lda #>(.x)
+    sta r0H
+    lda #<(.y)
+    sta r1L
+    lda #>(.y)
+    sta r1H
+    lda #<(.w)
+    sta r2L
+    lda #>(.w)
+    sta r2H
+    lda #<(.h)
+    sta r3L
+    lda #>(.h)
+    sta r3H
+    jsr con_init
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_set_paging_message .msg {
+    lda #<(.msg)
+    sta r0L
+    lda #>(.msg)
+    sta r0H
+    jsr con_set_paging_message
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_disable_paging {
+    jsr con_disable_paging
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_put_char_wrap .char {
+    lda #(.char)
+    clc
+    jsr con_put_char
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_put_char_word .char {
+    lda #(.char)
+    sec
+    jsr con_put_char
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_get_char {
+    jsr con_get_char
+}
+}
+!ifdef X16_USE_CONSOLE {
+!macro xm_con_put_image .image, .w, .h {
+    lda #<(.image)
+    sta r0L
+    lda #>(.image)
+    sta r0H
+    lda #<(.w)
+    sta r1L
+    lda #>(.w)
+    sta r1H
+    lda #<(.h)
+    sta r2L
+    lda #>(.h)
+    sta r2H
+    jsr con_put_image
+}
+}
+
+; =====================================================================
 ; gfx/fb  (KERNAL framebuffer API)
 ; =====================================================================
 !ifdef X16_USE_FB {
