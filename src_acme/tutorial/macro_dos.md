@@ -23,12 +23,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_DOS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_dos_cmd cmd, len
+    ; execute command; -> A = status
+    +xm_dos_cmd 1, 16
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_dos_status`
@@ -43,12 +52,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; read DOS status
     +xm_dos_status
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_dos_delete name, len`
@@ -63,11 +81,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_dos_delete name, len
+    ; delete file
+    +xm_dos_delete file_name, 16
     rts
+
+file_name   !text "SAVEGAME,S,R", 0
+
+!source "x16_code.asm"
 ```
 

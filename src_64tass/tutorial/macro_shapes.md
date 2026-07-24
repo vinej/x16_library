@@ -25,12 +25,24 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-  ; see macro listing above
+  ; Use the default SHP_* binding: shapes draw to the 640x480 2bpp bitmap.
+    #xm_gfx2h_init
+    #xm_gfx2h_clear 0
+    #xm_shape_disc 160, 120, 24, 3
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_circle cx, cy, r, col / #xm_shape_disc ...`
@@ -45,12 +57,28 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_circle cx, cy, r, col
+  ; Draw a simple mark on the active bitmap target.
+    #xm_shape_circle 160, 120, 24, 14
+    #xm_shape_disc 160, 120, 24, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_ellipse cx, cy, rx, ry, col / #xm_shape_fellipse ...`
@@ -65,12 +93,28 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_ellipse cx, cy, rx, ry, col
+  ; Draw a simple mark on the active bitmap target.
+    #xm_shape_ellipse 160, 120, 48, 20, 14
+    #xm_shape_fellipse 160, 120, 48, 20, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_flood x, y, col`
@@ -85,12 +129,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_flood x, y, col
+  ; Draw a simple mark on the active bitmap target.
+    #xm_shape_flood 32, 40, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_polygon cx, cy, r, sides, rot, col / #xm_shape_fpolygon ...`
@@ -105,12 +164,28 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES_POLY = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_polygon cx, cy, r, sides, rot, col
+  ; `SHAPES_POLY` gate
+    #xm_shape_polygon 160, 120, 24, 6, 16, 14
+    #xm_shape_fpolygon 160, 120, 24, 6, 16, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_rrect x, y, w, h, r, col / #xm_shape_frrect ...`
@@ -125,12 +200,28 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_SHAPES = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES_RRECT = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_rrect x, y, w, h, r, col
+  ; `SHAPES_RRECT` gate
+    #xm_shape_rrect 32, 40, 96, 64, 24, 14
+    #xm_shape_frrect 32, 40, 96, 64, 24, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_arc cx, cy, r, a0, a1, col`
@@ -145,12 +236,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_SHAPES = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES_ARC = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_arc cx, cy, r, a0, a1, col
+  ; `SHAPES_ARC` gate
+    #xm_shape_arc 160, 120, 24, 0, 64, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_pie cx, cy, r, a0, a1, col`
@@ -165,12 +271,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_BEZIER = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_SHAPES = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES_PIE = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_pie cx, cy, r, a0, a1, col
+  ; `SHAPES_PIE` gate
+    #xm_shape_pie 160, 120, 24, 0, 64, 14
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_shape_bezier x0, y0, x1, y1, x2, y2, x3, y3, col`
@@ -185,10 +306,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SHAPES = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_SHAPES_PIE = 1
+X16_USE_SHAPES_ARC = 1
+X16_USE_SHAPES_RRECT = 1
+X16_USE_SHAPES_POLY = 1
+X16_USE_SHAPES = 1
+X16_USE_BITMAP2H = 1
+X16_USE_SHAPES_BEZIER = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_shape_bezier x0, y0, x1, y1, x2, y2, x3, y3, col
+  ; `SHAPES_BEZIER` gate
+    #xm_shape_bezier 24, 32, 96, 96, 160, 48, 224, 112, 14
     rts
+
+.include "x16_code.asm"
 ```

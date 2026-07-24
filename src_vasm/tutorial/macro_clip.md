@@ -25,10 +25,19 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_CLIP = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_CLIP = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_clip_set xmin, ymin, xmax, ymax
+  ; set the clip rectangle
+    xm_clip_set 0, 1, 319, 1
     rts
+
+    include "x16_code.asm"
 ```

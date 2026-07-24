@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_PALETTE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_PALETTE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_pal_set index, rgb
+  ; Install a small four-color palette.
+    xm_pal_set 1, $0f00
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_pal_load src, first, count`
@@ -45,10 +54,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PALETTE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_PALETTE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_pal_load src, first, count
+  ; Install a small four-color palette.
+    xm_pal_load palette_data, 0, 4
     rts
+
+palette_data .word $000, $00f, $0f0, $f00
+
+    icl "x16_code.asm"
 ```

@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_I2C = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_I2C = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_i2c_read_byte device, offset
+  ; Read or write a byte from a small I2C register device.
+    #xm_i2c_read_byte $6f, 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_i2c_write_byte value, device, offset`
@@ -45,12 +54,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_I2C = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_I2C = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_i2c_write_byte value, device, offset
+  ; Read or write a byte from a small I2C register device.
+    #xm_i2c_write_byte $1234, $6f, 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_i2c_batch_read device, buffer, count`
@@ -65,12 +83,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_I2C = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_I2C = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_i2c_batch_read device, buffer, count
+  ; Read or write a byte from a small I2C register device.
+    #xm_i2c_batch_read $6f, 1, 32
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_i2c_batch_read_fixed device, buffer, count`
@@ -85,12 +112,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_I2C = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_I2C = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_i2c_batch_read_fixed device, buffer, count
+  ; Read or write a byte from a small I2C register device.
+    #xm_i2c_batch_read_fixed $6f, 1, 32
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_i2c_batch_write device, buffer, count`
@@ -105,10 +141,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_I2C = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_I2C = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_i2c_batch_write device, buffer, count
+  ; Read or write a byte from a small I2C register device.
+    #xm_i2c_batch_write $6f, 1, 32
     rts
+
+.include "x16_code.asm"
 ```

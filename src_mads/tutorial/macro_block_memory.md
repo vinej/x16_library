@@ -25,12 +25,24 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MEM = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_mem_fill dst, count, val
+  ; fill (streams to VERA too)
+    xm_mem_fill work_buffer, 32, $20
     rts
+
+work_buffer
+:(64) dta 0
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_mem_copy src, dst, count`
@@ -45,12 +57,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MEM = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_mem_copy src, dst, count
+  ; copy
+    xm_mem_copy pixel_run, work_buffer, 32
     rts
+
+pixel_run .byte 1, 2, 3, 4, 4, 3, 2, 1
+work_buffer
+:(64) dta 0
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_mem_crc addr, count`
@@ -65,12 +90,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MEM = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_mem_crc addr, count
+  ; CRC-16
+    xm_mem_crc work_buffer, 32
     rts
+
+work_buffer
+:(64) dta 0
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_mem_decompress src, dst`
@@ -85,10 +122,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MEM = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_mem_decompress src, dst
+  ; LZSA2
+    xm_mem_decompress packed_data, work_buffer
     rts
+
+packed_data !binary "asset.packed"
+work_buffer
+:(64) dta 0
+
+    icl "x16_code.asm"
 ```

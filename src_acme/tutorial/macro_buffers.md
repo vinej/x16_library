@@ -23,12 +23,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_BUFFERS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BUFFERS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; ring buffer init / count
     +xm_rb_init
+    +xm_rb_count
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_rb_put byte`
@@ -43,12 +53,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BUFFERS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BUFFERS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_rb_put byte
+    ; ring buffer put; -> carry set = full
+    +xm_rb_put 'A'
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_rb_get`
@@ -63,12 +82,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BUFFERS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BUFFERS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; ring buffer get; -> A = byte, carry set = empty
     +xm_rb_get
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_stk_init / +xm_stk_push byte / +xm_stk_pop / +xm_stk_depth`
@@ -83,11 +111,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BUFFERS = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BUFFERS = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; byte stack helpers
     +xm_stk_init
+    +xm_stk_push 'A'
+    +xm_stk_pop
+    +xm_stk_depth
     rts
+
+!source "x16_code.asm"
 ```
 

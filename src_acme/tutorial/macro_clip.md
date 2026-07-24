@@ -23,11 +23,20 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_CLIP = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_CLIP = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_clip_set xmin, ymin, xmax, ymax
+    ; set the clip rectangle
+    +xm_clip_set 0, 1, 319, 1
     rts
+
+!source "x16_code.asm"
 ```
 

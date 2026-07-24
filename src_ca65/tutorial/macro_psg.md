@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Prepare voice 0 for a short confirmation beep.
     xm_psg_init
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_psg_set_freq voice, freq`
@@ -45,12 +56,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_psg_set_freq voice, freq
+  ; Prepare voice 0 for a short confirmation beep.
+    xm_psg_set_freq 0, $1f40
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_psg_set_vol voice, vol, pan`
@@ -65,12 +87,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_psg_set_vol voice, vol, pan
+  ; Prepare voice 0 for a short confirmation beep.
+    xm_psg_set_vol 0, 48, $c0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_psg_set_wave voice, wave, width`
@@ -85,12 +118,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_psg_set_wave voice, wave, width
+  ; Prepare voice 0 for a short confirmation beep.
+    xm_psg_set_wave 0, $40, 32
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_psg_note_off voice`
@@ -105,12 +149,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_psg_note_off voice
+  ; Prepare voice 0 for a short confirmation beep.
+    xm_psg_note_off 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_psg_env_start / _release / _stop voice`
@@ -125,12 +180,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_psg_env_start
+  ; Prepare voice 0 for a short confirmation beep.
+    xm_psg_env_start 0
+    xm_psg_env_release 0
+    xm_psg_env_stop 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_psg_env_tick`
@@ -145,10 +213,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_PSG = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_PSG = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Prepare voice 0 for a short confirmation beep.
     xm_psg_env_tick
     rts
+
+.include "x16_code.asm"
 ```

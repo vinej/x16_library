@@ -25,12 +25,26 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_ZX0 = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_ZX0 = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zx0_decompress src, dst
+  ; decompress ZX0; -> A/X = one past the last output byte
+    xm_zx0_decompress packed_data, work_buffer
     rts
+
+packed_data !binary "asset.packed"
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_tsc_decompress src, dst`
@@ -45,10 +59,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_ZX0 = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_TSC = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_tsc_decompress src, dst
+  ; decompress TSC; -> A/X = one past the last output byte
+    xm_tsc_decompress packed_data, work_buffer
     rts
+
+packed_data !binary "asset.packed"
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```

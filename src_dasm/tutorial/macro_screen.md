@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_set_mode mode
+  ; Write a status line on the text screen.
+    xm_screen_set_mode 0
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_reset`
@@ -45,12 +54,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Write a status line on the text screen.
     xm_screen_reset
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_cls`
@@ -65,12 +83,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Write a status line on the text screen.
     xm_screen_cls
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_chrout ch`
@@ -85,12 +112,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_chrout ch
+  ; Write a status line on the text screen.
+    xm_screen_chrout '/'
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_color fg, bg`
@@ -105,12 +141,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_color fg, bg
+  ; Write a status line on the text screen.
+    xm_screen_color 15, 0
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_border col`
@@ -125,12 +170,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_border col
+  ; Write a status line on the text screen.
+    xm_screen_border 14
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_locate row, col`
@@ -145,12 +199,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_locate row, col
+  ; Write a status line on the text screen.
+    xm_screen_locate 5, 14
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_charset cs`
@@ -165,12 +228,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_charset cs
+  ; Write a status line on the text screen.
+    xm_screen_charset 1
     rts
+
+include "x16_code.asm"
 ```
 
 ## `xm_screen_puts addr`
@@ -185,10 +257,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SCREEN = 1
+processor 65c02
 include "x16.asm"
 
+X16_USE_SCREEN = 1
+include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_screen_puts addr
+  ; Write a status line on the text screen.
+    xm_screen_puts work_buffer
     rts
+
+work_buffer ds 64, 0
+
+include "x16_code.asm"
 ```

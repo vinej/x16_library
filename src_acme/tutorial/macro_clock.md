@@ -23,12 +23,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_CLOCK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_CLOCK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; Set and read the KERNAL clock.
     +xm_clock_update
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_clock_get_timer / +xm_clock_set_timer ticks`
@@ -43,12 +52,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CLOCK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_CLOCK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; Set and read the KERNAL clock.
     +xm_clock_get_timer
+    +xm_clock_set_timer 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_clock_get_date_time`
@@ -63,12 +82,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CLOCK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_CLOCK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; Set and read the KERNAL clock.
     +xm_clock_get_date_time
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_clock_set_date_time_raw year1900, month, day, hours, minutes, seconds, jiffies, weekday`
@@ -83,12 +111,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CLOCK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_CLOCK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_clock_set_date_time_raw year1900, month, day, hours, minutes, seconds, jiffies, weekday
+    ; Set and read the KERNAL clock.
+    +xm_clock_set_date_time_raw 126, 7, 24, 14, 30, 0, 0, 5
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_clock_set_date_time year, month, day, hours, minutes, seconds, weekday`
@@ -103,11 +140,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CLOCK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_CLOCK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_clock_set_date_time year, month, day, hours, minutes, seconds, weekday
+    ; Set and read the KERNAL clock.
+    +xm_clock_set_date_time 2026, 7, 24, 14, 30, 0, 5
     rts
+
+!source "x16_code.asm"
 ```
 

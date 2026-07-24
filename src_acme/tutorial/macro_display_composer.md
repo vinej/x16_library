@@ -23,12 +23,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; read/write `DC_VIDEO`
     +xm_vdc_get_video
+    +xm_vdc_set_video $11
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_set_output mode`
@@ -43,12 +53,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_vdc_set_output mode
+    ; set output mode while preserving other video bits
+    +xm_vdc_set_output 0
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_set_layers mask / +xm_vdc_layer_on mask / +xm_vdc_layer_off mask`
@@ -63,12 +82,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_vdc_set_layers mask
+    ; layer/sprite enables
+    +xm_vdc_set_layers $01
+    +xm_vdc_layer_on $01
+    +xm_vdc_layer_off $01
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_get_scale / +xm_vdc_set_scale hscale, vscale`
@@ -83,12 +113,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; read/write composer scale
     +xm_vdc_get_scale
+    +xm_vdc_set_scale 64, 64
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_get_border / +xm_vdc_set_border color`
@@ -103,12 +143,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; border palette index
     +xm_vdc_get_border
+    +xm_vdc_set_border 14
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_get_active_raw / +xm_vdc_set_active_raw hstart, hstop, vstart, vstop`
@@ -123,12 +173,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; raw active-display registers
     +xm_vdc_get_active_raw
+    +xm_vdc_set_active_raw 0, 640, 0, 480
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_set_active hstart, hstop, vstart, vstop / +xm_vdc_fullscreen`
@@ -143,12 +203,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_vdc_set_active hstart, hstop, vstart, vstop
+    ; pixel-coordinate active display
+    +xm_vdc_set_active 0, 640, 0, 480
+    +xm_vdc_fullscreen
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_vdc_get_version`
@@ -163,11 +233,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_DC = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_VERA_DC = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; VERA bitstream version
     +xm_vdc_get_version
     rts
+
+!source "x16_code.asm"
 ```
 

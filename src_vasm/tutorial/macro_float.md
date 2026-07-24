@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-  ; see macro listing above
+  ; Store a calculated value in memory, then load it again later.
+    xm_f_from_s16 250
+    xm_f_store saved_float
+    xm_f_load saved_float
     rts
+
+saved_float ds.b 5, 0
+
+    include "x16_code.asm"
 ```
 
 ## `f_sqrt, f_sin, f_ln, f_int, ...`
@@ -45,12 +58,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-  ; see macro listing above
+  ; The unary routines operate directly on FAC after a loader macro.
+    xm_f_from_s16 144
+    jsr f_sqrt
+    jsr f_to_str_trim
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_from_u8 byte / xm_f_from_s16 value`
@@ -65,12 +89,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_from_u8 byte
+  ; build FAC from an integer
+    xm_f_from_u8 'A'
+    xm_f_from_s16 $1234
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_from_str str, len`
@@ -85,12 +119,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_from_str str, len
+  ; parse a string into FAC
+    xm_f_from_str source_text, 16
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_load addr / xm_f_store addr`
@@ -105,12 +150,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_load addr
+  ; FAC <-> memory
+    xm_f_load work_buffer
+    xm_f_store work_buffer
     rts
+
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_add / _sub / _mul / _div addr`
@@ -125,12 +182,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_add
+  ; FAC op mem
+    xm_f_add work_buffer
+    xm_f_sub work_buffer
+    xm_f_mul work_buffer
+    xm_f_div work_buffer
     rts
+
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_rsub addr / xm_f_rdiv addr`
@@ -145,12 +216,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_rsub addr
+  ; mem - FAC / mem / FAC
+    xm_f_rsub work_buffer
+    xm_f_rdiv work_buffer
     rts
+
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_pow addr`
@@ -165,12 +248,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_pow addr
+  ; FAC = FAC ^ mem
+    xm_f_pow work_buffer
     rts
+
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_f_cmp addr`
@@ -185,10 +279,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FLOAT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_FLOAT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_f_cmp addr
+  ; -> A = -1 / 0 / 1
+    xm_f_cmp work_buffer
     rts
+
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```

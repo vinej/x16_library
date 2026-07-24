@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_VERAFX = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
+  ; disable FX (leaves DCSEL/ADDRSEL = 0)
     #xm_fx_off
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_fx_mult a, b`
@@ -45,12 +54,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_VERAFX = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_fx_mult a, b
+  ; signed 16x16
+    #xm_fx_mult $20, $a0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_fx_fill val, count`
@@ -65,12 +83,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_VERAFX = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_fx_fill val, count
+  ; fast fill from the current address
+    #xm_fx_fill $20, 32
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_fx_clear addrlo, addrmid, addrhi, count`
@@ -85,12 +112,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_VERAFX = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_fx_clear addrlo, addrmid, addrhi, count
+  ; zero a VRAM region
+    #xm_fx_clear $00, $20, $10, 32
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_fx_transp_on / #xm_fx_transp_off`
@@ -105,12 +141,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_VERAFX = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
+  ; transparent VRAM writes
     #xm_fx_transp_on
+    #xm_fx_transp_off
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_fx_line x0, y0, x1, y1, col`
@@ -125,10 +171,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_VERAFX = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_fx_line x0, y0, x1, y1, col
+  ; hardware-assisted line
+    #xm_fx_line 24, 32, 96, 96, 14
     rts
+
+.include "x16_code.asm"
 ```

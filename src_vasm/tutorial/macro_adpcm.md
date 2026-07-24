@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_ADPCM = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_ADPCM = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; initialize ADPCM state
     xm_adpcm_init
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_adpcm_nibble code`
@@ -45,12 +54,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_ADPCM = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_ADPCM = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_adpcm_nibble code
+  ; decode one ADPCM nibble
+    xm_adpcm_nibble 'A'
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_adpcm_block src, dst, count`
@@ -65,10 +83,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_ADPCM = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_ADPCM = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_adpcm_block src, dst, count
+  ; decode a block
+    xm_adpcm_block source_text, work_buffer, 32
     rts
+
+source_text byte "LEVEL/01", 0
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```

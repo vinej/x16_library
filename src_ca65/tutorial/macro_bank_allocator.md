@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_BANKALLOC = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BANKALLOC = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_bank_alloc_init first, last
+  ; initialize allocator range
+    xm_bank_alloc_init 0, 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_bank_alloc`
@@ -45,12 +56,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BANKALLOC = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BANKALLOC = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; allocate one bank; -> carry clear, A = bank
     xm_bank_alloc
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_bank_free bank`
@@ -65,12 +87,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BANKALLOC = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BANKALLOC = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_bank_free bank
+  ; free one bank
+    xm_bank_free 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_bank_reserve bank`
@@ -85,10 +118,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BANKALLOC = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BANKALLOC = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_bank_reserve bank
+  ; reserve one bank
+    xm_bank_reserve 1
     rts
+
+.include "x16_code.asm"
 ```

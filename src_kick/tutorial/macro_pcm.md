@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_PCM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_PCM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_pcm_ctrl(byte)
+ // `PCM` gate
+    xm_pcm_ctrl('A')
+    xm_pcm_rate(1)
+    xm_pcm_reset()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_pcm_put sample / xm_pcm_write src, count`
@@ -45,12 +56,24 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_PCM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_PCM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_pcm_put(sample)
+ // `PCM` gate
+    xm_pcm_put(1)
+    xm_pcm_write(sample_data, 32)
     rts
+
+sample_data .byte $80, $88, $90, $88, $80, $78, $70, $78
+
+#import "x16_code.asm"
 ```
 
 ## `xm_pcm_stream_start src, count, loop / xm_pcm_stream_stop`
@@ -65,10 +88,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_PCM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_PCM_STREAM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_pcm_stream_start(src, count, loop)
+ // `PCM_STREAM` gate
+    xm_pcm_stream_start(sample_data, 32, 1)
+    xm_pcm_stream_stop()
     rts
+
+sample_data .byte $80, $88, $90, $88, $80, $78, $70, $78
+
+#import "x16_code.asm"
 ```

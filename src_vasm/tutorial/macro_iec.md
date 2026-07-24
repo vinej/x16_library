@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_iec_listen device
+  ; bus attention helpers
+    xm_iec_listen 8
+    xm_iec_talk 8
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_iec_second command / xm_iec_tksa command`
@@ -45,12 +55,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_iec_second command
+  ; secondary address helpers
+    xm_iec_second 1
+    xm_iec_tksa 1
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_iec_ciout byte / xm_iec_acptr`
@@ -65,12 +85,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_iec_ciout byte
+  ; byte I/O helpers
+    xm_iec_ciout 'A'
+    xm_iec_acptr
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_iec_unlisten / xm_iec_untalk`
@@ -85,12 +115,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; release bus helpers
     xm_iec_unlisten
+    xm_iec_untalk
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_iec_set_timeout control / xm_iec_readst`
@@ -105,12 +145,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_iec_set_timeout control
+  ; timeout/status helpers
+    xm_iec_set_timeout 1
+    xm_iec_readst
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_iec_macptr dest, count / xm_iec_mciout src, count`
@@ -125,12 +175,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_iec_macptr dest, count
+  ; block I/O helpers
+    xm_iec_macptr work_buffer, 32
+    xm_iec_mciout pixel_run, 32
     rts
+
+work_buffer ds.b 64, 0
+pixel_run byte 1, 2, 3, 4, 4, 3, 2, 1
+
+    include "x16_code.asm"
 ```
 
 ## `xm_iec_open_channel device, secondary / xm_iec_data_channel device, secondary / xm_iec_talk_channel device, secondary / xm_iec_close_channel device, secondary`
@@ -145,10 +208,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IEC = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_IEC = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_iec_open_channel device, secondary
+  ; channel helpers
+    xm_iec_open_channel 8, 0
+    xm_iec_data_channel 8, 0
+    xm_iec_talk_channel 8, 0
+    xm_iec_close_channel 8, 0
     rts
+
+    include "x16_code.asm"
 ```

@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-  ; see macro listing above
+  ; Detect the UART card, then initialize the first standard base at 9600 bps.
+    xm_ser_detect
+    xm_ser_init $9f60, SER_BAUD_9600
+    xm_ser_puts hello_modem
     rts
+
+hello_modem .byte "AT", $0d, 0
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_detect`
@@ -45,12 +58,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Configure the first serial card UART and send a command.
     xm_ser_detect
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_init base, divisor`
@@ -65,12 +87,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_ser_init base, divisor
+  ; Configure the first serial card UART and send a command.
+    xm_ser_init $9f60, 12
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_avail`
@@ -85,12 +116,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Configure the first serial card UART and send a command.
     xm_ser_avail
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_get`
@@ -105,12 +145,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Configure the first serial card UART and send a command.
     xm_ser_get
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_get_wait`
@@ -125,12 +174,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Configure the first serial card UART and send a command.
     xm_ser_get_wait
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_put byte`
@@ -145,12 +203,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_ser_put byte
+  ; Configure the first serial card UART and send a command.
+    xm_ser_put 'A'
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_puts addr`
@@ -165,12 +232,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_ser_puts addr
+  ; Configure the first serial card UART and send a command.
+    xm_ser_puts work_buffer
     rts
+
+work_buffer
+:(64) dta 0
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_write addr, len`
@@ -185,12 +264,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_ser_write addr, len
+  ; Configure the first serial card UART and send a command.
+    xm_ser_write work_buffer, 16
     rts
+
+work_buffer
+:(64) dta 0
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_read_until match, buffer, max`
@@ -205,12 +296,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_ser_read_until match, buffer, max
+  ; Configure the first serial card UART and send a command.
+    xm_ser_read_until 1, 1, 32
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_ser_discard_until match`
@@ -225,10 +325,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_SERIAL = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_ser_discard_until match
+  ; Configure the first serial card UART and send a command.
+    xm_ser_discard_until 1
     rts
+
+    icl "x16_code.asm"
 ```

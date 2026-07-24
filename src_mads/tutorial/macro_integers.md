@@ -25,12 +25,28 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_INT16 = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_INT16 = 1
+X16_USE_INT32 = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-  ; see macro listing above
+  ; Load the integer registers, then call argument-free arithmetic directly.
+    i16_const i16_a, 1000
+    i16_const i16_b, 7
+    jsr i16_divmod
+
+    i32_const i32_a, 1000000
+    i32_const i32_b, 7
+    jsr i32_divmod
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_i16_from_u8 byte / xm_i16_from_s8 byte`
@@ -45,12 +61,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_INT16 = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_INT16 = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_i16_from_u8 byte
+  ; integer loaders
+    xm_i16_from_u8 'A'
+    xm_i16_from_s8 'A'
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_i32_from_u16 value / xm_i32_from_s16 value`
@@ -65,10 +91,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_INT16 = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_INT32 = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_i32_from_u16 value
+  ; integer loaders
+    xm_i32_from_u16 $1234
+    xm_i32_from_s16 $1234
     rts
+
+    icl "x16_code.asm"
 ```

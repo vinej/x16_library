@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Draw through the KERNAL framebuffer cursor.
     xm_fb_init
+    xm_fb_get_info
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_set_palette data, start, count`
@@ -45,12 +55,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_set_palette data, start, count
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_set_palette palette_data, 4, 4
     rts
+
+palette_data .word $000, $00f, $0f0, $f00
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_cursor_position x, y / xm_fb_cursor_next_line`
@@ -65,12 +86,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_cursor_position x, y
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_cursor_position 32, 40
+    xm_fb_cursor_next_line
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_get_pixel x, y / xm_fb_set_pixel x, y, color`
@@ -85,12 +116,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_get_pixel x, y
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_get_pixel 32, 40
+    xm_fb_set_pixel 32, 40, 14
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_get_pixels dest, count / xm_fb_set_pixels src, count`
@@ -105,12 +146,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_get_pixels dest, count
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_get_pixels work_buffer, 8
+    xm_fb_set_pixels pixel_run, 8
     rts
+
+work_buffer
+:(64) dta 0
+pixel_run .byte 1, 2, 3, 4, 4, 3, 2, 1
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_set_8_pixels pattern, color / xm_fb_set_8_pixels_opaque mask, pattern, fg, bg`
@@ -125,12 +180,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_set_8_pixels pattern, color
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_set_8_pixels %10101010, 14
+    xm_fb_set_8_pixels_opaque $01, %10101010, 15, 0
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_fill_pixels count, step, color / xm_fb_filter_pixels count, filter`
@@ -145,12 +210,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_fill_pixels count, step, color
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_fill_pixels 32, 1, 14
+    xm_fb_filter_pixels 32, 1
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_fb_move_pixels sx, sy, tx, ty, count`
@@ -165,10 +240,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FB = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_FB = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_fb_move_pixels sx, sy, tx, ty, count
+  ; Draw through the KERNAL framebuffer cursor.
+    xm_fb_move_pixels 8, 16, 40, 16, 32
     rts
+
+    icl "x16_code.asm"
 ```

@@ -25,12 +25,27 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_ZSM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_ZSM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zsm_init header
+  ; `ZSM` gate
+    xm_zsm_init zsm_header
+    xm_zsm_init_stream zsm_stream, 1
     rts
+
+zsm_header .word zsm_stream
+zsm_stream .byte 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zsm_play / xm_zsm_stop / xm_zsm_rewind`
@@ -45,12 +60,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_ZSM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_ZSM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; `ZSM` gate
     xm_zsm_play
+    xm_zsm_stop
+    xm_zsm_rewind
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zsm_get_tickrate / xm_zsm_status / xm_zsm_tick`
@@ -65,12 +93,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_ZSM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_ZSM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; `ZSM` gate
     xm_zsm_get_tickrate
+    xm_zsm_status
+    xm_zsm_tick
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zsm_pcm_present / xm_zsm_pcm_trigger instrument`
@@ -85,10 +126,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_ZSM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_ZSM = 1
+X16_USE_ZSM_PCM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; `ZSM_PCM` gate
     xm_zsm_pcm_present
+    xm_zsm_pcm_trigger 0
     rts
+
+.include "x16_code.asm"
 ```

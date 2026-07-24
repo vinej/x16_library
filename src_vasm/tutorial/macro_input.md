@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_INPUT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_INPUT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; sample / read a joystick
     xm_joy_scan
+    xm_joy_get 1
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_mouse_show cursor / xm_mouse_hide / xm_mouse_get`
@@ -45,12 +55,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_INPUT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_INPUT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_mouse_show cursor
+  ; mouse
+    xm_mouse_show 0
+    xm_mouse_hide
+    xm_mouse_get
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_key_get / xm_key_wait / xm_key_peek`
@@ -65,10 +86,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_INPUT = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_INPUT = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; keyboard
     xm_key_get
+    xm_key_wait
+    xm_key_peek
     rts
+
+    include "x16_code.asm"
 ```

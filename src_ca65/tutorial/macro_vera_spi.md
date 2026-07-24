@@ -25,12 +25,24 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_get_ctrl
+    xm_spi_set_ctrl $01
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_select / xm_spi_deselect`
@@ -45,12 +57,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_select
+    xm_spi_deselect
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_slow / xm_spi_fast`
@@ -65,12 +89,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_slow
+    xm_spi_fast
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_autotx_on / xm_spi_autotx_off`
@@ -85,12 +121,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_autotx_on
+    xm_spi_autotx_off
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_wait`
@@ -105,12 +153,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_wait
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_transfer byte`
@@ -125,12 +184,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_spi_transfer byte
+  ; Select an SPI device and exchange command bytes.
+    xm_spi_transfer 'A'
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_read / xm_spi_write byte / xm_spi_autotx_read`
@@ -145,12 +215,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_read
+    xm_spi_write 'A'
+    xm_spi_autotx_read
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_spi_read_bytes buffer, count / xm_spi_write_bytes buffer, count`
@@ -165,10 +248,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERA_SPI = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_spi_read_bytes buffer, count
+  ; Select an SPI device and exchange command bytes.
+    xm_spi_read_bytes 1, 32
+    xm_spi_write_bytes 1, 32
     rts
+
+.include "x16_code.asm"
 ```

@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_NUMBER
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_NUMBER
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_u16_to_dec(value)
+ // format unsigned 16-bit; -> A/X = buffer, Y = length
+    xm_u16_to_dec($1234)
+    xm_u16_to_hex($1234)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_dec_to_u16(str, len)`
@@ -45,10 +55,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_NUMBER
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_NUMBER
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_dec_to_u16(str, len)
+ // parse decimal; -> P4/5 = value, carry set on bad digit
+    xm_dec_to_u16(source_text, 16)
     rts
+
+source_text .text "LEVEL/01", 0
+
+#import "x16_code.asm"
 ```

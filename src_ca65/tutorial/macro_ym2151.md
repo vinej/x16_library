@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; reset the chip, load the default patches
     xm_ym_init
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_write reg, val / xm_ym_poke reg, val`
@@ -45,12 +56,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_write reg, val
+  ; raw register write / shadowed write
+    xm_ym_write $20, $20
+    xm_ym_poke $20, $20
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_patch_rom channel, index`
@@ -65,12 +88,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_patch_rom channel, index
+  ; load a built-in ROM patch (0-162)
+    xm_ym_patch_rom 0, 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_note channel, kc, kf`
@@ -85,12 +119,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_note channel, kc, kf
+  ; play a raw key code
+    xm_ym_note 0, $4c, 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_note_bas channel, note`
@@ -105,12 +150,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_note_bas channel, note
+  ; play a packed note (0 releases)
+    xm_ym_note_bas 0, 60
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_release_note channel`
@@ -125,12 +181,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_release_note channel
+  ; release
+    xm_ym_release_note 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_vol channel, atten / xm_ym_pan channel, pan`
@@ -145,12 +212,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_vol channel, atten
+  ; volume / pan
+    xm_ym_vol 0, 1
+    xm_ym_pan 0, $c0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_ym_drum channel, note`
@@ -165,10 +244,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_YM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_YM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_ym_drum channel, note
+  ; a drum voice
+    xm_ym_drum 0, 60
     rts
+
+.include "x16_code.asm"
 ```

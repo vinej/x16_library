@@ -23,12 +23,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    ; see macro listing above
+    ; Store d_ac in memory, then restore it before another operation.
+    +xm_d_from_s16 250
+    +xm_d_store saved_double
+    +xm_d_load saved_double
     rts
+
+saved_double !fill 8, 0
+
+!source "x16_code.asm"
 ```
 
 ## `d_exp, d_sqrt, d_sin, ...`
@@ -43,12 +56,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    ; see macro listing above
+    ; Unary double routines consume and replace d_ac directly.
+    +xm_d_from_s16 144
+    jsr d_sqrt
+    jsr d_to_str
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_d_from_s16 value / +xm_d_from_str str, len`
@@ -63,12 +87,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_d_from_s16 value
+    ; build d_ac
+    +xm_d_from_s16 $1234
+    +xm_d_from_str source_text, 16
     rts
+
+source_text  !text "LEVEL/01", 0
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_d_load addr / +xm_d_store addr`
@@ -83,12 +119,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_d_load addr
+    ; d_ac <-> memory
+    +xm_d_load work_buffer
+    +xm_d_store work_buffer
     rts
+
+work_buffer !fill 64, 0
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_d_add / _sub / _mul / _div addr`
@@ -103,12 +151,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_d_add
+    ; d_ac op mem
+    +xm_d_add work_buffer
+    +xm_d_sub work_buffer
+    +xm_d_mul work_buffer
+    +xm_d_div work_buffer
     rts
+
+work_buffer !fill 64, 0
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_d_pow addr`
@@ -123,12 +185,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_d_pow addr
+    ; d_ac = d_ac ^ mem
+    +xm_d_pow work_buffer
     rts
+
+work_buffer !fill 64, 0
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_d_cmp addr`
@@ -143,11 +216,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_DOUBLE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_DOUBLE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_d_cmp addr
+    ; -> A = -1 / 0 / 1
+    +xm_d_cmp work_buffer
     rts
+
+work_buffer !fill 64, 0
+
+!source "x16_code.asm"
 ```
 

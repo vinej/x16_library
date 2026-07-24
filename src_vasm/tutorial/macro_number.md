@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_NUMBER = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_NUMBER = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_u16_to_dec value
+  ; format unsigned 16-bit; -> A/X = buffer, Y = length
+    xm_u16_to_dec $1234
+    xm_u16_to_hex $1234
     rts
+
+    include "x16_code.asm"
 ```
 
 ## `xm_dec_to_u16 str, len`
@@ -45,10 +55,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_NUMBER = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_NUMBER = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_dec_to_u16 str, len
+  ; parse decimal; -> P4/5 = value, carry set on bad digit
+    xm_dec_to_u16 source_text, 16
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```

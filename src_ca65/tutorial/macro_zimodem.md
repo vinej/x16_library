@@ -25,12 +25,27 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-  ; see macro listing above
+  ; Initialize the modem UART and ask ZiModem for the current IP address.
+    xm_zi_init $9f60, SER_BAUD_9600
+    xm_zi_get_ip ip_buffer
     rts
+
+ip_buffer .res 40, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_init base, divisor`
@@ -45,12 +60,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zi_init base, divisor
+  ; Send a ZiModem AT command over the serial card.
+    xm_zi_init $9f60, 12
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_cmd addr`
@@ -65,12 +92,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zi_cmd addr
+  ; Send a ZiModem AT command over the serial card.
+    xm_zi_cmd work_buffer
     rts
+
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_wait_ok`
@@ -85,12 +126,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Send a ZiModem AT command over the serial card.
     xm_zi_wait_ok
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_reset`
@@ -105,12 +158,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Send a ZiModem AT command over the serial card.
     xm_zi_reset
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_get_ip buffer`
@@ -125,12 +190,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zi_get_ip buffer
+  ; Send a ZiModem AT command over the serial card.
+    xm_zi_get_ip 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_hex_open filename`
@@ -145,12 +222,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zi_hex_open filename
+  ; Send a ZiModem AT command over the serial card.
+    xm_zi_hex_open file_name
     rts
+
+file_name .byte "SAVEGAME,S,R", 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_hex_chunk buffer`
@@ -165,12 +256,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zi_hex_chunk buffer
+  ; Send a ZiModem AT command over the serial card.
+    xm_zi_hex_chunk 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_hex_close`
@@ -185,12 +288,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; Send a ZiModem AT command over the serial card.
     xm_zi_hex_close
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_zi_hexdecode src, digits, dest`
@@ -205,10 +320,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SERIAL_ZIMODEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_SERIAL = 1
+X16_USE_SERIAL_ZIMODEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_zi_hexdecode src, digits, dest
+  ; Send a ZiModem AT command over the serial card.
+    xm_zi_hexdecode hex_text, 10, work_buffer
     rts
+
+hex_text .byte "48656C6C6F", 0
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```

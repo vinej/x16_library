@@ -23,12 +23,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    ; see macro listing above
+    ; Initialize the ROM audio layer before using play-string helpers.
+    +xm_ar_audio_init
+    +xm_ar_playstring_voice 0
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_audio_init, +xm_ar_playstring_voice voice`
@@ -43,12 +53,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; general ROM audio helpers
     +xm_ar_audio_init
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_fmplaystring str, len, +xm_ar_fmchordstring str, len, +xm_ar_psgplaystring str, len, +xm_ar_psgchordstring str, len`
@@ -63,12 +82,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_ar_fmplaystring str, len
+    ; play strings/chords
+    +xm_ar_fmplaystring source_text, 16
     rts
+
+source_text  !text "LEVEL/01", 0
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_fmfreq channel, hz, +xm_ar_fmfreq_no_retrigger channel, hz, +xm_ar_fmnote channel, note, kf, +xm_ar_fmnote_no_retrigger channel, note, kf, +xm_ar_fmvib speed, depth`
@@ -83,12 +113,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_ar_fmfreq channel, hz
+    ; FM helpers
+    +xm_ar_fmfreq 0, 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_psgfreq voice, hz, +xm_ar_psgnote voice, note, kf, +xm_ar_psgwav voice, wave`
@@ -103,12 +142,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_ar_psgfreq voice, hz
+    ; PSG helpers
+    +xm_ar_psgfreq 0, 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_note_bas2fm, bas2midi, bas2psg, fm2bas, fm2midi, fm2psg, freq2bas/fm/midi/psg, midi2bas/fm/psg, psg2bas/fm/midi`
@@ -123,12 +171,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_ar_note_bas2fm
+    ; note conversion
+    +xm_ar_note_bas2fm 60
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_psg_init, +xm_ar_psg_playfreq, +xm_ar_psg_read_raw/cooked, +xm_ar_psg_setatten/freq/pan/vol, +xm_ar_psg_write, +xm_ar_psg_write_fast, +xm_ar_psg_getatten/pan`
@@ -143,12 +200,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; ROM PSG shadows
     +xm_ar_psg_init
+    +xm_ar_psg_read_cooked $20
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_ar_ym_init, +xm_ar_ym_loaddefpatches, +xm_ar_ym_loadpatch_rom, +xm_ar_ym_loadpatchlfn, +xm_ar_ym_playdrum/playnote, +xm_ar_ym_setatten/drum/note/pan, +xm_ar_ym_read_raw/cooked, +xm_ar_ym_release, +xm_ar_ym_trigger, +xm_ar_ym_trigger_no_retrigger, +xm_ar_ym_write, +xm_ar_ym_getatten/pan, +xm_ar_ym_get_chip_type`
@@ -163,11 +230,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_AUDIO_ROM = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_AUDIO_ROM = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; ROM YM shadows
     +xm_ar_ym_init
+    +xm_ar_ym_playnote 0, $4c, 0
     rts
+
+!source "x16_code.asm"
 ```
 

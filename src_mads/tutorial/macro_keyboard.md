@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_KEYBOARD = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; keyboard scan/read/write helpers
     xm_kbd_scan
+    xm_kbd_peek
+    xm_kbd_put 'Y'
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_kbd_get_modifiers`
@@ -45,12 +56,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_KEYBOARD = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; read modifier state
     xm_kbd_get_modifiers
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_kbd_get_keymap / xm_kbd_set_keymap name`
@@ -65,10 +85,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_KEYBOARD = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; keymap helpers
     xm_kbd_get_keymap
+    xm_kbd_set_keymap file_name
     rts
+
+file_name .byte "SAVEGAME,S,R", 0
+
+    icl "x16_code.asm"
 ```

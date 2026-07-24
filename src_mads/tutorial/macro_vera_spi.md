@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_get_ctrl
+    xm_spi_set_ctrl $01
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_select / xm_spi_deselect`
@@ -45,12 +55,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_select
+    xm_spi_deselect
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_slow / xm_spi_fast`
@@ -65,12 +85,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_slow
+    xm_spi_fast
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_autotx_on / xm_spi_autotx_off`
@@ -85,12 +115,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_autotx_on
+    xm_spi_autotx_off
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_wait`
@@ -105,12 +145,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_wait
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_transfer byte`
@@ -125,12 +174,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_spi_transfer byte
+  ; Select an SPI device and exchange command bytes.
+    xm_spi_transfer 'A'
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_read / xm_spi_write byte / xm_spi_autotx_read`
@@ -145,12 +203,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; Select an SPI device and exchange command bytes.
     xm_spi_read
+    xm_spi_write 'A'
+    xm_spi_autotx_read
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_spi_read_bytes buffer, count / xm_spi_write_bytes buffer, count`
@@ -165,10 +234,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERA_SPI = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_VERA_SPI = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_spi_read_bytes buffer, count
+  ; Select an SPI device and exchange command bytes.
+    xm_spi_read_bytes 1, 32
+    xm_spi_write_bytes 1, 32
     rts
+
+    icl "x16_code.asm"
 ```

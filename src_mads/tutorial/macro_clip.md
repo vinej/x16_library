@@ -25,10 +25,19 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_CLIP = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_CLIP = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_clip_set xmin, ymin, xmax, ymax
+  ; set the clip rectangle
+    xm_clip_set 0, 1, 319, 1
     rts
+
+    icl "x16_code.asm"
 ```

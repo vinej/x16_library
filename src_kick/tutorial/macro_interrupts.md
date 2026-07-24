@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_IRQ
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_IRQ
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // hook / unhook the frame counter
     xm_irq_install()
+    xm_irq_remove()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_vsync_wait()`
@@ -45,12 +55,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_IRQ
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_IRQ
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // block until the next frame boundary
     xm_vsync_wait()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_irq_line_install(handler)`
@@ -65,12 +84,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_IRQ
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_IRQ
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_irq_line_install(handler)
+ // call a handler at a scanline
+    xm_irq_line_install(1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_irq_sprcol_install handler (handler = 0 polls) / xm_irq_sprcol_remove`
@@ -85,10 +113,20 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_IRQ
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_IRQ
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_irq_sprcol_install(handler)
+ // sprite-collision interrupt
+    xm_irq_sprcol_install(1)
+    xm_irq_sprcol_remove()
     rts
+
+#import "x16_code.asm"
 ```

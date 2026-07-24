@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_COLLIDE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_COLLIDE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_collide8 ax, ay, aw, ah, bx, by, bw, bh
+  ; 8-bit AABB test; -> carry set if overlap
+    xm_collide8 1, 1, 1, 1, 1, 1, 1, 1
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_collide16 ...`
@@ -45,10 +54,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_COLLIDE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_COLLIDE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_collide16
+  ; 16-bit AABB test; -> carry set if overlap
+    xm_collide16 1, 1, 1, 1, 1, 1, 1, 1
     rts
+
+    icl "x16_code.asm"
 ```

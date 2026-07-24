@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_LOAD = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_LOAD = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fs_setname name, len
+  ; set KERNAL filename
+    xm_fs_setname file_name, 16
     rts
+
+file_name .byte "SAVEGAME,S,R", 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fs_load name, len, device, sa, dst`
@@ -45,12 +58,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_LOAD = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_LOAD = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fs_load name, len, device, sa, dst
+  ; load to RAM; -> carry set = error, A = code
+    xm_fs_load file_name, 16, 8, 1, work_buffer
     rts
+
+file_name .byte "SAVEGAME,S,R", 0
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fs_vload name, len, device, vbank, vaddr`
@@ -65,10 +92,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_LOAD = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_LOAD = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fs_vload name, len, device, vbank, vaddr
+  ; load to VRAM
+    xm_fs_vload file_name, 16, 8, 1, $10000
     rts
+
+file_name .byte "SAVEGAME,S,R", 0
+
+.include "x16_code.asm"
 ```

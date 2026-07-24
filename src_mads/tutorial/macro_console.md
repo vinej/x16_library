@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_CONSOLE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_CONSOLE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; initialize console
     xm_con_init_fullscreen
+    xm_con_init 32, 40, 96, 64
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_con_set_paging_message msg / xm_con_disable_paging`
@@ -45,12 +55,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CONSOLE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_CONSOLE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_con_set_paging_message msg
+  ; paging controls
+    xm_con_set_paging_message 1
+    xm_con_disable_paging
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_con_put_char_wrap char / xm_con_put_char_word char`
@@ -65,12 +85,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CONSOLE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_CONSOLE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_con_put_char_wrap char
+  ; print with wrapping
+    xm_con_put_char_wrap 1
+    xm_con_put_char_word 1
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_con_get_char`
@@ -85,12 +115,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CONSOLE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_CONSOLE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
+  ; read one console character
     xm_con_get_char
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_con_put_image image, w, h`
@@ -105,10 +144,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_CONSOLE = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_CONSOLE = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_con_put_image image, w, h
+  ; draw console image data
+    xm_con_put_image 1, 96, 64
     rts
+
+    icl "x16_code.asm"
 ```

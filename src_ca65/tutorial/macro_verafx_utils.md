@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; FX control
     xm_fxu_off
+    xm_fxu_get_ctrl
+    xm_fxu_set_ctrl $01
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_ctrl_on mask / xm_fxu_ctrl_off mask`
@@ -45,12 +58,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fxu_ctrl_on mask
+  ; set/clear FX bits
+    xm_fxu_ctrl_on $01
+    xm_fxu_ctrl_off $01
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_addr1_mode mode`
@@ -65,12 +90,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fxu_addr1_mode mode
+  ; ADDR1 mode bits
+    xm_fxu_addr1_mode 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_cache_write_on/off, xm_fxu_cache_fill_on/off, xm_fxu_cache_cycle_on/off`
@@ -85,12 +121,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; cache modes
     xm_fxu_cache_write_on
+    xm_fxu_cache_write_off
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_transparent_on/off, xm_fxu_4bit_on/off, xm_fxu_hop_on/off`
@@ -105,12 +153,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; transparent, 4-bit, 16-bit hop
     xm_fxu_transparent_on
+    xm_fxu_transparent_off
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_set_mult mult / xm_fxu_set_cache b0, b1, b2, b3`
@@ -125,12 +185,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fxu_set_mult mult
+  ; multiplier/cache registers
+    xm_fxu_set_mult 16
+    xm_fxu_set_cache 1, 1, 1, 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_reset_accum / xm_fxu_accumulate`
@@ -145,12 +217,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; accumulator helpers
     xm_fxu_reset_accum
+    xm_fxu_accumulate
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_cache_fill0/1 / xm_fxu_cache_write0/1 mask`
@@ -165,12 +249,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; cache fill/write primitives
     xm_fxu_cache_fill0
+    xm_fxu_cache_write0 $01
+    xm_fxu_cache_fill1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_set_incr xinc, yinc / xm_fxu_set_pos xpos, ypos / xm_fxu_set_subpos xsub, ysub`
@@ -185,12 +282,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_fxu_set_incr xinc, yinc
+  ; affine stepping state
+    xm_fxu_set_incr $0100, $0100
+    xm_fxu_set_pos 0, 0
+    xm_fxu_set_subpos 0, 0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_fxu_get_poly_fill / xm_fxu_set_tilebase value / xm_fxu_set_mapbase value`
@@ -205,10 +315,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_VERAFX_UTILS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_VERAFX_UTILS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; polygon/tile/map helpers
     xm_fxu_get_poly_fill
+    xm_fxu_set_tilebase $1234
+    xm_fxu_set_mapbase $1234
     rts
+
+.include "x16_code.asm"
 ```

@@ -25,12 +25,27 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-  ; see macro listing above
+  ; String macro arguments that name strings are addresses; lengths and
+  ; characters are immediate values.
+    xm_str_copy source_text, work_buffer
+    xm_str_nappend work_buffer, suffix_text, 32
     rts
+
+source_text byte "LEVEL/01", 0
+suffix_text byte ".SEQ", 0
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_length str`
@@ -45,12 +60,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING_CTYPE = 1
+X16_USE_STRING_CASE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_length str
+  ; Prepare a short filename in a work buffer.
+    xm_str_length source_text
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_copy src, dst`
@@ -65,12 +95,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_copy src, dst
+  ; Prepare a short filename in a work buffer.
+    xm_str_copy source_text, work_buffer
     rts
+
+source_text byte "LEVEL/01", 0
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_ncopy src, dst, max`
@@ -85,12 +130,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_ncopy src, dst, max
+  ; Prepare a short filename in a work buffer.
+    xm_str_ncopy source_text, work_buffer, 32
     rts
+
+source_text byte "LEVEL/01", 0
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_append tgt, suffix`
@@ -105,12 +165,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_append tgt, suffix
+  ; Prepare a short filename in a work buffer.
+    xm_str_append work_buffer, suffix_text
     rts
+
+work_buffer ds.b 64, 0
+suffix_text byte ".SEQ", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_nappend tgt, suffix, max`
@@ -125,12 +200,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_nappend tgt, suffix, max
+  ; Prepare a short filename in a work buffer.
+    xm_str_nappend work_buffer, suffix_text, 32
     rts
+
+work_buffer ds.b 64, 0
+suffix_text byte ".SEQ", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_compare s1, s2`
@@ -145,12 +235,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_compare s1, s2
+  ; Prepare a short filename in a work buffer.
+    xm_str_compare name_a, name_b
     rts
+
+name_a byte "laser", 0
+name_b byte "LASER", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_hash str`
@@ -165,12 +270,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_hash str
+  ; Prepare a short filename in a work buffer.
+    xm_str_hash source_text
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_lower str / xm_str_lower_iso str`
@@ -185,12 +304,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING = 1
+X16_USE_STRING_CASE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_lower str
+  ; Normalize a command before comparing it.
+    xm_str_lower source_text
+    xm_str_lower_iso source_text
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_upper str / xm_str_upper_iso str`
@@ -205,12 +339,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING = 1
+X16_USE_STRING_CASE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_upper str
+  ; Normalize a command before comparing it.
+    xm_str_upper source_text
+    xm_str_upper_iso source_text
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_compare_nocase s1, s2 (+ _iso)`
@@ -225,12 +374,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_FIND = 1
+X16_USE_STRING = 1
+X16_USE_STRING_CASE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_compare_nocase s1, s2
+  ; Normalize a command before comparing it.
+    xm_str_compare_nocase name_a, name_b
     rts
+
+name_a byte "laser", 0
+name_b byte "LASER", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_find str, ch / xm_str_rfind str, ch`
@@ -245,12 +409,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_FIND = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_find str, ch
+  ; Inspect a typed command line.
+    xm_str_find source_text, '/'
+    xm_str_rfind source_text, '/'
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_find_eol str`
@@ -265,12 +444,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_FIND = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_find_eol str
+  ; Inspect a typed command line.
+    xm_str_find_eol source_text
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_contains str, ch`
@@ -285,12 +478,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_FIND = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_contains str, ch
+  ; Inspect a typed command line.
+    xm_str_contains source_text, '/'
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_pattern_match str, pattern`
@@ -305,12 +512,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_SLICE = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_FIND = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_pattern_match str, pattern
+  ; Inspect a typed command line.
+    xm_str_pattern_match source_text, pattern_bits
     rts
+
+source_text byte "LEVEL/01", 0
+pattern_bits byte %11110000, %10010000, %10010000, %11110000, %10000000, %10000000, %10000000, %00000000
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_left src, dst, len / xm_str_right ...`
@@ -325,12 +547,28 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_SLICE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_left src, dst, len
+  ; Copy the useful part of a padded command.
+    xm_str_left source_text, work_buffer, 16
+    xm_str_right source_text, work_buffer, 16
     rts
+
+source_text byte "LEVEL/01", 0
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_slice src, dst, start, len`
@@ -345,12 +583,27 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_SLICE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_slice src, dst, start, len
+  ; Copy the useful part of a padded command.
+    xm_str_slice source_text, work_buffer, 4, 16
     rts
+
+source_text byte "LEVEL/01", 0
+work_buffer ds.b 64, 0
+
+    include "x16_code.asm"
 ```
 
 ## `xm_str_ltrim str / xm_str_rtrim str / xm_str_trim str`
@@ -365,12 +618,28 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING_FIND = 1
+X16_USE_STRING_CASE = 1
+X16_USE_STRING = 1
+X16_USE_STRING_SLICE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_str_ltrim str
+  ; Copy the useful part of a padded command.
+    xm_str_ltrim source_text
+    xm_str_rtrim source_text
+    xm_str_trim source_text
     rts
+
+source_text byte "LEVEL/01", 0
+
+    include "x16_code.asm"
 ```
 
 ## `str_isdigit, str_lowerchar, ...`
@@ -385,10 +654,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_STRING = 1
+; vasm: pass -c02 on the command line
     include "x16.asm"
 
+X16_USE_STRING = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-  ; see macro listing above
+  ; Character helpers use A directly, so call the routine instead of a macro.
+    lda #'7'
+    jsr str_isdigit
+    bcc .not_digit
+    lda #'Q'
+    jsr str_lowerchar
+.not_digit
     rts
+
+    include "x16_code.asm"
 ```

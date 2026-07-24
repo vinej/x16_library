@@ -25,12 +25,24 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_IRQ = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_IRQ = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; hook / unhook the frame counter
     xm_irq_install
+    xm_irq_remove
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_vsync_wait`
@@ -45,12 +57,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IRQ = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_IRQ = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; block until the next frame boundary
     xm_vsync_wait
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_irq_line_install handler`
@@ -65,12 +88,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IRQ = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_IRQ = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_irq_line_install handler
+  ; call a handler at a scanline
+    xm_irq_line_install 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_irq_sprcol_install handler (handler = 0 polls) / xm_irq_sprcol_remove`
@@ -85,10 +119,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_IRQ = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_IRQ = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_irq_sprcol_install handler
+  ; sprite-collision interrupt
+    xm_irq_sprcol_install 1
+    xm_irq_sprcol_remove
     rts
+
+.include "x16_code.asm"
 ```

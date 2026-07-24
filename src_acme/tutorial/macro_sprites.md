@@ -23,12 +23,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; Place sprite 0 over a player start position.
     +xm_sprites_on
+    +xm_sprites_off
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_init_all`
@@ -43,12 +53,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; Place sprite 0 over a player start position.
     +xm_sprite_init_all
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_pos sprite, x, y`
@@ -63,12 +82,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sprite_pos sprite, x, y
+    ; Place sprite 0 over a player start position.
+    +xm_sprite_pos 1, 32, 40
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_get_pos sprite`
@@ -83,12 +111,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sprite_get_pos sprite
+    ; Place sprite 0 over a player start position.
+    +xm_sprite_get_pos 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_image sprite, vaddr, mode`
@@ -103,12 +140,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sprite_image sprite, vaddr, mode
+    ; Place sprite 0 over a player start position.
+    +xm_sprite_image 1, $10000, 0
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_flags sprite, flags`
@@ -123,12 +169,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sprite_flags sprite, flags
+    ; Place sprite 0 over a player start position.
+    +xm_sprite_flags 1, 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_z sprite, z`
@@ -143,12 +198,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sprite_z sprite, z
+    ; Place sprite 0 over a player start position.
+    +xm_sprite_z 1, 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sprite_size sprite, wcode, hcode, paloff`
@@ -163,11 +227,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_SPRITE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_SPRITE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sprite_size sprite, wcode, hcode, paloff
+    ; Place sprite 0 over a player start position.
+    +xm_sprite_size 1, 1, 1, 0
     rts
+
+!source "x16_code.asm"
 ```
 

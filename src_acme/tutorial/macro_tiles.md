@@ -23,12 +23,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_layer_on layer
+    ; Write one tile into layer 0's map.
+    +xm_layer_on 0
+    +xm_layer_off 0
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_layer_set_config layer, cfg`
@@ -43,12 +53,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_layer_set_config layer, cfg
+    ; Write one tile into layer 0's map.
+    +xm_layer_set_config 0, $10
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_layer_set_mapbase layer, base`
@@ -63,12 +82,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_layer_set_mapbase layer, base
+    ; Write one tile into layer 0's map.
+    +xm_layer_set_mapbase 0, $9f60
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_layer_scroll_x layer, val / +xm_layer_scroll_y layer, val`
@@ -83,12 +111,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_layer_scroll_x layer, val
+    ; Write one tile into layer 0's map.
+    +xm_layer_scroll_x 0, $20
+    +xm_layer_scroll_y 0, $20
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_tile_setptr col, row`
@@ -103,12 +141,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_tile_setptr col, row
+    ; Write one tile into layer 0's map.
+    +xm_tile_setptr 14, 5
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_tile_put col, row, code, attr`
@@ -123,12 +170,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_tile_put col, row, code, attr
+    ; Write one tile into layer 0's map.
+    +xm_tile_put 14, 5, 'A', $10
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_tile_get col, row`
@@ -143,11 +199,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_TILE = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_TILE = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_tile_get col, row
+    ; Write one tile into layer 0's map.
+    +xm_tile_get 14, 5
     rts
+
+!source "x16_code.asm"
 ```
 

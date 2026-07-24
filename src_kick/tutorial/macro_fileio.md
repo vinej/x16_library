@@ -25,12 +25,24 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_fio_set_lfs(logical, device, secondary)
+ // KERNAL file setup
+    xm_fio_set_lfs(1, 8, 0)
+    xm_fio_set_name(file_name, 16)
     rts
+
+file_name .text "SAVEGAME,S,R", 0
+
+#import "x16_code.asm"
 ```
 
 ## `xm_fio_open_named/open_read/open_write name, len, logical, device, secondary`
@@ -45,12 +57,25 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_fio_open_named()
+ // open helpers
+    xm_fio_open_named(file_name, 16, 1, 8, 0)
+    xm_fio_open_read(file_name, 16, 1, 8, 0)
+    xm_fio_open_write(file_name, 16, 1, 8, 0)
     rts
+
+file_name .text "SAVEGAME,S,R", 0
+
+#import "x16_code.asm"
 ```
 
 ## `xm_fio_close logical / xm_fio_close_named logical`
@@ -65,12 +90,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_fio_close(logical)
+ // close helpers
+    xm_fio_close(1)
+    xm_fio_close_named(1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_fio_chkin logical / xm_fio_chkout logical / xm_fio_clrchn`
@@ -85,12 +120,23 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_fio_chkin(logical)
+ // channel helpers
+    xm_fio_chkin(1)
+    xm_fio_chkout(1)
+    xm_fio_clrchn()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_fio_chrin / xm_fio_chrout byte / xm_fio_getin`
@@ -105,12 +151,23 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // byte I/O helpers
     xm_fio_chrin()
+    xm_fio_chrout('A')
+    xm_fio_getin()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_fio_readst()`
@@ -125,12 +182,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // read KERNAL status
     xm_fio_readst()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_fio_close_all / xm_fio_close_device device`
@@ -145,10 +211,20 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_FILEIO
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_FILEIO
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // bulk close helpers
     xm_fio_close_all()
+    xm_fio_close_device(8)
     rts
+
+#import "x16_code.asm"
 ```

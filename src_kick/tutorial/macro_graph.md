@@ -25,12 +25,22 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // init GRAPH with default/custom FB driver
     xm_graph_init_default()
+    xm_graph_init(1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_clear / xm_graph_set_window x, y, w, h`
@@ -45,12 +55,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // clear/window
     xm_graph_clear()
+    xm_graph_set_window(32, 40, 96, 64)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_set_colors(stroke, fill, background)`
@@ -65,12 +85,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_set_colors(stroke, fill, background)
+ // drawing colours
+    xm_graph_set_colors(1, 1, 1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_draw_line(x1, y1, x2, y2)`
@@ -85,12 +114,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_draw_line(x1, y1, x2, y2)
+ // line
+    xm_graph_draw_line(96, 96, 160, 48)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_draw_rect_outline/fill x, y, w, h, radius`
@@ -105,12 +143,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_draw_rect_outline()
+ // rectangles
+    xm_graph_draw_rect_outline(32, 40, 96, 64, 1)
+    xm_graph_draw_rect_fill(32, 40, 96, 64, 1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_move_rect(sx, sy, tx, ty, w, h)`
@@ -125,12 +173,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_move_rect(sx, sy, tx, ty, w, h)
+ // move rectangle
+    xm_graph_move_rect(8, 16, 40, 16, 96, 64)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_draw_oval_outline/fill x, y, w, h`
@@ -145,12 +202,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_draw_oval_outline()
+ // ovals
+    xm_graph_draw_oval_outline(32, 40, 96, 64)
+    xm_graph_draw_oval_fill(32, 40, 96, 64)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_draw_image(x, y, image, w, h)`
@@ -165,12 +232,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_draw_image(x, y, image, w, h)
+ // image bytes
+    xm_graph_draw_image(32, 40, 1, 96, 64)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_set_font_default / xm_graph_set_font font`
@@ -185,12 +261,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // font
     xm_graph_set_font_default()
+    xm_graph_set_font(1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_graph_get_char_size char, style / xm_graph_put_char char, x, y`
@@ -205,10 +291,20 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_GRAPH
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_GRAPH
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_graph_get_char_size(char, style)
+ // text metrics/draw
+    xm_graph_get_char_size(1, 1)
+    xm_graph_put_char(1, 32, 40)
     rts
+
+#import "x16_code.asm"
 ```

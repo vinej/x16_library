@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_KEYBOARD = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; keyboard scan/read/write helpers
     xm_kbd_scan
+    xm_kbd_peek
+    xm_kbd_put 'Y'
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_kbd_get_modifiers`
@@ -45,12 +58,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_KEYBOARD = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; read modifier state
     xm_kbd_get_modifiers
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_kbd_get_keymap / xm_kbd_set_keymap name`
@@ -65,10 +89,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_KEYBOARD = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; keymap helpers
     xm_kbd_get_keymap
+    xm_kbd_set_keymap file_name
     rts
+
+file_name .byte "SAVEGAME,S,R", 0
+
+.include "x16_code.asm"
 ```

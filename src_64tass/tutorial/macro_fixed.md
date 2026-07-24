@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_FIXED = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_FIXED = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_umul16 a, b
+  ; unsigned 16x16 multiply; -> P4..P7 = product
+    #xm_umul16 $20, $a0
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `#xm_mul88 a, b`
@@ -45,10 +54,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_FIXED = 1
+.cpu "65c02"
 .include "x16.asm"
 
+X16_USE_FIXED = 1
+.include "core/sugar.asm"
+
+* = $0801
+    #basic_stub
+
 main
-    #xm_mul88 a, b
+  ; signed 8.8 multiply; -> P0/1
+    #xm_mul88 $20, $a0
     rts
+
+.include "x16_code.asm"
 ```

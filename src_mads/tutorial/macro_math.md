@@ -25,12 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MATH = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_rnd_seed seed
+  ; Calculate small game-control values from constants.
+    xm_rnd_seed $ace1
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_sin8 angle / xm_cos8 angle`
@@ -45,12 +54,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MATH = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_sin8 angle
+  ; Calculate small game-control values from constants.
+    xm_sin8 32
+    xm_cos8 32
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_sin8u angle / xm_cos8u angle`
@@ -65,12 +84,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MATH = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_sin8u angle
+  ; Calculate small game-control values from constants.
+    xm_sin8u 32
+    xm_cos8u 32
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_atan2 dx, dy`
@@ -85,12 +114,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MATH = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_atan2 dx, dy
+  ; Calculate small game-control values from constants.
+    xm_atan2 40, -16
     rts
+
+    icl "x16_code.asm"
 ```
 
 ## `xm_lerp8 a, b, t`
@@ -105,10 +143,19 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+; MADS: assemble for 65C02
     icl "x16.asm"
 
+X16_USE_MATH = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
 main
-    xm_lerp8 a, b, t
+  ; Calculate small game-control values from constants.
+    xm_lerp8 $20, $a0, 96
     rts
+
+    icl "x16_code.asm"
 ```

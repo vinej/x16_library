@@ -23,12 +23,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_KEYBOARD = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; keyboard scan/read/write helpers
     +xm_kbd_scan
+    +xm_kbd_peek
+    +xm_kbd_put 'Y'
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_kbd_get_modifiers`
@@ -43,12 +54,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_KEYBOARD = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; read modifier state
     +xm_kbd_get_modifiers
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_kbd_get_keymap / +xm_kbd_set_keymap name`
@@ -63,11 +83,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_KEYBOARD = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_KEYBOARD = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
+    ; keymap helpers
     +xm_kbd_get_keymap
+    +xm_kbd_set_keymap file_name
     rts
+
+file_name   !text "SAVEGAME,S,R", 0
+
+!source "x16_code.asm"
 ```
 

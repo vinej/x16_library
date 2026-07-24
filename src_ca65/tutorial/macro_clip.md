@@ -25,10 +25,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_CLIP = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_CLIP = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_clip_set xmin, ymin, xmax, ymax
+  ; set the clip rectangle
+    xm_clip_set 0, 1, 319, 1
     rts
+
+.include "x16_code.asm"
 ```

@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_BITS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BITS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_catnib hi, lo
+  ; combine two nibbles
+    xm_catnib $0f, $00
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_hinib byte / xm_lonib byte`
@@ -45,12 +56,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BITS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BITS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_hinib byte
+  ; extract high/low nibble
+    xm_hinib 'A'
+    xm_lonib 'A'
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_bit_set addr, mask / xm_bit_clr addr, mask / xm_bit_test addr, mask`
@@ -65,10 +88,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BITS = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_BITS = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_bit_set addr, mask
+  ; bit operations
+    xm_bit_set work_buffer, $01
+    xm_bit_clr work_buffer, $01
+    xm_bit_test work_buffer, $01
     rts
+
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```

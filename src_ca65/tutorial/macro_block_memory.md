@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_mem_fill dst, count, val
+  ; fill (streams to VERA too)
+    xm_mem_fill work_buffer, 32, $20
     rts
+
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_mem_copy src, dst, count`
@@ -45,12 +58,26 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_mem_copy src, dst, count
+  ; copy
+    xm_mem_copy pixel_run, work_buffer, 32
     rts
+
+pixel_run .byte 1, 2, 3, 4, 4, 3, 2, 1
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_mem_crc addr, count`
@@ -65,12 +92,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_mem_crc addr, count
+  ; CRC-16
+    xm_mem_crc work_buffer, 32
     rts
+
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```
 
 ## `xm_mem_decompress src, dst`
@@ -85,10 +125,24 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MEM = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MEM = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_mem_decompress src, dst
+  ; LZSA2
+    xm_mem_decompress packed_data, work_buffer
     rts
+
+packed_data !binary "asset.packed"
+work_buffer .res 64, 0
+
+.include "x16_code.asm"
 ```

@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_MOUSE = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MOUSE = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_mse_config cursor, width8, height8
+  ; configure mouse cursor
+    xm_mse_config 0, 1, 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_mse_scan / xm_mse_get / xm_mse_get_to zp`
@@ -45,12 +56,25 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MOUSE = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MOUSE = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
+  ; mouse sample/read helpers
     xm_mse_scan
+    xm_mse_get
+    xm_mse_get_to 1
     rts
+
+.include "x16_code.asm"
 ```
 
 ## `xm_mse_show cursor / xm_mse_show_keep / xm_mse_hide`
@@ -65,10 +89,23 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MOUSE = 1
+.setcpu "65C02"
 .include "x16.asm"
 
+X16_USE_MOUSE = 1
+.include "core/sugar.asm"
+
+.segment "LOADADDR"
+    .word $0801
+.segment "CODE"
+    basic_stub
+
 main
-    xm_mse_show cursor
+  ; mouse visibility helpers
+    xm_mse_show 0
+    xm_mse_show_keep
+    xm_mse_hide
     rts
+
+.include "x16_code.asm"
 ```

@@ -23,12 +23,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_MATH = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_rnd_seed seed
+    ; Calculate small game-control values from constants.
+    +xm_rnd_seed $ace1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sin8 angle / +xm_cos8 angle`
@@ -43,12 +52,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_MATH = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sin8 angle
+    ; Calculate small game-control values from constants.
+    +xm_sin8 32
+    +xm_cos8 32
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_sin8u angle / +xm_cos8u angle`
@@ -63,12 +82,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_MATH = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_sin8u angle
+    ; Calculate small game-control values from constants.
+    +xm_sin8u 32
+    +xm_cos8u 32
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_atan2 dx, dy`
@@ -83,12 +112,21 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_MATH = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_atan2 dx, dy
+    ; Calculate small game-control values from constants.
+    +xm_atan2 40, -16
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_lerp8 a, b, t`
@@ -103,11 +141,20 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_MATH = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_MATH = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_lerp8 a, b, t
+    ; Calculate small game-control values from constants.
+    +xm_lerp8 $20, $a0, 96
     rts
+
+!source "x16_code.asm"
 ```
 

@@ -25,12 +25,23 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_BMX
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_BMX
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_bmx_load(name, len, device, vbank, vaddr)
+ // load BMX image to VRAM
+    xm_bmx_load(file_name, 16, 8, 1, $10000)
     rts
+
+file_name .text "SAVEGAME,S,R", 0
+
+#import "x16_code.asm"
 ```
 
 ## `xm_bmx_load_hires(name, len, device)`
@@ -45,12 +56,21 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_BMX
-#define X16_USE_BITMAP8H
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_BMX
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_gfx8h_init() // 640x480 @ 8bpp (needs VERA_2)
-    xm_bmx_load_hires(name, len, device)
+ // load a BMX image into the VERA_2 640x480 8bpp SDRAM bitmap (the `gfx8h` engine)
+    xm_bmx_load_hires(file_name, 16, 8)
     rts
+
+file_name .text "SAVEGAME,S,R", 0
+
+#import "x16_code.asm"
 ```

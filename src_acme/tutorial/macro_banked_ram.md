@@ -23,12 +23,21 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-X16_USE_BANK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BANK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_bank_set bank
+    ; map a RAM bank at `$A000`
+    +xm_bank_set 1
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_bank_peek bank, offset (-> A = byte) / +xm_bank_poke bank, offset, byte`
@@ -43,12 +52,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BANK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BANK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_bank_peek bank, offset
+    ; one byte
+    +xm_bank_peek 1, 0
+    +xm_bank_poke 1, 0, 'A'
     rts
+
+!source "x16_code.asm"
 ```
 
 ## `+xm_mem_to_bank src, bank, offset, count`
@@ -63,11 +82,22 @@ main
 | Example | See below. |
 
 ```asm
-X16_USE_BANK = 1
+!cpu 65c02
 !source "x16.asm"
 
+X16_USE_BANK = 1
+!source "core/sugar.asm"
+
+* = $0801
+    +basic_stub
+
 main
-    +xm_mem_to_bank src, bank, offset, count
+    ; copy low RAM into a bank
+    +xm_mem_to_bank pixel_run, 1, 0, 32
     rts
+
+pixel_run   !byte 1, 2, 3, 4, 4, 3, 2, 1
+
+!source "x16_code.asm"
 ```
 

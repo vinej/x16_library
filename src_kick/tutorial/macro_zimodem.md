@@ -25,12 +25,25 @@ This page expands the compact listing from `macroguide.md`. Macro arguments are 
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
- // see macro listing above
+ // Initialize the modem UART and ask ZiModem for the current IP address.
+    xm_zi_init($9f60, SER_BAUD_9600)
+    xm_zi_get_ip(ip_buffer)
     rts
+
+ip_buffer .fill 40, 0
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_init(base, divisor)`
@@ -45,12 +58,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_zi_init(base, divisor)
+ // Send a ZiModem AT command over the serial card.
+    xm_zi_init($9f60, 12)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_cmd(addr)`
@@ -65,12 +88,24 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_zi_cmd(addr)
+ // Send a ZiModem AT command over the serial card.
+    xm_zi_cmd(work_buffer)
     rts
+
+work_buffer .fill 64, 0
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_wait_ok()`
@@ -85,12 +120,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // Send a ZiModem AT command over the serial card.
     xm_zi_wait_ok()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_reset()`
@@ -105,12 +150,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // Send a ZiModem AT command over the serial card.
     xm_zi_reset()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_get_ip(buffer)`
@@ -125,12 +180,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_zi_get_ip(buffer)
+ // Send a ZiModem AT command over the serial card.
+    xm_zi_get_ip(1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_hex_open(filename)`
@@ -145,12 +210,24 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_zi_hex_open(filename)
+ // Send a ZiModem AT command over the serial card.
+    xm_zi_hex_open(file_name)
     rts
+
+file_name .text "SAVEGAME,S,R", 0
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_hex_chunk(buffer)`
@@ -165,12 +242,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_zi_hex_chunk(buffer)
+ // Send a ZiModem AT command over the serial card.
+    xm_zi_hex_chunk(1)
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_hex_close()`
@@ -185,12 +272,22 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
+ // Send a ZiModem AT command over the serial card.
     xm_zi_hex_close()
     rts
+
+#import "x16_code.asm"
 ```
 
 ## `xm_zi_hexdecode(src, digits, dest)`
@@ -205,10 +302,23 @@ main
 | Example | See below. |
 
 ```asm
-#define X16_USE_SERIAL_ZIMODEM
+.cpu _65c02
 #import "x16.asm"
 
+#define X16_USE_SERIAL
+#define X16_USE_SERIAL_ZIMODEM
+#import "core/sugar.asm"
+
+.pc = $0801 "code"
+    basic_stub()
+
 main
-    xm_zi_hexdecode(src, digits, dest)
+ // Send a ZiModem AT command over the serial card.
+    xm_zi_hexdecode(hex_text, 10, work_buffer)
     rts
+
+hex_text .text "48656C6C6F", 0
+work_buffer .fill 64, 0
+
+#import "x16_code.asm"
 ```
