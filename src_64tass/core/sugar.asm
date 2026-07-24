@@ -3982,6 +3982,19 @@ xm_bmx_load .macro name, len, device, vbank, vaddr
     jsr bmx_load
     .endm
 .endif
+.if xuse_bmx
+xm_bmx_load_hires .macro name, len, device
+    lda #<(\name)
+    sta X16_P0
+    lda #>(\name)
+    sta X16_P1
+    lda #\len
+    sta X16_P2
+    lda #\device
+    sta X16_P3
+    jsr bmx_load_hires
+    .endm
+.endif
 
 ; =====================================================================
 ; util/math

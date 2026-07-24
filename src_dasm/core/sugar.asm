@@ -3982,6 +3982,19 @@
     jsr bmx_load
     ENDM
     ENDIF
+    IFCONST X16_USE_BMX
+    MAC xm_bmx_load_hires
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #({3})
+    sta X16_P3
+    jsr bmx_load_hires
+    ENDM
+    ENDIF
 
 ; =====================================================================
 ; util/math

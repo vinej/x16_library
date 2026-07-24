@@ -3982,6 +3982,19 @@
     jsr bmx_load
 .endmacro
 .endif
+.ifdef X16_USE_BMX
+.macro xm_bmx_load_hires p_name, p_len, p_device
+    lda #<(p_name)
+    sta X16_P0
+    lda #>(p_name)
+    sta X16_P1
+    lda #(p_len)
+    sta X16_P2
+    lda #(p_device)
+    sta X16_P3
+    jsr bmx_load_hires
+.endmacro
+.endif
 
 ; =====================================================================
 ; util/math

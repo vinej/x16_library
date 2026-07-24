@@ -3982,6 +3982,19 @@
     jsr bmx_load
 }
 }
+!ifdef X16_USE_BMX {
+!macro xm_bmx_load_hires .name, .len, .device {
+    lda #<(.name)
+    sta X16_P0
+    lda #>(.name)
+    sta X16_P1
+    lda #(.len)
+    sta X16_P2
+    lda #(.device)
+    sta X16_P3
+    jsr bmx_load_hires
+}
+}
 
 ; =====================================================================
 ; util/math

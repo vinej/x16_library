@@ -634,6 +634,7 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | Macro | Does |
 |---|---|
 | `xm_bmx_load name, len, device, vbank, vaddr` | load BMX image to VRAM |
+| `xm_bmx_load_hires name, len, device` | load BMX image to the VERA_2 640x480 8bpp SDRAM bitmap |
 
 **Clock (X16_USE_CLOCK)**
 
