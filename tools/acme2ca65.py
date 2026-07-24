@@ -34,16 +34,18 @@ SKIP = {
 
 DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 
-# ACME's only anonymous-label form in this tree: a single forward '+',
-# defined as "+<tab><insn>" and referenced by one branch above it. ca65
-# has a native equivalent -- the unnamed ':' label, referenced ':+' --
+# ACME anonymous labels in this tree: forward '+'/'++' and backward '-',
+# defined as "+<tab><insn>" and referenced by a branch. ca65 has a native
+# equivalent -- the unnamed ':' label, referenced ':+' / ':++' / ':-' --
 # which, unlike a named label, does not end the @cheap scope around it.
-ANON_DEF = re.compile(r'^\+[ \t]+(.*)$')
-# a '+' or '-' anonymous label alone on its own line (the instruction it
-# labels follows on the NEXT line) -- becomes the bare ':' definition.
-ANON_LONE = re.compile(r'^[+-][ \t]*$')
+# Definitions all become the same bare ':'; only references keep their
+# repeat count ('++' -> ':++' skips the next ':' for the one after).
+ANON_DEF = re.compile(r'^(\+{1,2})[ \t]+(.*)$')
+# a '+'/'++' or '-' anonymous label alone on its own line (the instruction
+# it labels follows on the NEXT line) -- becomes the bare ':' definition.
+ANON_LONE = re.compile(r'^(\+{1,2}|-)[ \t]*$')
 ANON_REF = re.compile(
-    r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)([+-])[ \t]*$')
+    r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)(\+{1,2}|-)[ \t]*$')
 
 def anon_labels(text):
     out = []
@@ -53,7 +55,7 @@ def anon_labels(text):
             continue
         d = ANON_DEF.match(ln)
         if d:
-            out.append(":\t" + d.group(1))
+            out.append(":\t" + d.group(2))
             continue
         r = ANON_REF.match(ln)
         if r:
