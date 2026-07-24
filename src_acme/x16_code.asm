@@ -190,6 +190,7 @@
 ;                     gfx8l_line/fx_line's parameter block)
 ;   X16_USE_BUFFERS   rb_init/put/get/count, stk_init/push/pop/depth
 ;   X16_USE_ADPCM     adpcm_init, adpcm_nibble, adpcm_block (IMA 4:1)
+;   X16_USE_WAV       wav_parse_header (RIFF/WAVE header -> PCM format)
 ;   X16_USE_ZX0       zx0_decompress (tighter than the ROM's LZSA2)
 ;   X16_USE_TSC       tsc_decompress (TSCrunch: faster unpack)
 ;   X16_USE_FIXED     umul16, mul88
@@ -197,7 +198,9 @@
 ;                     bcd_subfrom -- packed-BCD (decimal-mode) arithmetic
 ;   X16_USE_COLLIDE   collide8, collide16
 ;   X16_USE_BITS      catnib, hinib, lonib, bit_set/clr/put/test
-;   X16_USE_NUMBER    u16_to_dec, u16_to_hex, dec_to_u16
+;   X16_USE_NUMBER    u16_to_dec, u16_to_hex, dec_to_u16, u8_to_dec,
+;                     u8_to_hex, u8_to_bin, u16_to_bin, s8_to_dec, s16_to_dec
+;   X16_USE_SORT      sort_u8/s8/u16/s16 (memory block), sort_ptr (comparator)
 ;   X16_USE_INT16     i16_add/sub/neg/abs/mul/divmod/divmod_s,
 ;                     i16_cmps/cmpu, i16_shl/shr/asr, i16_sqrt,
 ;                     i16_to_dec/dec_s, +i16_const   (needs NUMBER)
@@ -223,6 +226,7 @@
 ;   X16_USE_STRING_FIND   str_find, str_rfind, str_find_eol, str_contains,
 ;                     str_pattern_match -- searching
 ;   X16_USE_STRING_SLICE  str_left, str_right, str_slice -- substrings
+;   X16_USE_STRING_SORT   str_sort -- sort an array of string pointers
 ;                     (the five string gates are independent; set what you
 ;                      use. Number<->string conversion stays in NUMBER,
 ;                      INT16/INT32, FLOAT, DOUBLE.)
@@ -268,6 +272,7 @@
     !ifndef X16_USE_PCM       { X16_USE_PCM       = 1 }
     !ifndef X16_USE_PCM_STREAM { X16_USE_PCM_STREAM = 1 }
     !ifndef X16_USE_ADPCM     { X16_USE_ADPCM     = 1 }
+    !ifndef X16_USE_WAV       { X16_USE_WAV       = 1 }
 }
 !ifdef X16_USE_INPUT_DEVICES {
     !ifndef X16_USE_INPUT    { X16_USE_INPUT    = 1 }
@@ -307,6 +312,7 @@
     !ifndef X16_USE_INT32   { X16_USE_INT32   = 1 }
     !ifndef X16_USE_FLOAT   { X16_USE_FLOAT   = 1 }
     !ifndef X16_USE_DOUBLE  { X16_USE_DOUBLE  = 1 }
+    !ifndef X16_USE_SORT    { X16_USE_SORT    = 1 }
 }
 !ifdef X16_USE_STRINGS {
     !ifndef X16_USE_STRING       { X16_USE_STRING       = 1 }
@@ -314,7 +320,10 @@
     !ifndef X16_USE_STRING_CASE  { X16_USE_STRING_CASE  = 1 }
     !ifndef X16_USE_STRING_FIND  { X16_USE_STRING_FIND  = 1 }
     !ifndef X16_USE_STRING_SLICE { X16_USE_STRING_SLICE = 1 }
+    !ifndef X16_USE_STRING_SORT  { X16_USE_STRING_SORT  = 1 }
 }
+; str_sort needs str_compare from the STRING fundamentals.
+!ifdef X16_USE_STRING_SORT { !ifndef X16_USE_STRING { X16_USE_STRING = 1 } }
 !ifdef X16_USE_SYSTEM {
     !ifndef X16_USE_IRQ   { X16_USE_IRQ   = 1 }
     !ifndef X16_USE_CLOCK { X16_USE_CLOCK = 1 }
@@ -598,6 +607,7 @@
 !ifdef X16_USE_CLIP    { !source "util/clip.asm" }
 !ifdef X16_USE_BUFFERS { !source "util/buffers.asm" }
 !ifdef X16_USE_ADPCM   { !source "audio/adpcm.asm" }
+!ifdef X16_USE_WAV     { !source "audio/wavfile.asm" }
 !ifdef X16_USE_ZX0     { !source "util/zx0.asm" }
 !ifdef X16_USE_TSC     { !source "util/tscrunch.asm" }
 !ifdef X16_USE_FIXED   { !source "util/fixed.asm" }
@@ -605,6 +615,7 @@
 !ifdef X16_USE_COLLIDE { !source "util/collide.asm" }
 !ifdef X16_USE_BITS    { !source "util/bits.asm" }
 !ifdef X16_USE_NUMBER  { !source "util/number.asm" }
+!ifdef X16_USE_SORT    { !source "util/sort.asm" }
 !ifdef X16_USE_INT16   { !source "util/int16.asm" }
 !ifdef X16_USE_INT32   { !source "util/int32.asm" }
 !ifdef X16_USE_FLOAT   { !source "util/float.asm" }
@@ -614,3 +625,4 @@
 !ifdef X16_USE_STRING_CASE   { !source "string/case.asm" }
 !ifdef X16_USE_STRING_FIND   { !source "string/find.asm" }
 !ifdef X16_USE_STRING_SLICE  { !source "string/slice.asm" }
+!ifdef X16_USE_STRING_SORT   { !source "string/strsort.asm" }

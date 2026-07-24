@@ -44,6 +44,7 @@ X16_USE_ZSM_PCM = 0
 X16_USE_PCM = 0
 X16_USE_PCM_STREAM = 0
 X16_USE_ADPCM = 0
+X16_USE_WAV = 0
 X16_USE_INPUT_DEVICES = 0
 X16_USE_INPUT = 0
 X16_USE_KEYBOARD = 0
@@ -79,12 +80,14 @@ X16_USE_INT16 = 0
 X16_USE_INT32 = 0
 X16_USE_FLOAT = 0
 X16_USE_DOUBLE = 0
+X16_USE_SORT = 0
 X16_USE_STRINGS = 0
 X16_USE_STRING = 0
 X16_USE_STRING_CTYPE = 0
 X16_USE_STRING_CASE = 0
 X16_USE_STRING_FIND = 0
 X16_USE_STRING_SLICE = 0
+X16_USE_STRING_SORT = 0
 X16_USE_SYSTEM = 0
 X16_USE_IRQ = 0
 X16_USE_CLOCK = 0
@@ -154,6 +157,7 @@ xuse_ym = xuse_audio || X16_USE_YM != 0
 xuse_audio_rom = xuse_audio || X16_USE_AUDIO_ROM != 0
 xuse_zsm_pcm = xuse_audio || X16_USE_ZSM_PCM != 0
 xuse_adpcm = xuse_audio || X16_USE_ADPCM != 0
+xuse_wav = xuse_audio || X16_USE_WAV != 0
 xuse_input = xuse_input_devices || X16_USE_INPUT != 0
 xuse_keyboard = xuse_input_devices || X16_USE_KEYBOARD != 0
 xuse_mouse = xuse_input_devices || X16_USE_MOUSE != 0
@@ -182,11 +186,12 @@ xuse_int16 = xuse_utilities || X16_USE_INT16 != 0
 xuse_int32 = xuse_utilities || X16_USE_INT32 != 0
 xuse_float = xuse_utilities || X16_USE_FLOAT != 0
 xuse_double = xuse_utilities || X16_USE_DOUBLE != 0
-xuse_string = xuse_strings || X16_USE_STRING != 0
+xuse_sort = xuse_utilities || X16_USE_SORT != 0
 xuse_string_ctype = xuse_strings || X16_USE_STRING_CTYPE != 0
 xuse_string_case = xuse_strings || X16_USE_STRING_CASE != 0
 xuse_string_find = xuse_strings || X16_USE_STRING_FIND != 0
 xuse_string_slice = xuse_strings || X16_USE_STRING_SLICE != 0
+xuse_string_sort = xuse_strings || X16_USE_STRING_SORT != 0
 xuse_clock = xuse_system || X16_USE_CLOCK != 0
 xuse_screen = xuse_video || X16_USE_SCREEN != 0 || xuse_bitmap8l
 xuse_shapes_arc = xuse_graphics || X16_USE_SHAPES_ARC != 0 || xuse_shapes_pie
@@ -194,6 +199,7 @@ xuse_zsm = xuse_audio || X16_USE_ZSM != 0 || xuse_zsm_pcm
 xuse_pcm_stream = xuse_audio || X16_USE_PCM_STREAM != 0 || xuse_zsm_pcm
 xuse_serial = xuse_communications || X16_USE_SERIAL != 0 || xuse_serial_zimodem
 xuse_number = xuse_utilities || X16_USE_NUMBER != 0 || xuse_int16
+xuse_string = xuse_strings || X16_USE_STRING != 0 || xuse_string_sort
 xuse_verafx_mult = xuse_verafx || X16_USE_VERAFX_MULT != 0
 xuse_verafx_copy = xuse_verafx || X16_USE_VERAFX_COPY != 0
 xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
@@ -368,6 +374,9 @@ xuse_vera_any = xuse_vera_addr || xuse_vera_fill || xuse_vera_fxprobe || xuse_ve
 .if xuse_adpcm
 .include "audio/adpcm.asm"
 .endif
+.if xuse_wav
+.include "audio/wavfile.asm"
+.endif
 .if xuse_zx0
 .include "util/zx0.asm"
 .endif
@@ -388,6 +397,9 @@ xuse_vera_any = xuse_vera_addr || xuse_vera_fill || xuse_vera_fxprobe || xuse_ve
 .endif
 .if xuse_number
 .include "util/number.asm"
+.endif
+.if xuse_sort
+.include "util/sort.asm"
 .endif
 .if xuse_int16
 .include "util/int16.asm"
@@ -415,4 +427,7 @@ xuse_vera_any = xuse_vera_addr || xuse_vera_fill || xuse_vera_fxprobe || xuse_ve
 .endif
 .if xuse_string_slice
 .include "string/slice.asm"
+.endif
+.if xuse_string_sort
+.include "string/strsort.asm"
 .endif

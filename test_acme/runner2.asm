@@ -28,6 +28,7 @@ X16_USE_STRING_CTYPE = 1        ; character classification
 X16_USE_STRING_CASE = 1         ; case folding
 X16_USE_STRING_FIND = 1         ; searching
 X16_USE_STRING_SLICE = 1        ; substrings
+X16_USE_STRING_SORT = 1         ; sort an array of string pointers
 
 !source "core/sugar.asm"        ; optional friendly xm_* macros (gated; tested below)
 
@@ -108,6 +109,7 @@ main
     jsr test_str_pat
     jsr test_str_slice
     jsr test_str_trim
+    jsr test_str_sort
     jsr test_str_sugar
     jsr test_g2_clear
     jsr test_g2_init
@@ -2336,6 +2338,67 @@ test_str_trim
     ldy #>@name
     jmp t_result
 @name !text "STR_TRIM", 0
+
+; =====================================================================
+; str_sort: permute an array of string pointers into ascending order.
+; =====================================================================
+test_str_sort
+    lda #<@sdelta
+    sta @arr+0
+    lda #>@sdelta
+    sta @arr+1
+    lda #<@salpha
+    sta @arr+2
+    lda #>@salpha
+    sta @arr+3
+    lda #<@scharlie
+    sta @arr+4
+    lda #>@scharlie
+    sta @arr+5
+    lda #<@sbravo
+    sta @arr+6
+    lda #>@sbravo
+    sta @arr+7
+
+    lda #<@arr
+    sta X16_P0
+    lda #>@arr
+    sta X16_P1
+    lda #4
+    sta X16_P2
+    stz X16_P3
+    jsr str_sort
+
+    ; expect alpha, bravo, charlie, delta
+    lda @arr+0
+    cmp #<@salpha
+    bne @fail
+    lda @arr+2
+    cmp #<@sbravo
+    bne @fail
+    lda @arr+4
+    cmp #<@scharlie
+    bne @fail
+    lda @arr+6
+    cmp #<@sdelta
+    bne @fail
+    lda @arr+1
+    cmp #>@salpha
+    bne @fail
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@salpha   !text "alpha", 0
+@sbravo   !text "bravo", 0
+@scharlie !text "charlie", 0
+@sdelta   !text "delta", 0
+@arr      !fill 8, 0
+@name     !text "STR_SORT", 0
 
 ; The xm_str_* macros expand to the same setup + jsr, so this proves they
 ; work and (via the 7-way hash) that they convert byte-identically.

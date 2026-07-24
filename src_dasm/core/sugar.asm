@@ -4205,6 +4205,158 @@
     jsr dec_to_u16
     ENDM
     ENDIF
+; -> A/X = buffer, Y = length
+    IFCONST X16_USE_NUMBER
+    MAC xm_u8_to_dec
+    lda #({1})
+    jsr u8_to_dec
+    ENDM
+    ENDIF
+; -> A/X = buffer, Y = 2
+    IFCONST X16_USE_NUMBER
+    MAC xm_u8_to_hex
+    lda #({1})
+    jsr u8_to_hex
+    ENDM
+    ENDIF
+; -> A/X = buffer, Y = 8
+    IFCONST X16_USE_NUMBER
+    MAC xm_u8_to_bin
+    lda #({1})
+    jsr u8_to_bin
+    ENDM
+    ENDIF
+; -> A/X = buffer, Y = 16
+    IFCONST X16_USE_NUMBER
+    MAC xm_u16_to_bin
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    jsr u16_to_bin
+    ENDM
+    ENDIF
+; -> A/X = buffer, Y = length
+    IFCONST X16_USE_NUMBER
+    MAC xm_s8_to_dec
+    lda #({1})
+    jsr s8_to_dec
+    ENDM
+    ENDIF
+; -> A/X = buffer, Y = length
+    IFCONST X16_USE_NUMBER
+    MAC xm_s16_to_dec
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    jsr s16_to_dec
+    ENDM
+    ENDIF
+
+; =====================================================================
+; util/sort  (base pointer + element count; sorts in place)
+; =====================================================================
+    IFCONST X16_USE_SORT
+    MAC xm_sort_u8
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    jsr sort_u8
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SORT
+    MAC xm_sort_s8
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    jsr sort_s8
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SORT
+    MAC xm_sort_u16
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    jsr sort_u16
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SORT
+    MAC xm_sort_s16
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    jsr sort_s16
+    ENDM
+    ENDIF
+    IFCONST X16_USE_SORT
+    MAC xm_sort_ptr
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    lda #<({3})
+    sta X16_P4
+    lda #>({3})
+    sta X16_P5
+    jsr sort_ptr
+    ENDM
+    ENDIF
+
+; =====================================================================
+; string/strsort
+; =====================================================================
+    IFCONST X16_USE_STRING_SORT
+    MAC xm_str_sort
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    jsr str_sort
+    ENDM
+    ENDIF
+
+; =====================================================================
+; audio/wavfile
+; =====================================================================
+; -> carry set on failure; wav_format/channels/rate/bits/data_off/data_len set
+    IFCONST X16_USE_WAV
+    MAC xm_wav_parse_header
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    jsr wav_parse_header
+    ENDM
+    ENDIF
 
 ; =====================================================================
 ; util/fixed

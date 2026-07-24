@@ -4205,6 +4205,158 @@
     jsr dec_to_u16
     endm
     endif
+; -> A/X = buffer, Y = length
+    ifdef X16_USE_NUMBER
+    macro xm_u8_to_dec
+    lda #(\1)
+    jsr u8_to_dec
+    endm
+    endif
+; -> A/X = buffer, Y = 2
+    ifdef X16_USE_NUMBER
+    macro xm_u8_to_hex
+    lda #(\1)
+    jsr u8_to_hex
+    endm
+    endif
+; -> A/X = buffer, Y = 8
+    ifdef X16_USE_NUMBER
+    macro xm_u8_to_bin
+    lda #(\1)
+    jsr u8_to_bin
+    endm
+    endif
+; -> A/X = buffer, Y = 16
+    ifdef X16_USE_NUMBER
+    macro xm_u16_to_bin
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    jsr u16_to_bin
+    endm
+    endif
+; -> A/X = buffer, Y = length
+    ifdef X16_USE_NUMBER
+    macro xm_s8_to_dec
+    lda #(\1)
+    jsr s8_to_dec
+    endm
+    endif
+; -> A/X = buffer, Y = length
+    ifdef X16_USE_NUMBER
+    macro xm_s16_to_dec
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    jsr s16_to_dec
+    endm
+    endif
+
+; =====================================================================
+; util/sort  (base pointer + element count; sorts in place)
+; =====================================================================
+    ifdef X16_USE_SORT
+    macro xm_sort_u8
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    jsr sort_u8
+    endm
+    endif
+    ifdef X16_USE_SORT
+    macro xm_sort_s8
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    jsr sort_s8
+    endm
+    endif
+    ifdef X16_USE_SORT
+    macro xm_sort_u16
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    jsr sort_u16
+    endm
+    endif
+    ifdef X16_USE_SORT
+    macro xm_sort_s16
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    jsr sort_s16
+    endm
+    endif
+    ifdef X16_USE_SORT
+    macro xm_sort_ptr
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    lda #<(\3)
+    sta X16_P4
+    lda #>(\3)
+    sta X16_P5
+    jsr sort_ptr
+    endm
+    endif
+
+; =====================================================================
+; string/strsort
+; =====================================================================
+    ifdef X16_USE_STRING_SORT
+    macro xm_str_sort
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    jsr str_sort
+    endm
+    endif
+
+; =====================================================================
+; audio/wavfile
+; =====================================================================
+; -> carry set on failure; wav_format/channels/rate/bits/data_off/data_len set
+    ifdef X16_USE_WAV
+    macro xm_wav_parse_header
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    jsr wav_parse_header
+    endm
+    endif
 
 ; =====================================================================
 ; util/fixed

@@ -4205,6 +4205,158 @@
     jsr dec_to_u16
 }
 #endif
+// -> A/X = buffer, Y = length
+#if X16_USE_NUMBER
+.macro xm_u8_to_dec(value) {
+    lda #(value)
+    jsr u8_to_dec
+}
+#endif
+// -> A/X = buffer, Y = 2
+#if X16_USE_NUMBER
+.macro xm_u8_to_hex(value) {
+    lda #(value)
+    jsr u8_to_hex
+}
+#endif
+// -> A/X = buffer, Y = 8
+#if X16_USE_NUMBER
+.macro xm_u8_to_bin(value) {
+    lda #(value)
+    jsr u8_to_bin
+}
+#endif
+// -> A/X = buffer, Y = 16
+#if X16_USE_NUMBER
+.macro xm_u16_to_bin(value) {
+    lda #<(value)
+    sta X16_P0
+    lda #>(value)
+    sta X16_P1
+    jsr u16_to_bin
+}
+#endif
+// -> A/X = buffer, Y = length
+#if X16_USE_NUMBER
+.macro xm_s8_to_dec(value) {
+    lda #(value)
+    jsr s8_to_dec
+}
+#endif
+// -> A/X = buffer, Y = length
+#if X16_USE_NUMBER
+.macro xm_s16_to_dec(value) {
+    lda #<(value)
+    sta X16_P0
+    lda #>(value)
+    sta X16_P1
+    jsr s16_to_dec
+}
+#endif
+
+// =====================================================================
+// util/sort  (base pointer + element count; sorts in place)
+// =====================================================================
+#if X16_USE_SORT
+.macro xm_sort_u8(ptr, count) {
+    lda #<(ptr)
+    sta X16_P0
+    lda #>(ptr)
+    sta X16_P1
+    lda #<(count)
+    sta X16_P2
+    lda #>(count)
+    sta X16_P3
+    jsr sort_u8
+}
+#endif
+#if X16_USE_SORT
+.macro xm_sort_s8(ptr, count) {
+    lda #<(ptr)
+    sta X16_P0
+    lda #>(ptr)
+    sta X16_P1
+    lda #<(count)
+    sta X16_P2
+    lda #>(count)
+    sta X16_P3
+    jsr sort_s8
+}
+#endif
+#if X16_USE_SORT
+.macro xm_sort_u16(ptr, count) {
+    lda #<(ptr)
+    sta X16_P0
+    lda #>(ptr)
+    sta X16_P1
+    lda #<(count)
+    sta X16_P2
+    lda #>(count)
+    sta X16_P3
+    jsr sort_u16
+}
+#endif
+#if X16_USE_SORT
+.macro xm_sort_s16(ptr, count) {
+    lda #<(ptr)
+    sta X16_P0
+    lda #>(ptr)
+    sta X16_P1
+    lda #<(count)
+    sta X16_P2
+    lda #>(count)
+    sta X16_P3
+    jsr sort_s16
+}
+#endif
+#if X16_USE_SORT
+.macro xm_sort_ptr(ptr, count, cmp) {
+    lda #<(ptr)
+    sta X16_P0
+    lda #>(ptr)
+    sta X16_P1
+    lda #<(count)
+    sta X16_P2
+    lda #>(count)
+    sta X16_P3
+    lda #<(cmp)
+    sta X16_P4
+    lda #>(cmp)
+    sta X16_P5
+    jsr sort_ptr
+}
+#endif
+
+// =====================================================================
+// string/strsort
+// =====================================================================
+#if X16_USE_STRING_SORT
+.macro xm_str_sort(ptr, count) {
+    lda #<(ptr)
+    sta X16_P0
+    lda #>(ptr)
+    sta X16_P1
+    lda #<(count)
+    sta X16_P2
+    lda #>(count)
+    sta X16_P3
+    jsr str_sort
+}
+#endif
+
+// =====================================================================
+// audio/wavfile
+// =====================================================================
+// -> carry set on failure; wav_format/channels/rate/bits/data_off/data_len set
+#if X16_USE_WAV
+.macro xm_wav_parse_header(buf) {
+    lda #<(buf)
+    sta X16_P0
+    lda #>(buf)
+    sta X16_P1
+    jsr wav_parse_header
+}
+#endif
 
 // =====================================================================
 // util/fixed

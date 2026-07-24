@@ -4205,6 +4205,158 @@ xm_dec_to_u16 .macro str, len
     jsr dec_to_u16
     .endm
 .endif
+; -> A/X = buffer, Y = length
+.if xuse_number
+xm_u8_to_dec .macro value
+    lda #\value
+    jsr u8_to_dec
+    .endm
+.endif
+; -> A/X = buffer, Y = 2
+.if xuse_number
+xm_u8_to_hex .macro value
+    lda #\value
+    jsr u8_to_hex
+    .endm
+.endif
+; -> A/X = buffer, Y = 8
+.if xuse_number
+xm_u8_to_bin .macro value
+    lda #\value
+    jsr u8_to_bin
+    .endm
+.endif
+; -> A/X = buffer, Y = 16
+.if xuse_number
+xm_u16_to_bin .macro value
+    lda #<(\value)
+    sta X16_P0
+    lda #>(\value)
+    sta X16_P1
+    jsr u16_to_bin
+    .endm
+.endif
+; -> A/X = buffer, Y = length
+.if xuse_number
+xm_s8_to_dec .macro value
+    lda #\value
+    jsr s8_to_dec
+    .endm
+.endif
+; -> A/X = buffer, Y = length
+.if xuse_number
+xm_s16_to_dec .macro value
+    lda #<(\value)
+    sta X16_P0
+    lda #>(\value)
+    sta X16_P1
+    jsr s16_to_dec
+    .endm
+.endif
+
+; =====================================================================
+; util/sort  (base pointer + element count; sorts in place)
+; =====================================================================
+.if xuse_sort
+xm_sort_u8 .macro ptr, count
+    lda #<(\ptr)
+    sta X16_P0
+    lda #>(\ptr)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    jsr sort_u8
+    .endm
+.endif
+.if xuse_sort
+xm_sort_s8 .macro ptr, count
+    lda #<(\ptr)
+    sta X16_P0
+    lda #>(\ptr)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    jsr sort_s8
+    .endm
+.endif
+.if xuse_sort
+xm_sort_u16 .macro ptr, count
+    lda #<(\ptr)
+    sta X16_P0
+    lda #>(\ptr)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    jsr sort_u16
+    .endm
+.endif
+.if xuse_sort
+xm_sort_s16 .macro ptr, count
+    lda #<(\ptr)
+    sta X16_P0
+    lda #>(\ptr)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    jsr sort_s16
+    .endm
+.endif
+.if xuse_sort
+xm_sort_ptr .macro ptr, count, cmp
+    lda #<(\ptr)
+    sta X16_P0
+    lda #>(\ptr)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    lda #<(\cmp)
+    sta X16_P4
+    lda #>(\cmp)
+    sta X16_P5
+    jsr sort_ptr
+    .endm
+.endif
+
+; =====================================================================
+; string/strsort
+; =====================================================================
+.if xuse_string_sort
+xm_str_sort .macro ptr, count
+    lda #<(\ptr)
+    sta X16_P0
+    lda #>(\ptr)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    jsr str_sort
+    .endm
+.endif
+
+; =====================================================================
+; audio/wavfile
+; =====================================================================
+; -> carry set on failure; wav_format/channels/rate/bits/data_off/data_len set
+.if xuse_wav
+xm_wav_parse_header .macro buf
+    lda #<(\buf)
+    sta X16_P0
+    lda #>(\buf)
+    sta X16_P1
+    jsr wav_parse_header
+    .endm
+.endif
 
 ; =====================================================================
 ; util/fixed

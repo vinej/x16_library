@@ -455,6 +455,12 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `xm_adpcm_nibble code` | decode one ADPCM nibble |
 | `xm_adpcm_block src, dst, count` | decode a block |
 
+**WAV (X16_USE_WAV)**
+
+| Macro | Does |
+|---|---|
+| `xm_wav_parse_header buf` | parse a RIFF/WAVE header from a buffer into `wav_format`/`wav_channels`/`wav_rate`/`wav_bits`/`wav_data_off`/`wav_data_len`; → carry set on failure |
+
 **Input (X16_USE_INPUT)**
 
 [Detailed macro reference](macro_input.md)
@@ -686,6 +692,19 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | Macro | Does |
 |---|---|
 | `xm_u16_to_dec value` / `xm_u16_to_hex value` | format unsigned 16-bit; → A/X = buffer, Y = length |
+| `xm_u8_to_dec value` / `xm_u8_to_hex value` / `xm_u8_to_bin value` | format unsigned 8-bit as decimal / 2 hex / 8 binary digits |
+| `xm_u16_to_bin value` | format unsigned 16-bit as 16 binary digits |
+| `xm_s8_to_dec value` / `xm_s16_to_dec value` | format signed 8/16-bit as decimal with a leading '-' |
+
+**Sort (X16_USE_SORT)**
+
+[Detailed macro reference](macro_sort.md)
+
+| Macro | Does |
+|---|---|
+| `xm_sort_u8 ptr, count` / `xm_sort_s8 ptr, count` | sort a block of unsigned / signed bytes in place |
+| `xm_sort_u16 ptr, count` / `xm_sort_s16 ptr, count` | sort a block of unsigned / signed words in place |
+| `xm_sort_ptr ptr, count, cmp` | sort 2-byte elements with a caller comparator |
 | `xm_dec_to_u16 str, len` | parse decimal; → P4/5 = value, carry set on bad digit |
 
 **Fixed point (X16_USE_FIXED)**
@@ -788,6 +807,7 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `xm_str_pattern_match str, pattern` | `?`/`*` match → carry |
 | `xm_str_left src, dst, len` / `xm_str_right …` | copy an end |
 | `xm_str_slice src, dst, start, len` | copy a middle run |
+| `xm_str_sort ptr, count` | sort an array of string pointers ascending (X16_USE_STRING_SORT) |
 | `xm_str_ltrim str` / `xm_str_rtrim str` / `xm_str_trim str` | trim whitespace in place |
 | `str_isdigit`, `str_lowerchar`, … | character already in `A`; call directly |
 

@@ -388,13 +388,15 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 | `X16_USE_CLIP` | `clip_set`, `clip_line` (Cohen–Sutherland; feeds `gfx8l_line`/`fx_line`'s parameter block) |
 | `X16_USE_BUFFERS` | `rb_init`/`put`/`get`/`count` (ring buffer), `stk_init`/`push`/`pop`/`depth` |
 | `X16_USE_ADPCM` | `adpcm_init`, `adpcm_nibble`, `adpcm_block` — IMA ADPCM, 4:1 compressed PCM |
+| `X16_USE_WAV` | `wav_parse_header` — parse a RIFF/WAVE header from a memory buffer into `wav_format`/`wav_channels`/`wav_rate`/`wav_bits` and `wav_data_off`/`wav_data_len`, to feed the PCM streamer. Independent of how the file is read. |
 | `X16_USE_ZX0` | `zx0_decompress` — ZX0 v2 (salvador/zx0 output); packs tighter than the ROM's LZSA2 |
 | `X16_USE_TSC` | `tsc_decompress` — TSCrunch; unpacks faster than either, packs a little looser |
 | `X16_USE_FIXED` | `umul16`, `mul88` (signed 8.8) |
 | `X16_USE_BCD` | Packed-BCD (decimal-mode) arithmetic on `bcd_a`/`bcd_b` registers: `bcd_add8`/`16`/`32`, `bcd_sub8`/`16`/`32` (carry out = overflow/borrow), and `bcd_addto`/`bcd_subfrom` (32-bit, in place through a pointer). `$0987 + $1111 = $2098` — the hex digits *are* the decimal digits, so a score or clock stays print-ready without binary→decimal conversion. Pay-per-use. |
 | `X16_USE_COLLIDE` | `collide8`, `collide16` (AABB overlap) |
 | `X16_USE_BITS` | `catnib`, `hinib`, `lonib`, `bit_set`/`clr`/`put`/`test` |
-| `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16` |
+| `X16_USE_NUMBER` | `u16_to_dec`, `u16_to_hex`, `dec_to_u16`, and the byte/signed/binary formatters `u8_to_dec`, `u8_to_hex`, `u8_to_bin`, `u16_to_bin`, `s8_to_dec`, `s16_to_dec` |
+| `X16_USE_SORT` | In-place sorting of a memory block by base pointer + element count: `sort_u8`/`sort_s8` (bytes), `sort_u16`/`sort_s16` (words), and `sort_ptr` (2-byte elements ordered by a caller comparator). Insertion sort, no dependencies. Pay-per-use. |
 | `X16_USE_INT16` | 16-bit integers: `i16_add`/`sub`/`neg`/`abs`/`mul`/`divmod`/`divmod_s`, `i16_cmps`/`cmpu`, `i16_shl`/`shr`/`asr`, `i16_sqrt`, `i16_from_u8`/`s8`, `i16_to_dec`/`dec_s`, `+i16_const` |
 | `X16_USE_INT32` | 32-bit integers: `i32_add`/`sub`/`neg`/`abs`/`mul`/`divmod`, `i32_cmps`/`cmpu`, `i32_shl`/`shr`/`asr`, `i32_from_u16`/`s16`, `i32_to_s16`, `i32_to_dec`, `+i32_const` |
 | `X16_USE_FLOAT` | `f_load`/`store`, `f_add`/`sub`/`mul`/`div`, `f_rsub`/`rdiv`, `f_pow`, `f_cmp`, `f_sqrt`, `f_ln`, `f_exp`, `f_sin`/`cos`/`tan`/`atan`, `f_abs`/`neg`/`sgn`/`int`, `f_from_s16`/`u8`/`str`, `f_to_s16`/`str`/`str_trim` — the ROM's 5-byte float (~9 digits) |
@@ -404,6 +406,7 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 | `X16_USE_STRING_CASE` | Case folding (`string/case.asm`): `str_lower`/`str_upper` (whole string, in place) and `str_lowerchar`/`str_upperchar` (one char), each with an `_iso` variant, plus `str_compare_nocase`/`_iso`. |
 | `X16_USE_STRING_FIND` | Searching (`string/find.asm`): `str_find`, `str_rfind`, `str_find_eol`, `str_contains` (character in `Y`), and `str_pattern_match` (`?`/`*` wildcards, self-modifying + recursive). |
 | `X16_USE_STRING_SLICE` | Substrings (`string/slice.asm`): `str_left`, `str_right`, `str_slice` (into a target in `X16_P0/P1`), and in-place `str_ltrim`/`str_rtrim`/`str_trim`. |
+| `X16_USE_STRING_SORT` | `str_sort` (`string/strsort.asm`): sort an array of string pointers (`uword`s) ascending by content, via `str_compare` — the strings stay put, only the pointer array is permuted. Self-contained (pulls in only `X16_USE_STRING`). |
 
 ### Advanced build gates
 

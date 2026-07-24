@@ -10,7 +10,7 @@
 
 
 num_buf
-    :(8) dta 0  ; enough for "65535" plus a terminator
+    :(17) dta 0  ; enough for 16 binary digits plus a terminator
 
 ; ---------------------------------------------------------------------
 ; u16_to_dec -- unsigned 16-bit to decimal, no leading zeros
@@ -178,3 +178,119 @@ dec_to_u16__ok
 dec_to_u16__bad
     sec
     rts
+
+; ---------------------------------------------------------------------
+; u8_to_dec -- unsigned 8-bit to decimal (no leading zeros)
+;   in:  A = value      out: A = buf low, X = buf high, Y = length
+; ---------------------------------------------------------------------
+u8_to_dec
+    sta X16_P0
+    stz X16_P1
+    jmp u16_to_dec
+
+; ---------------------------------------------------------------------
+; u8_to_hex -- unsigned 8-bit to two hex digits
+;   in:  A = value      out: A = buf low, X = buf high, Y = 2
+; ---------------------------------------------------------------------
+u8_to_hex
+    pha
+    jsr number_hi_digit
+    sta num_buf
+    pla
+    jsr number_lo_digit
+    sta num_buf+1
+    stz num_buf+2
+    lda #<num_buf
+    ldx #>num_buf
+    ldy #2
+    rts
+
+; ---------------------------------------------------------------------
+; u8_to_bin -- unsigned 8-bit to eight binary digits, MSB first
+;   in:  A = value      out: A = buf low, X = buf high, Y = 8
+; ---------------------------------------------------------------------
+u8_to_bin
+    sta X16_T0
+    ldy #0
+u8_to_bin__loop
+    asl X16_T0                  ; MSB -> carry
+    lda #'0'
+    adc #0
+    sta num_buf,y
+    iny
+    cpy #8
+    bne u8_to_bin__loop
+    lda #0
+    sta num_buf,y
+    lda #<num_buf
+    ldx #>num_buf
+    ldy #8
+    rts
+
+; ---------------------------------------------------------------------
+; u16_to_bin -- unsigned 16-bit to sixteen binary digits, MSB first
+;   in:  X16_P0/P1 = value (consumed)   out: A/X = buf, Y = 16
+; ---------------------------------------------------------------------
+u16_to_bin
+    ldy #0
+u16_to_bin__loop
+    asl X16_P0
+    rol X16_P1                  ; MSB -> carry
+    lda #'0'
+    adc #0
+    sta num_buf,y
+    iny
+    cpy #16
+    bne u16_to_bin__loop
+    lda #0
+    sta num_buf,y
+    lda #<num_buf
+    ldx #>num_buf
+    ldy #16
+    rts
+
+; ---------------------------------------------------------------------
+; s16_to_dec -- signed 16-bit to decimal, with a leading '-'
+;   in:  X16_P0/P1 = value (consumed)   out: A/X = buf, Y = length
+; ---------------------------------------------------------------------
+s16_to_dec
+    lda X16_P1
+    bpl s16_to_dec__pos
+    sec                         ; value = -value
+    lda #0
+    sbc X16_P0
+    sta X16_P0
+    lda #0
+    sbc X16_P1
+    sta X16_P1
+    jsr u16_to_dec              ; format the magnitude
+    sty X16_T5                  ; length of the digits
+    ldx X16_T5
+s16_to_dec__shift
+    lda num_buf,x               ; make room for the sign: shift right by one
+    sta num_buf+1,x
+    dex
+    bpl s16_to_dec__shift
+    lda #'-'
+    sta num_buf
+    lda #<num_buf
+    ldx #>num_buf
+    ldy X16_T5
+    iny
+    rts
+s16_to_dec__pos
+    jmp u16_to_dec
+
+; ---------------------------------------------------------------------
+; s8_to_dec -- signed 8-bit to decimal, with a leading '-'
+;   in:  A = value      out: A/X = buf, Y = length
+; ---------------------------------------------------------------------
+s8_to_dec
+    sta X16_P0
+    stz X16_P1
+    bit X16_P0
+    bpl s8_to_dec__go
+    lda #$FF                    ; sign-extend into the high byte
+    sta X16_P1
+s8_to_dec__go
+    jmp s16_to_dec
