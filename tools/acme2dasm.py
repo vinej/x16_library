@@ -334,6 +334,7 @@ CHEAP_PROMOTE = {
     "audio/pcm.asm":     [("pcm_stream_fill", None, "psf_")],
     "util/tscrunch.asm": [("tsc_decompress", None, "tsc2_")],
     "gfx/bitmap8l.asm":  [("gfx8l_text", "gt8l_code", "gtx8l_")],
+    "gfx/bitmap4l.asm":  [("gfx4l_text", None, "gtx4l_")],
     # dasm cannot take a .local as a macro argument (it binds the local to
     # the macro's own scope), and these two runner tests pass @file to the
     # cset16 macro -- so promote their cheap-locals to globals.

@@ -945,14 +945,14 @@ gfx4l_char
 gfx4l_text
     sta bitmap4l_gt4l_lda+1
     stx bitmap4l_gt4l_lda+2
-@gt4l_loop
+gtx4l_gt4l_loop
 bitmap4l_gt4l_lda
     lda $FFFF
-    beq @gt4l_done
+    beq gtx4l_gt4l_done
     bit #%01000000
-    beq @gt4l_code_ok
+    beq gtx4l_gt4l_code_ok
     and #$1F
-@gt4l_code_ok
+gtx4l_gt4l_code_ok
     jsr gfx4l_char
     clc
     lda X16_P0
@@ -962,10 +962,10 @@ bitmap4l_gt4l_lda
     adc #0
     sta X16_P1
     inc bitmap4l_gt4l_lda+1
-    bne @gt4l_loop
+    bne gtx4l_gt4l_loop
     inc bitmap4l_gt4l_lda+2
-    bra @gt4l_loop
-@gt4l_done
+    bra gtx4l_gt4l_loop
+gtx4l_gt4l_done
     rts
 .endif
 
