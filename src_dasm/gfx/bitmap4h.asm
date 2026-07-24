@@ -233,35 +233,92 @@ gfx4h_read
 ; gfx4h_hline / gfx4h_vline -- spans, no clipping
 ;   in: A = colour, X16_P0/P1 = x, X16_P2/P3 = y, X16_P4/P5 = length
 ; ---------------------------------------------------------------------
+; hline: RMW the odd leading/trailing nibbles, STREAM the interior as
+; whole two-pixel bytes through DATA at stride +1 -- one sta per two
+; pixels instead of a full pset (address calc + RMW) per pixel.
     SUBROUTINE
 gfx4h_hline
     and #$0F
     sta g4h_c
+    tax
+    lda bitmap4h_colbyte,x
+    sta g4h_t2                  ; the both-nibbles fill byte
     lda X16_P4
     sta g4h_n
     lda X16_P5
     sta g4h_n+1
-.loop
-    lda g4h_n
-    ora g4h_n+1
-    beq .done
-    lda g4h_c
-    jsr gfx4h_pset
-    inc X16_P0
+    ora g4h_n
     bne bitmap4h_k1
-    inc X16_P1
+    rts
     SUBROUTINE
 bitmap4h_k1
-	lda g4h_n
+	lda X16_P0
+    and #1
+    beq .aligned
+    lda #VERA2_INC_0            ; leading odd pixel: RMW the low nibble
+    jsr gfx4h_setptr
+    lda VERA2_DATA
+    and #$F0
+    ora g4h_c
+    sta VERA2_DATA
+    inc X16_P0
     bne bitmap4h_k2
-    dec g4h_n+1
+    inc X16_P1
     SUBROUTINE
 bitmap4h_k2
+	lda g4h_n
+    bne bitmap4h_k3
+    dec g4h_n+1
+    SUBROUTINE
+bitmap4h_k3
 	dec g4h_n
-    bra .loop
+    lda g4h_n
+    ora g4h_n+1
+    bne .aligned
+    rts
+.aligned
+    lsr g4h_n+1                 ; n -> full bytes, carry = trailing pixel
+    ror g4h_n
+    bcc bitmap4h_k4
+    lda #1
+    sta g4h_phase               ; remember the trailing odd-width pixel
+    bra ++
+    SUBROUTINE
+bitmap4h_k4
+	stz g4h_phase
+++  lda g4h_n
+    ora g4h_n+1
+    beq .nofull
+    lda #VERA2_INC_1
+    jsr gfx4h_setptr
+    lda g4h_t2
+    jsr bitmap4h_fill_count
+    lda g4h_phase
+    beq .done
+    lda VERA2_ADDR_H            ; the +1 stride left the pointer ON the
+    and #$0F                    ; trailing byte: just switch it to hold
+    ora #(VERA2_INC_0 << 4)
+    sta VERA2_ADDR_H
+    bra .rmwhi
+.nofull
+    lda g4h_phase
+    beq .done
+    lda #VERA2_INC_0
+    jsr gfx4h_setptr
+.rmwhi
+    lda VERA2_DATA              ; trailing even pixel: RMW the high nibble
+    and #$0F
+    sta g4h_t
+    lda g4h_t2
+    and #$F0
+    ora g4h_t
+    sta VERA2_DATA
 .done
     rts
 
+; vline: one address calc, then per row an RMW at hold stride and a
+; 24-bit +320 on the cached address (three pointer stores) -- the same
+; nibble mask the whole way down, no per-pixel pset.
     SUBROUTINE
 gfx4h_vline
     and #$0F
@@ -270,24 +327,59 @@ gfx4h_vline
     sta g4h_n
     lda X16_P5
     sta g4h_n+1
-.loop
-    lda g4h_n
-    ora g4h_n+1
+    ora g4h_n
     beq .done
+    jsr bitmap4h_addr_calc              ; g4h_a0..a2 = the column's first byte
+    lda X16_P0
+    and #1
+    bne .odd
+    lda #$0F                    ; even x: keep low nibble, or in col<<4
+    sta g4h_t2
     lda g4h_c
-    jsr gfx4h_pset
-    inc X16_P2
-    bne bitmap4h_k3
-    inc X16_P3
+    asl
+    asl
+    asl
+    asl
+    sta g4h_t
+    bra .row
+.odd
+    lda #$F0                    ; odd x: keep high nibble, or in col
+    sta g4h_t2
+    lda g4h_c
+    sta g4h_t
+.row
+    lda g4h_a0
+    sta VERA2_ADDR_L
+    lda g4h_a1
+    sta VERA2_ADDR_M
+    lda g4h_a2
+    and #$0F
+    ora #(VERA2_INC_0 << 4)     ; hold: read and write the same byte
+    sta VERA2_ADDR_H
+    lda VERA2_DATA
+    and g4h_t2
+    ora g4h_t
+    sta VERA2_DATA
+    clc                         ; address += 320, one row down
+    lda g4h_a0
+    adc #$40
+    sta g4h_a0
+    lda g4h_a1
+    adc #$01
+    sta g4h_a1
+    bcc bitmap4h_k5
+    inc g4h_a2
     SUBROUTINE
-bitmap4h_k3
+bitmap4h_k5
 	lda g4h_n
-    bne bitmap4h_k4
+    bne bitmap4h_k6
     dec g4h_n+1
     SUBROUTINE
-bitmap4h_k4
+bitmap4h_k6
 	dec g4h_n
-    bra .loop
+    lda g4h_n
+    ora g4h_n+1
+    bne .row
 .done
     rts
 
@@ -300,30 +392,30 @@ bitmap4h_k4
 gfx4h_rect
     and #$0F
     sta g4h_rc
+    lda X16_P0
+    sta g4h_rx
+    lda X16_P1
+    sta g4h_rx+1
 .row
     lda X16_P6
     ora X16_P7
     beq .done
     lda g4h_rc
     jsr gfx4h_hline
-    sec
-    lda X16_P0
-    sbc X16_P4
+    lda g4h_rx                  ; hline may nudge x for alignment: restore
     sta X16_P0
-    bcs bitmap4h_k5
-    dec X16_P1
-    SUBROUTINE
-bitmap4h_k5
-	inc X16_P2
-    bne bitmap4h_k6
+    lda g4h_rx+1
+    sta X16_P1
+    inc X16_P2
+    bne bitmap4h_k7
     inc X16_P3
     SUBROUTINE
-bitmap4h_k6
+bitmap4h_k7
 	lda X16_P6
-    bne bitmap4h_k7
+    bne bitmap4h_k8
     dec X16_P7
     SUBROUTINE
-bitmap4h_k7
+bitmap4h_k8
 	dec X16_P6
     bra .row
 .done
@@ -353,10 +445,10 @@ gfx4h_frame
     adc g4h_rh+1
     sta X16_P3
     lda X16_P2
-    bne bitmap4h_k8
+    bne bitmap4h_k9
     dec X16_P3
     SUBROUTINE
-bitmap4h_k8
+bitmap4h_k9
 	dec X16_P2
     lda g4h_rc
     jsr gfx4h_hline
@@ -374,10 +466,10 @@ bitmap4h_k8
     adc g4h_rw+1
     sta X16_P1
     lda X16_P0
-    bne bitmap4h_k9
+    bne bitmap4h_k10
     dec X16_P1
     SUBROUTINE
-bitmap4h_k9
+bitmap4h_k10
 	dec X16_P0
     lda g4h_rc
     jmp gfx4h_vline
@@ -602,7 +694,7 @@ gfx4h_pattern_rect
     ora X16_P5
     ora X16_P6
     ora X16_P7
-    bne bitmap4h_k10
+    bne bitmap4h_k11
     jmp .done
 +
     lda X16_P2
@@ -616,7 +708,7 @@ gfx4h_pattern_rect
 .row
     lda X16_P6
     ora X16_P7
-    bne bitmap4h_k10
+    bne bitmap4h_k11
     jmp .done
 +
     lda gp4h_bx
@@ -659,32 +751,32 @@ gfx4h_pattern_rect
     adc #0
     sta gp4h_bits
     inc gp4h_x
-    bne bitmap4h_k10
+    bne bitmap4h_k11
     inc gp4h_x+1
     SUBROUTINE
-bitmap4h_k10
+bitmap4h_k11
 	lda gp4h_n
-    bne bitmap4h_k11
+    bne bitmap4h_k12
     dec gp4h_n+1
     SUBROUTINE
-bitmap4h_k11
+bitmap4h_k12
 	dec gp4h_n
     jmp .col
 .next_row
     inc gp4h_by
-    bne bitmap4h_k12
+    bne bitmap4h_k13
     inc gp4h_by+1
     SUBROUTINE
-bitmap4h_k12
+bitmap4h_k13
 	lda gp4h_by
     sta X16_P2
     lda gp4h_by+1
     sta X16_P3
     lda X16_P6
-    bne bitmap4h_k13
+    bne bitmap4h_k14
     dec X16_P7
     SUBROUTINE
-bitmap4h_k13
+bitmap4h_k14
 	dec X16_P6
     jmp .row
 .done
@@ -718,7 +810,7 @@ bitmap4h_blit_common
     sta g4h_rowbytes
 .row
     lda X16_P5
-    bne bitmap4h_k14
+    bne bitmap4h_k15
     jmp .done
 +
     lda g4h_src
@@ -775,19 +867,19 @@ bitmap4h_blit_common
     jsr gfx4h_pset
 .advance
     inc X16_P0
-    bne bitmap4h_k14
+    bne bitmap4h_k15
     inc X16_P1
     SUBROUTINE
-bitmap4h_k14
+bitmap4h_k15
 	lda g4h_phase
     eor #1
     sta g4h_phase
-    bne bitmap4h_k15
+    bne bitmap4h_k16
     inc X16_PTR3
-    bne bitmap4h_k15
+    bne bitmap4h_k16
     inc X16_PTR3+1
     SUBROUTINE
-bitmap4h_k15
+bitmap4h_k16
 	dec g4h_w
     jmp .col
 .next_row
@@ -795,10 +887,10 @@ bitmap4h_k15
     lda X16_P0
     sbc X16_P4
     sta X16_P0
-    bcs bitmap4h_k16
+    bcs bitmap4h_k17
     dec X16_P1
     SUBROUTINE
-bitmap4h_k16
+bitmap4h_k17
 	clc
     lda g4h_src
     adc g4h_rowbytes
@@ -807,10 +899,10 @@ bitmap4h_k16
     adc #0
     sta g4h_src+1
     inc X16_P2
-    bne bitmap4h_k17
+    bne bitmap4h_k18
     inc X16_P3
     SUBROUTINE
-bitmap4h_k17
+bitmap4h_k18
 	dec X16_P5
     jmp .row
 .done
@@ -877,59 +969,55 @@ bitmap4h_onscreen
 
     SUBROUTINE
 bitmap4h_addr_calc
-    lda X16_P2                  ; a = y << 6
+    ldx X16_P2                  ; y*320 from the row tables
+    lda bitmap4h_m320_lo,x
     sta g4h_a0
-    lda X16_P3
+    lda bitmap4h_m320_md,x
     sta g4h_a1
-    stz g4h_a2
-    ldx #6
-.s6
-    asl g4h_a0
-    rol g4h_a1
-    rol g4h_a2
-    dex
-    bne .s6
-
-    lda g4h_a0                  ; T = y << 8
-    sta X16_T0
-    lda g4h_a1
-    sta X16_T1
-    lda g4h_a2
-    sta X16_T2
-    asl X16_T0
-    rol X16_T1
-    rol X16_T2
-    asl X16_T0
-    rol X16_T1
-    rol X16_T2
-
-    clc                         ; y*320 = (y<<6) + (y<<8)
-    lda g4h_a0
-    adc X16_T0
-    sta g4h_a0
-    lda g4h_a1
-    adc X16_T1
-    sta g4h_a1
-    lda g4h_a2
-    adc X16_T2
+    lda bitmap4h_m320_hi,x
     sta g4h_a2
-
+    lda X16_P3                  ; y >= 256: + 256*320 = $14000
+    beq .addx
+    clc
+    lda g4h_a1
+    adc #$40
+    sta g4h_a1
+    bcc bitmap4h_k19
+    inc g4h_a2
+    SUBROUTINE
+bitmap4h_k19
+	inc g4h_a2
+.addx
     lda X16_P1                  ; + x >> 1
+    lsr
     sta X16_T1
     lda X16_P0
-    lsr X16_T1
     ror
-    sta X16_T0
     clc
-    lda g4h_a0
-    adc X16_T0
+    adc g4h_a0
     sta g4h_a0
     lda g4h_a1
     adc X16_T1
     sta g4h_a1
-    lda g4h_a2
-    adc #0
-    sta g4h_a2
+    bcc bitmap4h_k20
+    inc g4h_a2
+    SUBROUTINE
+bitmap4h_k20
+	rts
+
+    SUBROUTINE
+bitmap4h_fill_count
+    ldy g4h_n+1                 ; high byte first, so beq tests the LOW
+    ldx g4h_n                   ; byte (same shape as bitmap8h)
+    beq .full
+    iny
+.full
+.loop
+    sta VERA2_DATA
+    dex
+    bne .loop
+    dey
+    bne .loop
     rts
 
     SUBROUTINE
@@ -941,10 +1029,10 @@ bitmap4h_fill_pages
     dex
     bne .inner
     lda g4h_n
-    bne bitmap4h_k18
+    bne bitmap4h_k21
     dec g4h_n+1
     SUBROUTINE
-bitmap4h_k18
+bitmap4h_k21
 	dec g4h_n
     lda g4h_n
     ora g4h_n+1
@@ -986,6 +1074,8 @@ g4h_rowbytes dc.b 0
     SUBROUTINE
 g4h_phase dc.b 0
 
+    SUBROUTINE
+g4h_rx  dc.w 0
     SUBROUTINE
 g4h_fx  dc.w 0
     SUBROUTINE
@@ -1043,5 +1133,111 @@ g4h_lsy  dc.w 0
 bitmap4h_colbyte
     dc.b $00, $11, $22, $33, $44, $55, $66, $77
          dc.b $88, $99, $AA, $BB, $CC, $DD, $EE, $FF
+
+; row-offset tables: entry i = i*320, split into three bytes. Rows 256+
+; add the constant $14000 in bitmap4h_addr_calc. 768 bytes of table buys every
+; pset/read/hline/vline a ~200-cycle shift loop.
+    SUBROUTINE
+bitmap4h_m320_lo
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    dc.b $00, $40, $80, $C0, $00, $40, $80, $C0
+    SUBROUTINE
+bitmap4h_m320_md
+    dc.b $00, $01, $02, $03, $05, $06, $07, $08
+    dc.b $0A, $0B, $0C, $0D, $0F, $10, $11, $12
+    dc.b $14, $15, $16, $17, $19, $1A, $1B, $1C
+    dc.b $1E, $1F, $20, $21, $23, $24, $25, $26
+    dc.b $28, $29, $2A, $2B, $2D, $2E, $2F, $30
+    dc.b $32, $33, $34, $35, $37, $38, $39, $3A
+    dc.b $3C, $3D, $3E, $3F, $41, $42, $43, $44
+    dc.b $46, $47, $48, $49, $4B, $4C, $4D, $4E
+    dc.b $50, $51, $52, $53, $55, $56, $57, $58
+    dc.b $5A, $5B, $5C, $5D, $5F, $60, $61, $62
+    dc.b $64, $65, $66, $67, $69, $6A, $6B, $6C
+    dc.b $6E, $6F, $70, $71, $73, $74, $75, $76
+    dc.b $78, $79, $7A, $7B, $7D, $7E, $7F, $80
+    dc.b $82, $83, $84, $85, $87, $88, $89, $8A
+    dc.b $8C, $8D, $8E, $8F, $91, $92, $93, $94
+    dc.b $96, $97, $98, $99, $9B, $9C, $9D, $9E
+    dc.b $A0, $A1, $A2, $A3, $A5, $A6, $A7, $A8
+    dc.b $AA, $AB, $AC, $AD, $AF, $B0, $B1, $B2
+    dc.b $B4, $B5, $B6, $B7, $B9, $BA, $BB, $BC
+    dc.b $BE, $BF, $C0, $C1, $C3, $C4, $C5, $C6
+    dc.b $C8, $C9, $CA, $CB, $CD, $CE, $CF, $D0
+    dc.b $D2, $D3, $D4, $D5, $D7, $D8, $D9, $DA
+    dc.b $DC, $DD, $DE, $DF, $E1, $E2, $E3, $E4
+    dc.b $E6, $E7, $E8, $E9, $EB, $EC, $ED, $EE
+    dc.b $F0, $F1, $F2, $F3, $F5, $F6, $F7, $F8
+    dc.b $FA, $FB, $FC, $FD, $FF, $00, $01, $02
+    dc.b $04, $05, $06, $07, $09, $0A, $0B, $0C
+    dc.b $0E, $0F, $10, $11, $13, $14, $15, $16
+    dc.b $18, $19, $1A, $1B, $1D, $1E, $1F, $20
+    dc.b $22, $23, $24, $25, $27, $28, $29, $2A
+    dc.b $2C, $2D, $2E, $2F, $31, $32, $33, $34
+    dc.b $36, $37, $38, $39, $3B, $3C, $3D, $3E
+    SUBROUTINE
+bitmap4h_m320_hi
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $00, $00, $00
+    dc.b $00, $00, $00, $00, $00, $01, $01, $01
+    dc.b $01, $01, $01, $01, $01, $01, $01, $01
+    dc.b $01, $01, $01, $01, $01, $01, $01, $01
+    dc.b $01, $01, $01, $01, $01, $01, $01, $01
+    dc.b $01, $01, $01, $01, $01, $01, $01, $01
+    dc.b $01, $01, $01, $01, $01, $01, $01, $01
+    dc.b $01, $01, $01, $01, $01, $01, $01, $01
 
 ; (end zone)

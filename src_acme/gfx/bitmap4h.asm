@@ -221,19 +221,31 @@ gfx4h_read
 ; gfx4h_hline / gfx4h_vline -- spans, no clipping
 ;   in: A = colour, X16_P0/P1 = x, X16_P2/P3 = y, X16_P4/P5 = length
 ; ---------------------------------------------------------------------
+; hline: RMW the odd leading/trailing nibbles, STREAM the interior as
+; whole two-pixel bytes through DATA at stride +1 -- one sta per two
+; pixels instead of a full pset (address calc + RMW) per pixel.
 gfx4h_hline
     and #$0F
     sta g4h_c
+    tax
+    lda .colbyte,x
+    sta g4h_t2                  ; the both-nibbles fill byte
     lda X16_P4
     sta g4h_n
     lda X16_P5
     sta g4h_n+1
-@loop
-    lda g4h_n
-    ora g4h_n+1
-    beq @done
-    lda g4h_c
-    jsr gfx4h_pset
+    ora g4h_n
+    bne +
+    rts
++   lda X16_P0
+    and #1
+    beq @aligned
+    lda #VERA2_INC_0            ; leading odd pixel: RMW the low nibble
+    jsr gfx4h_setptr
+    lda VERA2_DATA
+    and #$F0
+    ora g4h_c
+    sta VERA2_DATA
     inc X16_P0
     bne +
     inc X16_P1
@@ -241,10 +253,51 @@ gfx4h_hline
     bne +
     dec g4h_n+1
 +   dec g4h_n
-    bra @loop
+    lda g4h_n
+    ora g4h_n+1
+    bne @aligned
+    rts
+@aligned
+    lsr g4h_n+1                 ; n -> full bytes, carry = trailing pixel
+    ror g4h_n
+    bcc +
+    lda #1
+    sta g4h_phase               ; remember the trailing odd-width pixel
+    bra ++
++   stz g4h_phase
+++  lda g4h_n
+    ora g4h_n+1
+    beq @nofull
+    lda #VERA2_INC_1
+    jsr gfx4h_setptr
+    lda g4h_t2
+    jsr .fill_count
+    lda g4h_phase
+    beq @done
+    lda VERA2_ADDR_H            ; the +1 stride left the pointer ON the
+    and #$0F                    ; trailing byte: just switch it to hold
+    ora #(VERA2_INC_0 << 4)
+    sta VERA2_ADDR_H
+    bra @rmwhi
+@nofull
+    lda g4h_phase
+    beq @done
+    lda #VERA2_INC_0
+    jsr gfx4h_setptr
+@rmwhi
+    lda VERA2_DATA              ; trailing even pixel: RMW the high nibble
+    and #$0F
+    sta g4h_t
+    lda g4h_t2
+    and #$F0
+    ora g4h_t
+    sta VERA2_DATA
 @done
     rts
 
+; vline: one address calc, then per row an RMW at hold stride and a
+; 24-bit +320 on the cached address (three pointer stores) -- the same
+; nibble mask the whole way down, no per-pixel pset.
 gfx4h_vline
     and #$0F
     sta g4h_c
@@ -252,20 +305,55 @@ gfx4h_vline
     sta g4h_n
     lda X16_P5
     sta g4h_n+1
-@loop
-    lda g4h_n
-    ora g4h_n+1
+    ora g4h_n
     beq @done
+    jsr .addr_calc              ; g4h_a0..a2 = the column's first byte
+    lda X16_P0
+    and #1
+    bne @odd
+    lda #$0F                    ; even x: keep low nibble, or in col<<4
+    sta g4h_t2
     lda g4h_c
-    jsr gfx4h_pset
-    inc X16_P2
-    bne +
-    inc X16_P3
+    asl
+    asl
+    asl
+    asl
+    sta g4h_t
+    bra @row
+@odd
+    lda #$F0                    ; odd x: keep high nibble, or in col
+    sta g4h_t2
+    lda g4h_c
+    sta g4h_t
+@row
+    lda g4h_a0
+    sta VERA2_ADDR_L
+    lda g4h_a1
+    sta VERA2_ADDR_M
+    lda g4h_a2
+    and #$0F
+    ora #(VERA2_INC_0 << 4)     ; hold: read and write the same byte
+    sta VERA2_ADDR_H
+    lda VERA2_DATA
+    and g4h_t2
+    ora g4h_t
+    sta VERA2_DATA
+    clc                         ; address += 320, one row down
+    lda g4h_a0
+    adc #$40
+    sta g4h_a0
+    lda g4h_a1
+    adc #$01
+    sta g4h_a1
+    bcc +
+    inc g4h_a2
 +   lda g4h_n
     bne +
     dec g4h_n+1
 +   dec g4h_n
-    bra @loop
+    lda g4h_n
+    ora g4h_n+1
+    bne @row
 @done
     rts
 
@@ -277,19 +365,21 @@ gfx4h_vline
 gfx4h_rect
     and #$0F
     sta g4h_rc
+    lda X16_P0
+    sta g4h_rx
+    lda X16_P1
+    sta g4h_rx+1
 @row
     lda X16_P6
     ora X16_P7
     beq @done
     lda g4h_rc
     jsr gfx4h_hline
-    sec
-    lda X16_P0
-    sbc X16_P4
+    lda g4h_rx                  ; hline may nudge x for alignment: restore
     sta X16_P0
-    bcs +
-    dec X16_P1
-+   inc X16_P2
+    lda g4h_rx+1
+    sta X16_P1
+    inc X16_P2
     bne +
     inc X16_P3
 +   lda X16_P6
@@ -814,59 +904,50 @@ gfx4h_copy_wait
     rts
 
 .addr_calc
-    lda X16_P2                  ; a = y << 6
+    ldx X16_P2                  ; y*320 from the row tables
+    lda .m320_lo,x
     sta g4h_a0
-    lda X16_P3
+    lda .m320_md,x
     sta g4h_a1
-    stz g4h_a2
-    ldx #6
-@s6
-    asl g4h_a0
-    rol g4h_a1
-    rol g4h_a2
-    dex
-    bne @s6
-
-    lda g4h_a0                  ; T = y << 8
-    sta X16_T0
-    lda g4h_a1
-    sta X16_T1
-    lda g4h_a2
-    sta X16_T2
-    asl X16_T0
-    rol X16_T1
-    rol X16_T2
-    asl X16_T0
-    rol X16_T1
-    rol X16_T2
-
-    clc                         ; y*320 = (y<<6) + (y<<8)
-    lda g4h_a0
-    adc X16_T0
-    sta g4h_a0
-    lda g4h_a1
-    adc X16_T1
-    sta g4h_a1
-    lda g4h_a2
-    adc X16_T2
+    lda .m320_hi,x
     sta g4h_a2
-
+    lda X16_P3                  ; y >= 256: + 256*320 = $14000
+    beq @addx
+    clc
+    lda g4h_a1
+    adc #$40
+    sta g4h_a1
+    bcc +
+    inc g4h_a2
++   inc g4h_a2
+@addx
     lda X16_P1                  ; + x >> 1
+    lsr
     sta X16_T1
     lda X16_P0
-    lsr X16_T1
     ror
-    sta X16_T0
     clc
-    lda g4h_a0
-    adc X16_T0
+    adc g4h_a0
     sta g4h_a0
     lda g4h_a1
     adc X16_T1
     sta g4h_a1
-    lda g4h_a2
-    adc #0
-    sta g4h_a2
+    bcc +
+    inc g4h_a2
++   rts
+
+.fill_count
+    ldy g4h_n+1                 ; high byte first, so beq tests the LOW
+    ldx g4h_n                   ; byte (same shape as bitmap8h)
+    beq @full
+    iny
+@full
+@loop
+    sta VERA2_DATA
+    dex
+    bne @loop
+    dey
+    bne @loop
     rts
 
 .fill_pages
@@ -906,6 +987,7 @@ g4h_src !word 0
 g4h_rowbytes !byte 0
 g4h_phase !byte 0
 
+g4h_rx  !word 0
 g4h_fx  !word 0
 g4h_fy  !word 0
 g4h_rw  !word 0
@@ -936,5 +1018,108 @@ g4h_lsy  !word 0
 
 .colbyte !byte $00, $11, $22, $33, $44, $55, $66, $77
          !byte $88, $99, $AA, $BB, $CC, $DD, $EE, $FF
+
+; row-offset tables: entry i = i*320, split into three bytes. Rows 256+
+; add the constant $14000 in .addr_calc. 768 bytes of table buys every
+; pset/read/hline/vline a ~200-cycle shift loop.
+.m320_lo
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+!byte $00, $40, $80, $C0, $00, $40, $80, $C0
+.m320_md
+!byte $00, $01, $02, $03, $05, $06, $07, $08
+!byte $0A, $0B, $0C, $0D, $0F, $10, $11, $12
+!byte $14, $15, $16, $17, $19, $1A, $1B, $1C
+!byte $1E, $1F, $20, $21, $23, $24, $25, $26
+!byte $28, $29, $2A, $2B, $2D, $2E, $2F, $30
+!byte $32, $33, $34, $35, $37, $38, $39, $3A
+!byte $3C, $3D, $3E, $3F, $41, $42, $43, $44
+!byte $46, $47, $48, $49, $4B, $4C, $4D, $4E
+!byte $50, $51, $52, $53, $55, $56, $57, $58
+!byte $5A, $5B, $5C, $5D, $5F, $60, $61, $62
+!byte $64, $65, $66, $67, $69, $6A, $6B, $6C
+!byte $6E, $6F, $70, $71, $73, $74, $75, $76
+!byte $78, $79, $7A, $7B, $7D, $7E, $7F, $80
+!byte $82, $83, $84, $85, $87, $88, $89, $8A
+!byte $8C, $8D, $8E, $8F, $91, $92, $93, $94
+!byte $96, $97, $98, $99, $9B, $9C, $9D, $9E
+!byte $A0, $A1, $A2, $A3, $A5, $A6, $A7, $A8
+!byte $AA, $AB, $AC, $AD, $AF, $B0, $B1, $B2
+!byte $B4, $B5, $B6, $B7, $B9, $BA, $BB, $BC
+!byte $BE, $BF, $C0, $C1, $C3, $C4, $C5, $C6
+!byte $C8, $C9, $CA, $CB, $CD, $CE, $CF, $D0
+!byte $D2, $D3, $D4, $D5, $D7, $D8, $D9, $DA
+!byte $DC, $DD, $DE, $DF, $E1, $E2, $E3, $E4
+!byte $E6, $E7, $E8, $E9, $EB, $EC, $ED, $EE
+!byte $F0, $F1, $F2, $F3, $F5, $F6, $F7, $F8
+!byte $FA, $FB, $FC, $FD, $FF, $00, $01, $02
+!byte $04, $05, $06, $07, $09, $0A, $0B, $0C
+!byte $0E, $0F, $10, $11, $13, $14, $15, $16
+!byte $18, $19, $1A, $1B, $1D, $1E, $1F, $20
+!byte $22, $23, $24, $25, $27, $28, $29, $2A
+!byte $2C, $2D, $2E, $2F, $31, $32, $33, $34
+!byte $36, $37, $38, $39, $3B, $3C, $3D, $3E
+.m320_hi
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $01, $01, $01
+!byte $01, $01, $01, $01, $01, $01, $01, $01
+!byte $01, $01, $01, $01, $01, $01, $01, $01
+!byte $01, $01, $01, $01, $01, $01, $01, $01
+!byte $01, $01, $01, $01, $01, $01, $01, $01
+!byte $01, $01, $01, $01, $01, $01, $01, $01
+!byte $01, $01, $01, $01, $01, $01, $01, $01
 
 }   ; !zone x16_bitmap4h
