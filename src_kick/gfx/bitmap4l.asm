@@ -107,10 +107,10 @@ gfx4l_setptr:
     lda X16_T3
     sta X16_T1
     stz X16_T2
-    asl
+    asl X16_T0
     rol X16_T1
     rol X16_T2
-    asl
+    asl X16_T0
     rol X16_T1
     rol X16_T2
 
