@@ -754,25 +754,19 @@ gfx4l_line
     stz gl4l_sx+1
 .gl4l_dx_done
 
-    sec
+    sec                         ; dy = -|y1 - y0|, sy = sign (y is 8-bit)
     lda gl4l_y1
     sbc gl4l_y0
-    sta gl4l_ldy
-    lda gl4l_y1+1
-    sbc gl4l_y0+1
-    sta gl4l_ldy+1
     bpl .gl4l_dy_pos
-    sec
-    lda #0
-    sbc gl4l_ldy
+    eor #$FF
+    clc
+    adc #1                      ; absolute value
     sta gl4l_ldy
-    lda #0
-    sbc gl4l_ldy+1
-    sta gl4l_ldy+1
     lda #$FF
     sta gl4l_sy
     bra .gl4l_dy_done
 .gl4l_dy_pos
+    sta gl4l_ldy
     lda #$01
     sta gl4l_sy
 .gl4l_dy_done
@@ -781,8 +775,8 @@ gfx4l_line
     sbc gl4l_ldy
     sta gl4l_dy
     lda #0
-    sbc gl4l_ldy+1
-    sta gl4l_dy+1
+    sbc #0
+    sta gl4l_dy+1               ; gl4l_dy = -|dy|, 16-bit signed
 
     clc
     lda gl4l_dx
