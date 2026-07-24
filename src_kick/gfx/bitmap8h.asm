@@ -780,10 +780,10 @@ gfx8h_copy_wait__s7:
     rts
 
 bitmap8h_fill_count:
-    ldx g8h_n
-    ldy g8h_n+1
-    beq gfx8h_copy_wait__full
-    iny
+    ldy g8h_n+1                 // high byte first, so beq tests the LOW byte:
+    ldx g8h_n                  // a partial low byte needs one extra dey pass,
+    beq gfx8h_copy_wait__full                  // a zero low byte does not (testing the high
+    iny                        // byte made every width < 256 write 64K)
 gfx8h_copy_wait__full:
 gfx8h_copy_wait__loop:
     sta VERA2_DATA
