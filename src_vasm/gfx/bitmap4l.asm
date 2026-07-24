@@ -296,7 +296,14 @@ gfx4l_rect
 .row
     lda X16_P6
     beq .done
-    jsr gfx4l_hline
+    jsr gfx4l_hline             ; advances P0/P1 by the width -- reset it,
+    sec                        ; or every row starts where the last ended
+    lda X16_P0                 ; (a staircase instead of a filled rect)
+    sbc X16_P4
+    sta X16_P0
+    lda X16_P1
+    sbc X16_P5
+    sta X16_P1
     inc X16_P2
     dec X16_P6
     bra .row
