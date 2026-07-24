@@ -27,6 +27,7 @@ GFX4L_STRIDE = 160
 ; ---------------------------------------------------------------------
 ; gfx4l_init -- program 320x240@4bpp on bare VERA registers.
 ; ---------------------------------------------------------------------
+.ifndef X16_BITMAP4L_NO_INIT
 gfx4l_init
     vera_dcsel 0
     lda #$80
@@ -58,6 +59,7 @@ gfx4l_init
     lda #VERA_VIDEO_LAYER0_EN
     tsb VERA_DC_VIDEO
     rts
+.endif
 
 ; ---------------------------------------------------------------------
 ; gfx4l_clear -- fill the whole framebuffer with one colour
@@ -624,11 +626,11 @@ gfx4l_pattern_rect
     ora X16_P5
     bne :+
     rts
-+
+:
     lda X16_P6
     bne :+
     rts
-+
+:
     lda X16_P0
     and #7
     sta gp4l_rot
@@ -860,6 +862,7 @@ bitmap4l_gl4l_plot
     sta X16_P3
     jmp gfx4l_pset
 
+.ifndef X16_BITMAP4L_MIN
 ; ---------------------------------------------------------------------
 ; gfx4l_char / gfx4l_text
 ; ---------------------------------------------------------------------
@@ -963,6 +966,7 @@ bitmap4l_gt4l_lda
     bra @gt4l_loop
 @gt4l_done
     rts
+.endif
 
 ; ---------------------------------------------------------------------
 ; Data

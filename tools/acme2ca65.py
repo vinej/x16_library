@@ -39,19 +39,25 @@ DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 # has a native equivalent -- the unnamed ':' label, referenced ':+' --
 # which, unlike a named label, does not end the @cheap scope around it.
 ANON_DEF = re.compile(r'^\+[ \t]+(.*)$')
+# a '+' or '-' anonymous label alone on its own line (the instruction it
+# labels follows on the NEXT line) -- becomes the bare ':' definition.
+ANON_LONE = re.compile(r'^[+-][ \t]*$')
 ANON_REF = re.compile(
-    r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)\+[ \t]*$')
+    r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)([+-])[ \t]*$')
 
 def anon_labels(text):
     out = []
     for ln in text.split("\n"):
+        if ANON_LONE.match(ln):
+            out.append(":")
+            continue
         d = ANON_DEF.match(ln)
         if d:
             out.append(":\t" + d.group(1))
             continue
         r = ANON_REF.match(ln)
         if r:
-            out.append(r.group(1) + ":+")
+            out.append(r.group(1) + ":" + r.group(2))
             continue
         out.append(ln)
     return "\n".join(out)

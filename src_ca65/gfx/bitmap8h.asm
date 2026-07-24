@@ -499,7 +499,7 @@ gfx8h_pattern_rect
     ora X16_P7
     bne :+
     jmp @done
-+
+:
     lda X16_P2
     sta gp8h_by
     lda X16_P3
@@ -513,7 +513,7 @@ gfx8h_pattern_rect
     ora X16_P7
     bne :+
     jmp @done
-+
+:
     lda gp8h_bx
     sta gp8h_x
     lda gp8h_bx+1
