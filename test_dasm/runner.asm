@@ -28,6 +28,7 @@ X16_USE_PSG        = 1
 X16_USE_YM         = 1
 X16_USE_PCM        = 1
 X16_USE_PCM_STREAM = 1
+X16_USE_WAV        = 1
 X16_USE_INPUT      = 1
 X16_USE_BANK       = 1
 X16_USE_BANKALLOC  = 1
@@ -45,6 +46,7 @@ X16_USE_FIXED      = 1
 X16_USE_COLLIDE    = 1
 X16_USE_BITS       = 1
 X16_USE_NUMBER     = 1
+X16_USE_SORT       = 1
 X16_USE_INT16      = 1
 X16_USE_INT32      = 1
 X16_USE_FLOAT      = 1
@@ -104,6 +106,9 @@ main
     jsr test_ym_write
     jsr test_ym_channel_in_a
     jsr test_bits
+    jsr test_sort
+    jsr test_number_fmt
+    jsr test_wav
     jsr test_number_dec
     jsr test_number_hex
     jsr test_number_parse
@@ -1846,6 +1851,283 @@ test_bits
     jmp t_result
 .cell dc.b 0
 .name dc.b "BITS", $00
+
+; =====================================================================
+; sort: each typed entry against a small array with a known result.
+; =====================================================================
+    SUBROUTINE
+test_sort
+    ldx #6                      ; --- sort_u8 ---
+.cu8
+    lda .src_u8-1,x
+    sta .buf-1,x
+    dex
+    bne .cu8
+    lda #<.buf
+    sta X16_P0
+    lda #>.buf
+    sta X16_P1
+    lda #6
+    sta X16_P2
+    stz X16_P3
+    jsr sort_u8
+    ldx #0
+.vu8
+    lda .buf,x
+    cmp .exp_u8,x
+    bne .fail
+    inx
+    cpx #6
+    bne .vu8
+
+    ldx #5                      ; --- sort_s8 ---
+.cs8
+    lda .src_s8-1,x
+    sta .buf-1,x
+    dex
+    bne .cs8
+    lda #<.buf
+    sta X16_P0
+    lda #>.buf
+    sta X16_P1
+    lda #5
+    sta X16_P2
+    stz X16_P3
+    jsr sort_s8
+    ldx #0
+.vs8
+    lda .buf,x
+    cmp .exp_s8,x
+    bne .fail
+    inx
+    cpx #5
+    bne .vs8
+
+    bra .cont                   ; fail/report kept mid-routine for branch range
+.fail
+    lda #1
+    bra .report
+.ok
+    lda #0
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.cont
+    ldx #6                      ; --- sort_u16 (3 words) ---
+.cu16
+    lda .src_u16-1,x
+    sta .buf-1,x
+    dex
+    bne .cu16
+    lda #<.buf
+    sta X16_P0
+    lda #>.buf
+    sta X16_P1
+    lda #3
+    sta X16_P2
+    stz X16_P3
+    jsr sort_u16
+    ldx #0
+.vu16
+    lda .buf,x
+    cmp .exp_u16,x
+    bne .fail
+    inx
+    cpx #6
+    bne .vu16
+
+    ldx #8                      ; --- sort_s16 (4 words) ---
+.cs16
+    lda .src_s16-1,x
+    sta .buf-1,x
+    dex
+    bne .cs16
+    lda #<.buf
+    sta X16_P0
+    lda #>.buf
+    sta X16_P1
+    lda #4
+    sta X16_P2
+    stz X16_P3
+    jsr sort_s16
+    ldx #0
+.vs16
+    lda .buf,x
+    cmp .exp_s16,x
+    bne .fail
+    inx
+    cpx #8
+    bne .vs16
+
+    bra .ok
+
+.src_u8  dc.b 5, 3, 8, 1, 9, 2
+.exp_u8  dc.b 1, 2, 3, 5, 8, 9
+.src_s8  dc.b $FB, $03, $80, $7F, $00      ; -5, 3, -128, 127, 0
+.exp_s8  dc.b $80, $FB, $00, $03, $7F      ; -128, -5, 0, 3, 127
+.src_u16 dc.w $0300, $0100, $0200
+.exp_u16 dc.w $0100, $0200, $0300
+.src_s16 dc.w $FFFF, $0001, $8000, $7FFF   ; -1, 1, -32768, 32767
+.exp_s16 dc.w $8000, $FFFF, $0001, $7FFF
+.buf     ds 16, 0
+.name    dc.b "SORT", $00
+
+; =====================================================================
+; number formatting extensions: u8/s8/s16 dec, hex, binary.
+; =====================================================================
+    SUBROUTINE
+test_number_fmt
+    lda #200                    ; u8_to_dec(200) = "200"
+    jsr u8_to_dec
+    cpy #3
+    bne .fail
+    lda num_buf
+    cmp #'2
+    bne .fail
+    lda num_buf+2
+    cmp #'0
+    bne .fail
+
+    lda #$FF                    ; u8_to_hex(255) = "FF"
+    jsr u8_to_hex
+    cpy #2
+    bne .fail
+    lda num_buf
+    cmp #'F
+    bne .fail
+
+    lda #%10100101             ; u8_to_bin = "10100101"
+    jsr u8_to_bin
+    cpy #8
+    bne .fail
+    lda num_buf
+    cmp #'1
+    bne .fail
+    lda num_buf+1
+    cmp #'0
+    bne .fail
+    lda num_buf+7
+    cmp #'1
+    bne .fail
+
+    bra .cont
+.fail
+    lda #1
+    bra .report
+.ok
+    lda #0
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.cont
+    lda #<$8001                ; u16_to_bin($8001) = "1000000000000001"
+    sta X16_P0
+    lda #>$8001
+    sta X16_P1
+    jsr u16_to_bin
+    cpy #16
+    bne .fail
+    lda num_buf
+    cmp #'1
+    bne .fail
+    lda num_buf+1
+    cmp #'0
+    bne .fail
+    lda num_buf+15
+    cmp #'1
+    bne .fail
+
+    lda #<-5                    ; s8_to_dec(-5) = "-5"
+    jsr s8_to_dec
+    cpy #2
+    bne .fail
+    lda num_buf
+    cmp #'-
+    bne .fail
+    lda num_buf+1
+    cmp #'5
+    bne .fail
+
+    lda #<-1234                ; s16_to_dec(-1234) = "-1234"
+    sta X16_P0
+    lda #>-1234
+    sta X16_P1
+    jsr s16_to_dec
+    cpy #5
+    bne .fail
+    lda num_buf
+    cmp #'-
+    bne .fail
+    lda num_buf+4
+    cmp #'4
+    bne .fail
+
+    bra .ok
+.name    dc.b "NUMFMT", $00
+
+; =====================================================================
+; wav_parse_header: parse a synthetic 44-byte PCM WAV header.
+; =====================================================================
+    SUBROUTINE
+test_wav
+    lda #<.hdr
+    sta X16_P0
+    lda #>.hdr
+    sta X16_P1
+    jsr wav_parse_header
+    bcs .fail
+    lda wav_format
+    cmp #1
+    bne .fail
+    lda wav_channels
+    cmp #2
+    bne .fail
+    lda wav_bits
+    cmp #16
+    bne .fail
+    lda wav_rate
+    cmp #$22
+    bne .fail
+    lda wav_rate+1
+    cmp #$56                    ; 22050 = $5622
+    bne .fail
+    lda wav_data_off
+    cmp #44
+    bne .fail
+    lda wav_data_off+1
+    bne .fail
+    lda wav_data_len
+    cmp #$E8
+    bne .fail
+    lda wav_data_len+1
+    cmp #$03                    ; 1000 = $03E8
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.hdr
+    dc.b "RIFF"
+    dc.b 0, 0, 0, 0
+    dc.b "WAVE"
+    dc.b "fmt "
+    dc.b 16, 0, 0, 0           ; fmt chunk size
+    dc.b 1, 0                  ; PCM
+    dc.b 2, 0                  ; channels
+    dc.b $22, $56, 0, 0        ; 22050 Hz
+    dc.b 0, 0, 0, 0            ; byte rate (ignored)
+    dc.b 4, 0                  ; block align
+    dc.b 16, 0                 ; bits per sample
+    dc.b "data"
+    dc.b $E8, $03, 0, 0        ; data size 1000
+    dc.b 0, 0, 0, 0            ; a little sample data
+.name    dc.b "WAV", $00
 
 ; =====================================================================
 ; u16_to_dec: no leading zeros, but zero itself still prints "0".

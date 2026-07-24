@@ -29,6 +29,7 @@
 #define X16_USE_STRING_CASE  // case folding
 #define X16_USE_STRING_FIND  // searching
 #define X16_USE_STRING_SLICE  // substrings
+#define X16_USE_STRING_SORT  // sort an array of string pointers
 
 #import "core/sugar.asm"        // optional friendly xm_* macros (gated; tested below)
 
@@ -108,6 +109,7 @@ main:
     jsr test_str_pat
     jsr test_str_slice
     jsr test_str_trim
+    jsr test_str_sort
     jsr test_str_sugar
     jsr test_g2_clear
     jsr test_g2_init
@@ -2381,6 +2383,72 @@ test_str_trim__report:
     ldy #>test_str_trim__name
     jmp t_result
 test_str_trim__name: .text "STR_TRIM"
+    .byte 0
+
+// =====================================================================
+// str_sort: permute an array of string pointers into ascending order.
+// =====================================================================
+test_str_sort:
+    lda #<test_str_sort__sdelta
+    sta test_str_sort__arr+0
+    lda #>test_str_sort__sdelta
+    sta test_str_sort__arr+1
+    lda #<test_str_sort__salpha
+    sta test_str_sort__arr+2
+    lda #>test_str_sort__salpha
+    sta test_str_sort__arr+3
+    lda #<test_str_sort__scharlie
+    sta test_str_sort__arr+4
+    lda #>test_str_sort__scharlie
+    sta test_str_sort__arr+5
+    lda #<test_str_sort__sbravo
+    sta test_str_sort__arr+6
+    lda #>test_str_sort__sbravo
+    sta test_str_sort__arr+7
+
+    lda #<test_str_sort__arr
+    sta X16_P0
+    lda #>test_str_sort__arr
+    sta X16_P1
+    lda #4
+    sta X16_P2
+    stz X16_P3
+    jsr str_sort
+
+    // expect alpha, bravo, charlie, delta
+    lda test_str_sort__arr+0
+    cmp #<test_str_sort__salpha
+    bne test_str_sort__fail
+    lda test_str_sort__arr+2
+    cmp #<test_str_sort__sbravo
+    bne test_str_sort__fail
+    lda test_str_sort__arr+4
+    cmp #<test_str_sort__scharlie
+    bne test_str_sort__fail
+    lda test_str_sort__arr+6
+    cmp #<test_str_sort__sdelta
+    bne test_str_sort__fail
+    lda test_str_sort__arr+1
+    cmp #>test_str_sort__salpha
+    bne test_str_sort__fail
+    lda #0
+    bra test_str_sort__report
+test_str_sort__fail:
+    lda #1
+test_str_sort__report:
+    ldx #<test_str_sort__name
+    ldy #>test_str_sort__name
+    jmp t_result
+test_str_sort__salpha: .text "alpha"
+    .byte 0
+test_str_sort__sbravo: .text "bravo"
+    .byte 0
+test_str_sort__scharlie: .text "charlie"
+    .byte 0
+test_str_sort__sdelta: .text "delta"
+    .byte 0
+test_str_sort__arr: .fill 8, 0
+test_str_sort__name: .text "STR_SORT"
     .byte 0
 
 // The xm_str_* macros expand to the same setup + jsr, so this proves they

@@ -27,6 +27,7 @@ X16_USE_PSG        = 1
 X16_USE_YM         = 1
 X16_USE_PCM        = 1
 X16_USE_PCM_STREAM = 1
+X16_USE_WAV        = 1
 X16_USE_INPUT      = 1
 X16_USE_BANK       = 1
 X16_USE_BANKALLOC  = 1
@@ -44,6 +45,7 @@ X16_USE_FIXED      = 1
 X16_USE_COLLIDE    = 1
 X16_USE_BITS       = 1
 X16_USE_NUMBER     = 1
+X16_USE_SORT       = 1
 X16_USE_INT16      = 1
 X16_USE_INT32      = 1
 X16_USE_FLOAT      = 1
@@ -102,6 +104,9 @@ main
     jsr test_ym_write
     jsr test_ym_channel_in_a
     jsr test_bits
+    jsr test_sort
+    jsr test_number_fmt
+    jsr test_wav
     jsr test_number_dec
     jsr test_number_hex
     jsr test_number_parse
@@ -1810,6 +1815,281 @@ test_bits__report
     jmp t_result
 test_bits__cell .byte 0
 test_bits__name dta c'BITS', $00
+
+; =====================================================================
+; sort: each typed entry against a small array with a known result.
+; =====================================================================
+test_sort
+    ldx #6                      ; --- sort_u8 ---
+test_sort__cu8
+    lda test_sort__src_u8-1,x
+    sta test_sort__buf-1,x
+    dex
+    bne test_sort__cu8
+    lda #<test_sort__buf
+    sta X16_P0
+    lda #>test_sort__buf
+    sta X16_P1
+    lda #6
+    sta X16_P2
+    stz X16_P3
+    jsr sort_u8
+    ldx #0
+test_sort__vu8
+    lda test_sort__buf,x
+    cmp test_sort__exp_u8,x
+    bne test_sort__fail
+    inx
+    cpx #6
+    bne test_sort__vu8
+
+    ldx #5                      ; --- sort_s8 ---
+test_sort__cs8
+    lda test_sort__src_s8-1,x
+    sta test_sort__buf-1,x
+    dex
+    bne test_sort__cs8
+    lda #<test_sort__buf
+    sta X16_P0
+    lda #>test_sort__buf
+    sta X16_P1
+    lda #5
+    sta X16_P2
+    stz X16_P3
+    jsr sort_s8
+    ldx #0
+test_sort__vs8
+    lda test_sort__buf,x
+    cmp test_sort__exp_s8,x
+    bne test_sort__fail
+    inx
+    cpx #5
+    bne test_sort__vs8
+
+    bra test_sort__cont                   ; fail/report kept mid-routine for branch range
+test_sort__fail
+    lda #1
+    bra test_sort__report
+test_sort__ok
+    lda #0
+test_sort__report
+    ldx #<test_sort__name
+    ldy #>test_sort__name
+    jmp t_result
+test_sort__cont
+    ldx #6                      ; --- sort_u16 (3 words) ---
+test_sort__cu16
+    lda test_sort__src_u16-1,x
+    sta test_sort__buf-1,x
+    dex
+    bne test_sort__cu16
+    lda #<test_sort__buf
+    sta X16_P0
+    lda #>test_sort__buf
+    sta X16_P1
+    lda #3
+    sta X16_P2
+    stz X16_P3
+    jsr sort_u16
+    ldx #0
+test_sort__vu16
+    lda test_sort__buf,x
+    cmp test_sort__exp_u16,x
+    bne test_sort__fail
+    inx
+    cpx #6
+    bne test_sort__vu16
+
+    ldx #8                      ; --- sort_s16 (4 words) ---
+test_sort__cs16
+    lda test_sort__src_s16-1,x
+    sta test_sort__buf-1,x
+    dex
+    bne test_sort__cs16
+    lda #<test_sort__buf
+    sta X16_P0
+    lda #>test_sort__buf
+    sta X16_P1
+    lda #4
+    sta X16_P2
+    stz X16_P3
+    jsr sort_s16
+    ldx #0
+test_sort__vs16
+    lda test_sort__buf,x
+    cmp test_sort__exp_s16,x
+    bne test_sort__fail
+    inx
+    cpx #8
+    bne test_sort__vs16
+
+    bra test_sort__ok
+
+test_sort__src_u8  .byte 5, 3, 8, 1, 9, 2
+test_sort__exp_u8  .byte 1, 2, 3, 5, 8, 9
+test_sort__src_s8  .byte $FB, $03, $80, $7F, $00      ; -5, 3, -128, 127, 0
+test_sort__exp_s8  .byte $80, $FB, $00, $03, $7F      ; -128, -5, 0, 3, 127
+test_sort__src_u16 .word $0300, $0100, $0200
+test_sort__exp_u16 .word $0100, $0200, $0300
+test_sort__src_s16 .word $FFFF, $0001, $8000, $7FFF   ; -1, 1, -32768, 32767
+test_sort__exp_s16 .word $8000, $FFFF, $0001, $7FFF
+test_sort__buf
+    :(16) dta 0
+test_sort__name    dta c'SORT', $00
+
+; =====================================================================
+; number formatting extensions: u8/s8/s16 dec, hex, binary.
+; =====================================================================
+test_number_fmt
+    lda #200                    ; u8_to_dec(200) = "200"
+    jsr u8_to_dec
+    cpy #3
+    bne test_number_fmt__fail
+    lda num_buf
+    cmp #'2'
+    bne test_number_fmt__fail
+    lda num_buf+2
+    cmp #'0'
+    bne test_number_fmt__fail
+
+    lda #$FF                    ; u8_to_hex(255) = "FF"
+    jsr u8_to_hex
+    cpy #2
+    bne test_number_fmt__fail
+    lda num_buf
+    cmp #'F'
+    bne test_number_fmt__fail
+
+    lda #%10100101             ; u8_to_bin = "10100101"
+    jsr u8_to_bin
+    cpy #8
+    bne test_number_fmt__fail
+    lda num_buf
+    cmp #'1'
+    bne test_number_fmt__fail
+    lda num_buf+1
+    cmp #'0'
+    bne test_number_fmt__fail
+    lda num_buf+7
+    cmp #'1'
+    bne test_number_fmt__fail
+
+    bra test_number_fmt__cont
+test_number_fmt__fail
+    lda #1
+    bra test_number_fmt__report
+test_number_fmt__ok
+    lda #0
+test_number_fmt__report
+    ldx #<test_number_fmt__name
+    ldy #>test_number_fmt__name
+    jmp t_result
+test_number_fmt__cont
+    lda #<$8001                ; u16_to_bin($8001) = "1000000000000001"
+    sta X16_P0
+    lda #>$8001
+    sta X16_P1
+    jsr u16_to_bin
+    cpy #16
+    bne test_number_fmt__fail
+    lda num_buf
+    cmp #'1'
+    bne test_number_fmt__fail
+    lda num_buf+1
+    cmp #'0'
+    bne test_number_fmt__fail
+    lda num_buf+15
+    cmp #'1'
+    bne test_number_fmt__fail
+
+    lda #<-5                    ; s8_to_dec(-5) = "-5"
+    jsr s8_to_dec
+    cpy #2
+    bne test_number_fmt__fail
+    lda num_buf
+    cmp #'-'
+    bne test_number_fmt__fail
+    lda num_buf+1
+    cmp #'5'
+    bne test_number_fmt__fail
+
+    lda #<-1234                ; s16_to_dec(-1234) = "-1234"
+    sta X16_P0
+    lda #>-1234
+    sta X16_P1
+    jsr s16_to_dec
+    cpy #5
+    bne test_number_fmt__fail
+    lda num_buf
+    cmp #'-'
+    bne test_number_fmt__fail
+    lda num_buf+4
+    cmp #'4'
+    bne test_number_fmt__fail
+
+    bra test_number_fmt__ok
+test_number_fmt__name    dta c'NUMFMT', $00
+
+; =====================================================================
+; wav_parse_header: parse a synthetic 44-byte PCM WAV header.
+; =====================================================================
+test_wav
+    lda #<test_wav__hdr
+    sta X16_P0
+    lda #>test_wav__hdr
+    sta X16_P1
+    jsr wav_parse_header
+    bcs test_wav__fail
+    lda wav_format
+    cmp #1
+    bne test_wav__fail
+    lda wav_channels
+    cmp #2
+    bne test_wav__fail
+    lda wav_bits
+    cmp #16
+    bne test_wav__fail
+    lda wav_rate
+    cmp #$22
+    bne test_wav__fail
+    lda wav_rate+1
+    cmp #$56                    ; 22050 = $5622
+    bne test_wav__fail
+    lda wav_data_off
+    cmp #44
+    bne test_wav__fail
+    lda wav_data_off+1
+    bne test_wav__fail
+    lda wav_data_len
+    cmp #$E8
+    bne test_wav__fail
+    lda wav_data_len+1
+    cmp #$03                    ; 1000 = $03E8
+    bne test_wav__fail
+    lda #0
+    bra test_wav__report
+test_wav__fail
+    lda #1
+test_wav__report
+    ldx #<test_wav__name
+    ldy #>test_wav__name
+    jmp t_result
+test_wav__hdr
+    dta c'RIFF'
+    .byte 0, 0, 0, 0
+    dta c'WAVE'
+    dta c'fmt '
+    .byte 16, 0, 0, 0           ; fmt chunk size
+    .byte 1, 0                  ; PCM
+    .byte 2, 0                  ; channels
+    .byte $22, $56, 0, 0        ; 22050 Hz
+    .byte 0, 0, 0, 0            ; byte rate (ignored)
+    .byte 4, 0                  ; block align
+    .byte 16, 0                 ; bits per sample
+    dta c'data'
+    .byte $E8, $03, 0, 0        ; data size 1000
+    .byte 0, 0, 0, 0            ; a little sample data
+test_wav__name    dta c'WAV', $00
 
 ; =====================================================================
 ; u16_to_dec: no leading zeros, but zero itself still prints "0".
