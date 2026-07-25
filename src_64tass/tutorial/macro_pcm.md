@@ -107,3 +107,52 @@ sample_data .byte $80, $88, $90, $88, $80, $78, $70, $78
 
 .include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of pcm
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `#xm_pcm_full`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_pcm_full` |
+| Purpose | carry set if the FIFO cannot take another byte |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_PCM` is enabled. |
+
+## `#xm_pcm_empty`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_pcm_empty` |
+| Purpose | carry set if the FIFO has run dry |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_PCM` is enabled. |
+
+## `#xm_pcm_stream_active`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_pcm_stream_active` |
+| Purpose | A = 1 while data remains, 0 when the whole |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A`. |
+| More info | Available when `X16_USE_PCM_STREAM` is enabled. |
+
+## `#xm_pcm_stream_start_bank offset, count, counthi, bank, rate`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_pcm_stream_start_bank offset, count, counthi, bank, rate` |
+| Purpose | play a sample living in banked RAM |
+| Input parameters | `offset`, `count`, `counthi`, `bank`, `rate` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_PCM_STREAM` is enabled. |

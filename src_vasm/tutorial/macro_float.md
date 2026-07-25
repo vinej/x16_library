@@ -297,3 +297,172 @@ work_buffer ds.b 64, 0
 
     include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of float
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_f_zero`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_zero` |
+| Purpose | FAC = 0 |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_neg`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_neg` |
+| Purpose | FAC = -FAC |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_abs`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_abs` |
+| Purpose | FAC = |FAC| |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_int`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_int` |
+| Purpose | FAC = int(FAC), truncating toward negative infinity |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_sgn`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_sgn` |
+| Purpose | A = $FF if FAC < 0, 0 if zero, 1 if positive |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A`. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_to_s16`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_to_s16` |
+| Purpose | -- out: A = low, X = high.    Rounds toward zero |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_sqrt`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_sqrt` |
+| Purpose | FAC = the square root of FAC |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_ln`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_ln` |
+| Purpose | FAC = the natural logarithm of FAC |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_exp`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_exp` |
+| Purpose | FAC = e raised to FAC |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_sin`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_sin` |
+| Purpose | FAC = the sine of FAC, in radians |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_cos`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_cos` |
+| Purpose | FAC = the cosine of FAC, in radians |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_tan`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_tan` |
+| Purpose | FAC = the tangent of FAC, in radians |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_atan`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_atan` |
+| Purpose | FAC = the arctangent of FAC, in radians |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_to_str`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_to_str` |
+| Purpose | A = low, X = high of a NUL-terminated string |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_to_str_trim`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_to_str_trim` |
+| Purpose | A = low, X = high, the string without that space |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |
+
+## `xm_f_rpow addr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_f_rpow addr` |
+| Purpose | the ROM's order |
+| Input parameters | `addr` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FLOAT` is enabled. |

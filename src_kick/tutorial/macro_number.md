@@ -73,3 +73,92 @@ source_text .text "LEVEL/01", 0
 
 #import "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## Packed BCD arithmetic
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_bcd_add8()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_add8()` |
+| Purpose | bcd_a += bcd_b at that width |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_add16()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_add16()` |
+| Purpose | bcd_a += bcd_b at that width |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_add32()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_add32()` |
+| Purpose | bcd_a += bcd_b at that width |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_sub8()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_sub8()` |
+| Purpose | bcd_a -= bcd_b at that width |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_sub16()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_sub16()` |
+| Purpose | bcd_a -= bcd_b at that width |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_sub32()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_sub32()` |
+| Purpose | bcd_a -= bcd_b at that width |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_addto(value)`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_addto(value)` |
+| Purpose | add bcd_b (32-bit) to a 4-byte BCD value in place |
+| Input parameters | `value` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |
+
+## `xm_bcd_subfrom(value)`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bcd_subfrom(value)` |
+| Purpose | subtract bcd_b (32-bit) from a 4-byte BCD value in place |
+| Input parameters | `value` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_BCD` is enabled. |

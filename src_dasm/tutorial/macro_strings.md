@@ -675,3 +675,132 @@ main
 
 include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## Single characters: classification and case folding
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_str_isdigit ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isdigit ch` |
+| Purpose | carry set if A is '0'..'9' |
+| Input parameters | `ch` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isxdigit ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isxdigit ch` |
+| Purpose | carry set if A is a hex digit (0-9, A-F, a-f) |
+| Input parameters | `ch` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_islower ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_islower ch` |
+| Purpose | carry set if A is 'a'..'z' (97-122) |
+| Input parameters | `ch` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isupper ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isupper ch` |
+| Purpose | PETSCII: the two upper-case ranges, 97-122 and 193-218 |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isupper_iso ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isupper_iso ch` |
+| Purpose | ISO: 'A'..'Z' (65-90) |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isletter ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isletter ch` |
+| Purpose | PETSCII: a lower- or upper-case letter |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isletter_iso ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isletter_iso ch` |
+| Purpose | ISO: a lower- or upper-case letter |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isspace ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isspace ch` |
+| Purpose | carry set if A is space, CR, LF, TAB, shift-CR or |
+| Input parameters | `ch` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isprint ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isprint ch` |
+| Purpose | PETSCII printable: 32-127 or 160-255 |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_isprint_iso ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_isprint_iso ch` |
+| Purpose | ISO printable: 32-126 or 160-255 |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CTYPE` is enabled. |
+
+## `xm_str_lowerchar ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_lowerchar ch` |
+| Purpose | fold one character to lower case |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CASE` is enabled. |
+
+## `xm_str_upperchar ch`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_str_upperchar ch` |
+| Purpose | ...to upper case |
+| Input parameters | `ch` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_STRING_CASE` is enabled. |

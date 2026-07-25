@@ -102,3 +102,42 @@ pixel_run .byte 1, 2, 3, 4, 4, 3, 2, 1
 
     icl "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of bank
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_bank_get`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bank_get` |
+| Purpose | the RAM bank mapped at $A000 |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_BANK` is enabled. |
+
+## `xm_bank_to_mem bank, offset, dst, count`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bank_to_mem bank, offset, dst, count` |
+| Purpose | the inverse |
+| Input parameters | `bank`, `offset`, `dst`, `count` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_BANK` is enabled. |
+
+## `xm_bank_copy_far srcbank, srcoff, dstbank, dstoff, count`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bank_copy_far srcbank, srcoff, dstbank, dstoff, count` |
+| Purpose | copy banked RAM to banked RAM |
+| Input parameters | `srcbank`, `srcoff`, `dstbank`, `dstoff`, `count` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_BANK` is enabled. |

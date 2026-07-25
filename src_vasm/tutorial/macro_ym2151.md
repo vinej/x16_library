@@ -246,3 +246,52 @@ main
 
     include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of ym
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_ym_busy`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_ym_busy` |
+| Purpose | carry set while the chip is busy |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_YM` is enabled. |
+
+## `xm_ym_get_pan channel`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_ym_get_pan channel` |
+| Purpose | X = pan setting |
+| Input parameters | `channel` |
+| Output parameters | Returns `X`. |
+| More info | Available when `X16_USE_YM` is enabled. |
+
+## `xm_ym_get_vol channel`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_ym_get_vol channel` |
+| Purpose | X = attenuation |
+| Input parameters | `channel` |
+| Output parameters | Returns `X`. |
+| More info | Available when `X16_USE_YM` is enabled. |
+
+## `xm_ym_patch_ram channel, addr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_ym_patch_ram channel, addr` |
+| Purpose | load an instrument |
+| Input parameters | `channel`, `addr` |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_YM` is enabled. |

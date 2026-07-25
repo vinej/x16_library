@@ -266,6 +266,67 @@ xm_screen_charset .macro cs
     jsr screen_charset
     .endm
 .endif
+; point VERA port 0 at a character cell, for the blit calls below
+.if xuse_screen
+xm_screen_addr .macro row, col
+    ldx #\row
+    ldy #\col
+    jsr screen_addr
+    .endm
+.endif
+; ...and port 1, which is where a vera_copy destination goes
+.if xuse_screen
+xm_screen_addr1 .macro row, col
+    ldx #\row
+    ldy #\col
+    jsr screen_addr1
+    .endm
+.endif
+; slide a rectangle of text rows: sugar_dir 0 moves the picture up, 1 down
+.if xuse_screen
+xm_screen_scroll .macro top, left, height, width, rows, dir
+    lda #\top
+    sta X16_P0
+    lda #\left
+    sta X16_P1
+    lda #\height
+    sta X16_P2
+    lda #\width
+    sta X16_P3
+    lda #\rows
+    sta X16_P4
+    lda #\dir
+    jsr screen_scroll
+    .endm
+.endif
+; PETSCII -> screen code
+.if xuse_screen
+xm_screen_scode .macro ch
+    lda #\ch
+    jsr screen_scode
+    .endm
+.endif
+; write sugar_count characters from sugar_addr, all in colour sugar_col (fg | bg << 4)
+.if xuse_screen
+xm_screen_blit .macro addr, count, col
+    lda #<(\addr)
+    sta X16_P0
+    lda #>(\addr)
+    sta X16_P1
+    lda #\count
+    ldx #\col
+    jsr screen_blit
+    .endm
+.endif
+; write sugar_count copies of sugar_ch in colour sugar_col
+.if xuse_screen
+xm_screen_blitfill .macro count, col, ch
+    lda #\count
+    ldx #\col
+    ldy #\ch
+    jsr screen_blitfill
+    .endm
+.endif
 ; print a NUL-terminated string
 .if xuse_screen
 xm_screen_puts .macro addr
@@ -5349,5 +5410,1012 @@ xm_str_trim .macro str
     lda #<(\str)
     ldx #>(\str)
     jsr str_trim
+    .endm
+.endif
+
+; =====================================================================
+; Routines that had no friendly macro until now. Most work on their
+; module's accumulator -- FAC, d_ac, i16_a/i16_b, i32_a/i32_b,
+; bcd_a/bcd_b, the stack or the queue -- so they take no arguments;
+; the rest carry the parameters their own header documents.
+; =====================================================================
+.if xuse_float
+xm_f_zero .macro
+    jsr f_zero
+    .endm
+.endif
+
+.if xuse_float
+xm_f_neg .macro
+    jsr f_neg
+    .endm
+.endif
+
+.if xuse_float
+xm_f_abs .macro
+    jsr f_abs
+    .endm
+.endif
+
+.if xuse_float
+xm_f_int .macro
+    jsr f_int
+    .endm
+.endif
+
+.if xuse_float
+xm_f_sgn .macro
+    jsr f_sgn
+    .endm
+.endif
+
+.if xuse_float
+xm_f_to_s16 .macro
+    jsr f_to_s16
+    .endm
+.endif
+
+.if xuse_float
+xm_f_sqrt .macro
+    jsr f_sqrt
+    .endm
+.endif
+
+.if xuse_float
+xm_f_ln .macro
+    jsr f_ln
+    .endm
+.endif
+
+.if xuse_float
+xm_f_exp .macro
+    jsr f_exp
+    .endm
+.endif
+
+.if xuse_float
+xm_f_sin .macro
+    jsr f_sin
+    .endm
+.endif
+
+.if xuse_float
+xm_f_cos .macro
+    jsr f_cos
+    .endm
+.endif
+
+.if xuse_float
+xm_f_tan .macro
+    jsr f_tan
+    .endm
+.endif
+
+.if xuse_float
+xm_f_atan .macro
+    jsr f_atan
+    .endm
+.endif
+
+.if xuse_float
+xm_f_to_str .macro
+    jsr f_to_str
+    .endm
+.endif
+
+.if xuse_float
+xm_f_to_str_trim .macro
+    jsr f_to_str_trim
+    .endm
+.endif
+
+.if xuse_double
+xm_d_neg .macro
+    jsr d_neg
+    .endm
+.endif
+
+.if xuse_double
+xm_d_abs .macro
+    jsr d_abs
+    .endm
+.endif
+
+.if xuse_double
+xm_d_to_s32 .macro
+    jsr d_to_s32
+    .endm
+.endif
+
+.if xuse_double
+xm_d_sqrt .macro
+    jsr d_sqrt
+    .endm
+.endif
+
+.if xuse_double
+xm_d_exp .macro
+    jsr d_exp
+    .endm
+.endif
+
+.if xuse_double
+xm_d_ln .macro
+    jsr d_ln
+    .endm
+.endif
+
+.if xuse_double
+xm_d_sin .macro
+    jsr d_sin
+    .endm
+.endif
+
+.if xuse_double
+xm_d_cos .macro
+    jsr d_cos
+    .endm
+.endif
+
+.if xuse_double
+xm_d_tan .macro
+    jsr d_tan
+    .endm
+.endif
+
+.if xuse_double
+xm_d_atan .macro
+    jsr d_atan
+    .endm
+.endif
+
+.if xuse_double
+xm_d_sinh .macro
+    jsr d_sinh
+    .endm
+.endif
+
+.if xuse_double
+xm_d_cosh .macro
+    jsr d_cosh
+    .endm
+.endif
+
+.if xuse_double
+xm_d_tanh .macro
+    jsr d_tanh
+    .endm
+.endif
+
+.if xuse_double
+xm_d_to_str .macro
+    jsr d_to_str
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_add .macro
+    jsr i16_add
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_sub .macro
+    jsr i16_sub
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_neg .macro
+    jsr i16_neg
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_abs .macro
+    jsr i16_abs
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_shl .macro
+    jsr i16_shl
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_shr .macro
+    jsr i16_shr
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_asr .macro
+    jsr i16_asr
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_cmpu .macro
+    jsr i16_cmpu
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_cmps .macro
+    jsr i16_cmps
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_mul .macro
+    jsr i16_mul
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_divmod .macro
+    jsr i16_divmod
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_divmod_s .macro
+    jsr i16_divmod_s
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_sqrt .macro
+    jsr i16_sqrt
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_to_dec .macro
+    jsr i16_to_dec
+    .endm
+.endif
+
+.if xuse_int16
+xm_i16_to_dec_s .macro
+    jsr i16_to_dec_s
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_to_s16 .macro
+    jsr i32_to_s16
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_add .macro
+    jsr i32_add
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_sub .macro
+    jsr i32_sub
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_neg .macro
+    jsr i32_neg
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_abs .macro
+    jsr i32_abs
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_shl .macro
+    jsr i32_shl
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_shr .macro
+    jsr i32_shr
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_asr .macro
+    jsr i32_asr
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_cmpu .macro
+    jsr i32_cmpu
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_cmps .macro
+    jsr i32_cmps
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_mul .macro
+    jsr i32_mul
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_divmod .macro
+    jsr i32_divmod
+    .endm
+.endif
+
+.if xuse_int32
+xm_i32_to_dec .macro
+    jsr i32_to_dec
+    .endm
+.endif
+
+.if xuse_bcd
+xm_bcd_add8 .macro
+    jsr bcd_add8
+    .endm
+.endif
+
+.if xuse_bcd
+xm_bcd_add16 .macro
+    jsr bcd_add16
+    .endm
+.endif
+
+.if xuse_bcd
+xm_bcd_add32 .macro
+    jsr bcd_add32
+    .endm
+.endif
+
+.if xuse_bcd
+xm_bcd_sub8 .macro
+    jsr bcd_sub8
+    .endm
+.endif
+
+.if xuse_bcd
+xm_bcd_sub16 .macro
+    jsr bcd_sub16
+    .endm
+.endif
+
+.if xuse_bcd
+xm_bcd_sub32 .macro
+    jsr bcd_sub32
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_pop .macro
+    jsr stack_pop
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_popw .macro
+    jsr stack_popw
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_size .macro
+    jsr stack_size
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_free .macro
+    jsr stack_free
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_isempty .macro
+    jsr stack_isempty
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_isfull .macro
+    jsr stack_isfull
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_get .macro
+    jsr ring_get
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_getw .macro
+    jsr ring_getw
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_size .macro
+    jsr ring_size
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_free .macro
+    jsr ring_free
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_isempty .macro
+    jsr ring_isempty
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_isfull .macro
+    jsr ring_isfull
+    .endm
+.endif
+
+.if xuse_pcm
+xm_pcm_full .macro
+    jsr pcm_full
+    .endm
+.endif
+
+.if xuse_pcm
+xm_pcm_empty .macro
+    jsr pcm_empty
+    .endm
+.endif
+
+.if xuse_pcm_stream
+xm_pcm_stream_active .macro
+    jsr pcm_stream_active
+    .endm
+.endif
+
+.if xuse_ym
+xm_ym_busy .macro
+    jsr ym_busy
+    .endm
+.endif
+
+.if xuse_bank
+xm_bank_get .macro
+    jsr bank_get
+    .endm
+.endif
+
+.if xuse_irq_any
+xm_irq_line_remove .macro
+    jsr irq_line_remove
+    .endm
+.endif
+
+.if xuse_irq_any
+xm_irq_save_regs .macro
+    jsr irq_save_regs
+    .endm
+.endif
+
+.if xuse_irq_any
+xm_irq_restore_regs .macro
+    jsr irq_restore_regs
+    .endm
+.endif
+
+.if xuse_irq_any
+xm_irq_frames .macro
+    jsr irq_frames
+    .endm
+.endif
+
+.if xuse_irq_sprcol_api
+xm_sprite_collisions .macro
+    jsr sprite_collisions
+    .endm
+.endif
+
+.if xuse_clip
+xm_clip_line .macro
+    jsr clip_line
+    .endm
+.endif
+
+.if xuse_verafx_tri
+xm_fx_triangle .macro
+    jsr fx_triangle
+    .endm
+.endif
+
+.if xuse_math
+xm_rnd16 .macro
+    jsr rnd16
+    .endm
+.endif
+
+.if xuse_screen_extra
+xm_screen_get_mode .macro
+    jsr screen_get_mode
+    .endm
+.endif
+
+.if xuse_screen_extra
+xm_screen_get_cursor .macro
+    jsr screen_get_cursor
+    .endm
+.endif
+
+.if xuse_vera_fxprobe
+xm_vera_has_fx .macro
+    jsr vera_has_fx
+    .endm
+.endif
+
+.if xuse_fileio
+xm_fio_open .macro
+    jsr fio_open
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isdigit .macro ch
+    lda #\ch
+    jsr str_isdigit
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isxdigit .macro ch
+    lda #\ch
+    jsr str_isxdigit
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_islower .macro ch
+    lda #\ch
+    jsr str_islower
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isupper .macro ch
+    lda #\ch
+    jsr str_isupper
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isupper_iso .macro ch
+    lda #\ch
+    jsr str_isupper_iso
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isletter .macro ch
+    lda #\ch
+    jsr str_isletter
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isletter_iso .macro ch
+    lda #\ch
+    jsr str_isletter_iso
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isspace .macro ch
+    lda #\ch
+    jsr str_isspace
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isprint .macro ch
+    lda #\ch
+    jsr str_isprint
+    .endm
+.endif
+
+.if xuse_string_ctype
+xm_str_isprint_iso .macro ch
+    lda #\ch
+    jsr str_isprint_iso
+    .endm
+.endif
+
+.if xuse_string_case
+xm_str_lowerchar .macro ch
+    lda #\ch
+    jsr str_lowerchar
+    .endm
+.endif
+
+.if xuse_string_case
+xm_str_upperchar .macro ch
+    lda #\ch
+    jsr str_upperchar
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_init .macro bank
+    lda #\bank
+    jsr stack_init
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_init .macro bank
+    lda #\bank
+    jsr ring_init
+    .endm
+.endif
+
+.if xuse_stack
+xm_stack_push .macro byte
+    lda #\byte
+    jsr stack_push
+    .endm
+.endif
+
+.if xuse_ringbuffer
+xm_ring_put .macro byte
+    lda #\byte
+    jsr ring_put
+    .endm
+.endif
+
+.if xuse_ym
+xm_ym_get_pan .macro channel
+    lda #\channel
+    jsr ym_get_pan
+    .endm
+.endif
+
+.if xuse_ym
+xm_ym_get_vol .macro channel
+    lda #\channel
+    jsr ym_get_vol
+    .endm
+.endif
+
+; push one word (low byte first, then high)
+.if xuse_stack
+xm_stack_pushw .macro value
+    lda #<(\value)
+    ldx #>(\value)
+    jsr stack_pushw
+    .endm
+.endif
+
+; enqueue one word (low byte first)
+.if xuse_ringbuffer
+xm_ring_putw .macro value
+    lda #<(\value)
+    ldx #>(\value)
+    jsr ring_putw
+    .endm
+.endif
+
+; add bcd_b to a 4-byte BCD value in place
+.if xuse_bcd
+xm_bcd_addto .macro value
+    lda #<(\value)
+    ldx #>(\value)
+    jsr bcd_addto
+    .endm
+.endif
+
+; subtract bcd_b from a 4-byte BCD value in place
+.if xuse_bcd
+xm_bcd_subfrom .macro value
+    lda #<(\value)
+    ldx #>(\value)
+    jsr bcd_subfrom
+    .endm
+.endif
+
+; FAC = mem ^ FAC (the ROM's operand order)
+.if xuse_float
+xm_f_rpow .macro addr
+    lda #<(\addr)
+    ldy #>(\addr)
+    jsr f_rpow
+    .endm
+.endif
+
+; d_ac = the signed 32-bit little-endian value at addr
+.if xuse_double
+xm_d_from_s32 .macro addr
+    lda #<(\addr)
+    sta X16_P0
+    lda #>(\addr)
+    sta X16_P1
+    jsr d_from_s32
+    .endm
+.endif
+
+; tile data base for a layer (base>>11<<2 | tile size bits)
+.if xuse_tile
+xm_layer_set_tilebase .macro layer, base
+    ldx #\layer
+    lda #\base
+    jsr layer_set_tilebase
+    .endm
+.endif
+
+; set (sugar_set != 0) or clear (sugar_set = 0) the masked bits at addr
+.if xuse_bits
+xm_bit_put .macro addr, mask, set
+    lda #<(\addr)
+    sta X16_PTR0
+    lda #>(\addr)
+    sta X16_PTR0+1
+    ldx #\set
+    lda #\mask
+    jsr bit_put
+    .endm
+.endif
+
+; load an instrument from a patch in RAM (the ROM-index form is xm_ym_patch_rom)
+.if xuse_ym
+xm_ym_patch_ram .macro channel, addr
+    clc
+    ldx #<(\addr)
+    ldy #>(\addr)
+    lda #\channel
+    jsr ym_patch
+    .endm
+.endif
+
+; make a directory
+.if xuse_dos
+xm_dos_mkdir .macro name, len
+    lda #<(\name)
+    ldx #>(\name)
+    ldy #\len
+    jsr dos_mkdir
+    .endm
+.endif
+
+; remove a directory
+.if xuse_dos
+xm_dos_rmdir .macro name, len
+    lda #<(\name)
+    ldx #>(\name)
+    ldy #\len
+    jsr dos_rmdir
+    .endm
+.endif
+
+; change directory ("//" is the root)
+.if xuse_dos
+xm_dos_chdir .macro name, len
+    lda #<(\name)
+    ldx #>(\name)
+    ldy #\len
+    jsr dos_chdir
+    .endm
+.endif
+
+; rename oldname to newname
+.if xuse_dos
+xm_dos_rename .macro newname, newlen, oldname, oldlen
+    lda #<(\oldname)
+    sta X16_P0
+    lda #>(\oldname)
+    sta X16_P1
+    lda #\oldlen
+    sta X16_P2
+    lda #<(\newname)
+    ldx #>(\newname)
+    ldy #\newlen
+    jsr dos_rename
+    .endm
+.endif
+
+; copy banked RAM to low RAM, advancing across bank boundaries
+.if xuse_bank
+xm_bank_to_mem .macro bank, offset, dst, count
+    lda #<(\offset)
+    sta X16_P1
+    lda #>(\offset)
+    sta X16_P2
+    lda #<(\dst)
+    sta X16_P3
+    lda #>(\dst)
+    sta X16_P4
+    lda #<(\count)
+    sta X16_P5
+    lda #>(\count)
+    sta X16_P6
+    lda #\bank
+    sta X16_P0
+    jsr bank_to_mem
+    .endm
+.endif
+
+; copy banked RAM to banked RAM
+.if xuse_bank
+xm_bank_copy_far .macro srcbank, srcoff, dstbank, dstoff, count
+    lda #<(\srcoff)
+    sta X16_P1
+    lda #>(\srcoff)
+    sta X16_P2
+    lda #<(\dstoff)
+    sta X16_P4
+    lda #>(\dstoff)
+    sta X16_P5
+    lda #<(\count)
+    sta X16_P6
+    lda #>(\count)
+    sta X16_P7
+    lda #\dstbank
+    sta X16_P3
+    lda #\srcbank
+    sta X16_P0
+    jsr bank_copy_far
+    .endm
+.endif
+
+; save a block of memory as a PRG
+.if xuse_load
+xm_fs_save .macro name, len, device, start, end
+    lda #<(\name)
+    sta X16_P0
+    lda #>(\name)
+    sta X16_P1
+    lda #\len
+    sta X16_P2
+    lda #\device
+    sta X16_P3
+    lda #<(\start)
+    sta X16_P5
+    lda #>(\start)
+    sta X16_P6
+    lda #<(\end)
+    sta X16_T6
+    lda #>(\end)
+    sta X16_T7
+    jsr fs_save
+    .endm
+.endif
+
+; write a BMX file from VRAM (bmx_width/height/bpp/... describe the image)
+.if xuse_bmx
+xm_bmx_save .macro name, len, device, vbank, vaddr
+    lda #<(\name)
+    sta X16_P0
+    lda #>(\name)
+    sta X16_P1
+    lda #\len
+    sta X16_P2
+    lda #\device
+    sta X16_P3
+    lda #\vbank
+    sta X16_P4
+    lda #<(\vaddr)
+    sta X16_P5
+    lda #>(\vaddr)
+    sta X16_P6
+    jsr bmx_save
+    .endm
+.endif
+
+; play a sample living in banked RAM (count is 24-bit: low word, then high byte)
+.if xuse_pcm_stream
+xm_pcm_stream_start_bank .macro offset, count, counthi, bank, rate
+    lda #<(\offset)
+    sta X16_P0
+    lda #>(\offset)
+    sta X16_P1
+    lda #<(\count)
+    sta X16_P2
+    lda #>(\count)
+    sta X16_P3
+    lda #\counthi
+    sta X16_P4
+    lda #\bank
+    sta X16_P5
+    lda #\rate
+    jsr pcm_stream_start_bank
+    .endm
+.endif
+
+; VRAM to VRAM through the 32-bit cache; the destination must be 4-byte aligned
+.if xuse_verafx_copy
+xm_fx_copy .macro src, srchi, dst, dsthi, count
+    lda #<(\src)
+    sta X16_P0
+    lda #>(\src)
+    sta X16_P1
+    lda #\srchi
+    sta X16_P2
+    lda #<(\dst)
+    sta X16_P3
+    lda #>(\dst)
+    sta X16_P4
+    lda #\dsthi
+    sta X16_P5
+    lda #<(\count)
+    sta X16_P6
+    lda #>(\count)
+    sta X16_P7
+    jsr fx_copy
+    .endm
+.endif
+
+; enter affine mode and describe the texture
+.if xuse_verafx_affine
+xm_fx_affine_on .macro tiledata, tiledatahi, tilemap, tilemaphi, mapsize, clip
+    lda #<(\tiledata)
+    sta X16_P0
+    lda #>(\tiledata)
+    sta X16_P1
+    lda #\tiledatahi
+    sta X16_P2
+    lda #<(\tilemap)
+    sta X16_P3
+    lda #>(\tilemap)
+    sta X16_P4
+    lda #\tilemaphi
+    sta X16_P5
+    lda #\mapsize
+    sta X16_P6
+    lda #\clip
+    sta X16_P7
+    jsr fx_affine_on
+    .endm
+.endif
+
+; aim the sampler (dx/dy signed, 1/512 texel units)
+.if xuse_verafx_affine
+xm_fx_affine_ray .macro x, y, dx, dy
+    lda #<(\x)
+    sta X16_P0
+    lda #>(\x)
+    sta X16_P1
+    lda #<(\y)
+    sta X16_P2
+    lda #>(\y)
+    sta X16_P3
+    lda #<(\dx)
+    sta X16_P4
+    lda #>(\dx)
+    sta X16_P5
+    lda #<(\dy)
+    sta X16_P6
+    lda #>(\dy)
+    sta X16_P7
+    jsr fx_affine_ray
+    .endm
+.endif
+
+; fetch texels along the ray into VRAM; port 0 must already point at the destination
+.if xuse_verafx_affine
+xm_fx_affine_span .macro count
+    lda #<(\count)
+    sta X16_P0
+    lda #>(\count)
+    sta X16_P1
+    jsr fx_affine_span
     .endm
 .endif

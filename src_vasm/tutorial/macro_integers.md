@@ -108,3 +108,292 @@ main
 
     include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of int16, int32
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_i16_add`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_add` |
+| Purpose | i16_a += i16_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_sub`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_sub` |
+| Purpose | i16_a -= i16_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_neg`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_neg` |
+| Purpose | i16_a = -i16_a |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_abs`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_abs` |
+| Purpose | i16_a = |i16_a| |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_shl`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_shl` |
+| Purpose | i16_a <<= 1 |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_shr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_shr` |
+| Purpose | i16_a >>= 1, logical (zero fill) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_asr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_asr` |
+| Purpose | i16_a >>= 1, arithmetic (sign fill) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_cmpu`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_cmpu` |
+| Purpose | unsigned compare i16_a with i16_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_cmps`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_cmps` |
+| Purpose | signed compare |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A`. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_mul`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_mul` |
+| Purpose | i16_a = i16_a * i16_b, modulo 2^16 |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_divmod`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_divmod` |
+| Purpose | unsigned: i16_a = i16_a / i16_b, i16_r = i16_a % i16_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_divmod_s`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_divmod_s` |
+| Purpose | signed divide, truncating toward zero |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_sqrt`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_sqrt` |
+| Purpose | floor(sqrt(i16_a)), the ISQRT of FLOAT.TXT |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A`. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_to_dec`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_to_dec` |
+| Purpose | unsigned i16_a to decimal |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i16_to_dec_s`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i16_to_dec_s` |
+| Purpose | signed i16_a to decimal, with a leading '-' |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_INT16` is enabled. |
+
+## `xm_i32_to_s16`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_to_s16` |
+| Purpose | the top two bytes are lost |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_add`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_add` |
+| Purpose | i32_a += i32_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_sub`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_sub` |
+| Purpose | i32_a -= i32_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_neg`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_neg` |
+| Purpose | i32_a = -i32_a |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_abs`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_abs` |
+| Purpose | i32_a = |i32_a| |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_shl`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_shl` |
+| Purpose | i32_a <<= 1 |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_shr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_shr` |
+| Purpose | i32_a >>= 1, logical (zero fill) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_asr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_asr` |
+| Purpose | i32_a >>= 1, arithmetic (sign fill) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_cmpu`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_cmpu` |
+| Purpose | unsigned compare i32_a with i32_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_cmps`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_cmps` |
+| Purpose | signed compare |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A`. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_mul`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_mul` |
+| Purpose | i32_a = i32_a * i32_b, modulo 2^32 |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_divmod`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_divmod` |
+| Purpose | unsigned: i32_a = i32_a / i32_b, i32_r = i32_a % i32_b |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_INT32` is enabled. |
+
+## `xm_i32_to_dec`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_i32_to_dec` |
+| Purpose | unsigned i32_a to decimal, no leading zeros |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_INT32` is enabled. |

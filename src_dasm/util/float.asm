@@ -266,6 +266,8 @@ f_atan
 ;
 ; Positive numbers get a leading space, exactly as BASIC's PRINT shows
 ; them; f_to_str_trim skips it.
+;
+; f_to_str_trim -- out: A = low, X = high, the string without that space
 ; ---------------------------------------------------------------------
     SUBROUTINE
 f_to_str

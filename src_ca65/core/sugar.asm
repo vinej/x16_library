@@ -266,6 +266,67 @@
     jsr screen_charset
 .endmacro
 .endif
+; point VERA port 0 at a character cell, for the blit calls below
+.ifdef X16_USE_SCREEN
+.macro xm_screen_addr p_row, p_col
+    ldx #(p_row)
+    ldy #(p_col)
+    jsr screen_addr
+.endmacro
+.endif
+; ...and port 1, which is where a vera_copy destination goes
+.ifdef X16_USE_SCREEN
+.macro xm_screen_addr1 p_row, p_col
+    ldx #(p_row)
+    ldy #(p_col)
+    jsr screen_addr1
+.endmacro
+.endif
+; slide a rectangle of text rows: sugar_dir 0 moves the picture up, 1 down
+.ifdef X16_USE_SCREEN
+.macro xm_screen_scroll p_top, p_left, p_height, p_width, p_rows, p_dir
+    lda #(p_top)
+    sta X16_P0
+    lda #(p_left)
+    sta X16_P1
+    lda #(p_height)
+    sta X16_P2
+    lda #(p_width)
+    sta X16_P3
+    lda #(p_rows)
+    sta X16_P4
+    lda #(p_dir)
+    jsr screen_scroll
+.endmacro
+.endif
+; PETSCII -> screen code
+.ifdef X16_USE_SCREEN
+.macro xm_screen_scode p_ch
+    lda #(p_ch)
+    jsr screen_scode
+.endmacro
+.endif
+; write sugar_count characters from sugar_addr, all in colour sugar_col (fg | bg << 4)
+.ifdef X16_USE_SCREEN
+.macro xm_screen_blit p_addr, p_count, p_col
+    lda #<(p_addr)
+    sta X16_P0
+    lda #>(p_addr)
+    sta X16_P1
+    lda #(p_count)
+    ldx #(p_col)
+    jsr screen_blit
+.endmacro
+.endif
+; write sugar_count copies of sugar_ch in colour sugar_col
+.ifdef X16_USE_SCREEN
+.macro xm_screen_blitfill p_count, p_col, p_ch
+    lda #(p_count)
+    ldx #(p_col)
+    ldy #(p_ch)
+    jsr screen_blitfill
+.endmacro
+.endif
 ; print a NUL-terminated string
 .ifdef X16_USE_SCREEN
 .macro xm_screen_puts p_addr
@@ -5349,5 +5410,1012 @@
     lda #<(p_str)
     ldx #>(p_str)
     jsr str_trim
+.endmacro
+.endif
+
+; =====================================================================
+; Routines that had no friendly macro until now. Most work on their
+; module's accumulator -- FAC, d_ac, i16_a/i16_b, i32_a/i32_b,
+; bcd_a/bcd_b, the stack or the queue -- so they take no arguments;
+; the rest carry the parameters their own header documents.
+; =====================================================================
+.ifdef X16_USE_FLOAT
+.macro xm_f_zero
+    jsr f_zero
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_neg
+    jsr f_neg
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_abs
+    jsr f_abs
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_int
+    jsr f_int
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_sgn
+    jsr f_sgn
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_to_s16
+    jsr f_to_s16
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_sqrt
+    jsr f_sqrt
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_ln
+    jsr f_ln
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_exp
+    jsr f_exp
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_sin
+    jsr f_sin
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_cos
+    jsr f_cos
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_tan
+    jsr f_tan
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_atan
+    jsr f_atan
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_to_str
+    jsr f_to_str
+.endmacro
+.endif
+
+.ifdef X16_USE_FLOAT
+.macro xm_f_to_str_trim
+    jsr f_to_str_trim
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_neg
+    jsr d_neg
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_abs
+    jsr d_abs
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_to_s32
+    jsr d_to_s32
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_sqrt
+    jsr d_sqrt
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_exp
+    jsr d_exp
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_ln
+    jsr d_ln
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_sin
+    jsr d_sin
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_cos
+    jsr d_cos
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_tan
+    jsr d_tan
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_atan
+    jsr d_atan
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_sinh
+    jsr d_sinh
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_cosh
+    jsr d_cosh
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_tanh
+    jsr d_tanh
+.endmacro
+.endif
+
+.ifdef X16_USE_DOUBLE
+.macro xm_d_to_str
+    jsr d_to_str
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_add
+    jsr i16_add
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_sub
+    jsr i16_sub
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_neg
+    jsr i16_neg
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_abs
+    jsr i16_abs
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_shl
+    jsr i16_shl
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_shr
+    jsr i16_shr
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_asr
+    jsr i16_asr
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_cmpu
+    jsr i16_cmpu
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_cmps
+    jsr i16_cmps
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_mul
+    jsr i16_mul
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_divmod
+    jsr i16_divmod
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_divmod_s
+    jsr i16_divmod_s
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_sqrt
+    jsr i16_sqrt
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_to_dec
+    jsr i16_to_dec
+.endmacro
+.endif
+
+.ifdef X16_USE_INT16
+.macro xm_i16_to_dec_s
+    jsr i16_to_dec_s
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_to_s16
+    jsr i32_to_s16
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_add
+    jsr i32_add
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_sub
+    jsr i32_sub
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_neg
+    jsr i32_neg
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_abs
+    jsr i32_abs
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_shl
+    jsr i32_shl
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_shr
+    jsr i32_shr
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_asr
+    jsr i32_asr
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_cmpu
+    jsr i32_cmpu
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_cmps
+    jsr i32_cmps
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_mul
+    jsr i32_mul
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_divmod
+    jsr i32_divmod
+.endmacro
+.endif
+
+.ifdef X16_USE_INT32
+.macro xm_i32_to_dec
+    jsr i32_to_dec
+.endmacro
+.endif
+
+.ifdef X16_USE_BCD
+.macro xm_bcd_add8
+    jsr bcd_add8
+.endmacro
+.endif
+
+.ifdef X16_USE_BCD
+.macro xm_bcd_add16
+    jsr bcd_add16
+.endmacro
+.endif
+
+.ifdef X16_USE_BCD
+.macro xm_bcd_add32
+    jsr bcd_add32
+.endmacro
+.endif
+
+.ifdef X16_USE_BCD
+.macro xm_bcd_sub8
+    jsr bcd_sub8
+.endmacro
+.endif
+
+.ifdef X16_USE_BCD
+.macro xm_bcd_sub16
+    jsr bcd_sub16
+.endmacro
+.endif
+
+.ifdef X16_USE_BCD
+.macro xm_bcd_sub32
+    jsr bcd_sub32
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_pop
+    jsr stack_pop
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_popw
+    jsr stack_popw
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_size
+    jsr stack_size
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_free
+    jsr stack_free
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_isempty
+    jsr stack_isempty
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_isfull
+    jsr stack_isfull
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_get
+    jsr ring_get
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_getw
+    jsr ring_getw
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_size
+    jsr ring_size
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_free
+    jsr ring_free
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_isempty
+    jsr ring_isempty
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_isfull
+    jsr ring_isfull
+.endmacro
+.endif
+
+.ifdef X16_USE_PCM
+.macro xm_pcm_full
+    jsr pcm_full
+.endmacro
+.endif
+
+.ifdef X16_USE_PCM
+.macro xm_pcm_empty
+    jsr pcm_empty
+.endmacro
+.endif
+
+.ifdef X16_USE_PCM_STREAM
+.macro xm_pcm_stream_active
+    jsr pcm_stream_active
+.endmacro
+.endif
+
+.ifdef X16_USE_YM
+.macro xm_ym_busy
+    jsr ym_busy
+.endmacro
+.endif
+
+.ifdef X16_USE_BANK
+.macro xm_bank_get
+    jsr bank_get
+.endmacro
+.endif
+
+.ifdef X16_USE_IRQ_ANY
+.macro xm_irq_line_remove
+    jsr irq_line_remove
+.endmacro
+.endif
+
+.ifdef X16_USE_IRQ_ANY
+.macro xm_irq_save_regs
+    jsr irq_save_regs
+.endmacro
+.endif
+
+.ifdef X16_USE_IRQ_ANY
+.macro xm_irq_restore_regs
+    jsr irq_restore_regs
+.endmacro
+.endif
+
+.ifdef X16_USE_IRQ_ANY
+.macro xm_irq_frames
+    jsr irq_frames
+.endmacro
+.endif
+
+.ifdef X16_USE_IRQ_SPRCOL_API
+.macro xm_sprite_collisions
+    jsr sprite_collisions
+.endmacro
+.endif
+
+.ifdef X16_USE_CLIP
+.macro xm_clip_line
+    jsr clip_line
+.endmacro
+.endif
+
+.ifdef X16_USE_VERAFX_TRI
+.macro xm_fx_triangle
+    jsr fx_triangle
+.endmacro
+.endif
+
+.ifdef X16_USE_MATH
+.macro xm_rnd16
+    jsr rnd16
+.endmacro
+.endif
+
+.ifdef X16_USE_SCREEN_EXTRA
+.macro xm_screen_get_mode
+    jsr screen_get_mode
+.endmacro
+.endif
+
+.ifdef X16_USE_SCREEN_EXTRA
+.macro xm_screen_get_cursor
+    jsr screen_get_cursor
+.endmacro
+.endif
+
+.ifdef X16_USE_VERA_FXPROBE
+.macro xm_vera_has_fx
+    jsr vera_has_fx
+.endmacro
+.endif
+
+.ifdef X16_USE_FILEIO
+.macro xm_fio_open
+    jsr fio_open
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isdigit p_ch
+    lda #(p_ch)
+    jsr str_isdigit
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isxdigit p_ch
+    lda #(p_ch)
+    jsr str_isxdigit
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_islower p_ch
+    lda #(p_ch)
+    jsr str_islower
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isupper p_ch
+    lda #(p_ch)
+    jsr str_isupper
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isupper_iso p_ch
+    lda #(p_ch)
+    jsr str_isupper_iso
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isletter p_ch
+    lda #(p_ch)
+    jsr str_isletter
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isletter_iso p_ch
+    lda #(p_ch)
+    jsr str_isletter_iso
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isspace p_ch
+    lda #(p_ch)
+    jsr str_isspace
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isprint p_ch
+    lda #(p_ch)
+    jsr str_isprint
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CTYPE
+.macro xm_str_isprint_iso p_ch
+    lda #(p_ch)
+    jsr str_isprint_iso
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CASE
+.macro xm_str_lowerchar p_ch
+    lda #(p_ch)
+    jsr str_lowerchar
+.endmacro
+.endif
+
+.ifdef X16_USE_STRING_CASE
+.macro xm_str_upperchar p_ch
+    lda #(p_ch)
+    jsr str_upperchar
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_init p_bank
+    lda #(p_bank)
+    jsr stack_init
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_init p_bank
+    lda #(p_bank)
+    jsr ring_init
+.endmacro
+.endif
+
+.ifdef X16_USE_STACK
+.macro xm_stack_push p_byte
+    lda #(p_byte)
+    jsr stack_push
+.endmacro
+.endif
+
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_put p_byte
+    lda #(p_byte)
+    jsr ring_put
+.endmacro
+.endif
+
+.ifdef X16_USE_YM
+.macro xm_ym_get_pan p_channel
+    lda #(p_channel)
+    jsr ym_get_pan
+.endmacro
+.endif
+
+.ifdef X16_USE_YM
+.macro xm_ym_get_vol p_channel
+    lda #(p_channel)
+    jsr ym_get_vol
+.endmacro
+.endif
+
+; push one word (low byte first, then high)
+.ifdef X16_USE_STACK
+.macro xm_stack_pushw p_value
+    lda #<(p_value)
+    ldx #>(p_value)
+    jsr stack_pushw
+.endmacro
+.endif
+
+; enqueue one word (low byte first)
+.ifdef X16_USE_RINGBUFFER
+.macro xm_ring_putw p_value
+    lda #<(p_value)
+    ldx #>(p_value)
+    jsr ring_putw
+.endmacro
+.endif
+
+; add bcd_b to a 4-byte BCD value in place
+.ifdef X16_USE_BCD
+.macro xm_bcd_addto p_value
+    lda #<(p_value)
+    ldx #>(p_value)
+    jsr bcd_addto
+.endmacro
+.endif
+
+; subtract bcd_b from a 4-byte BCD value in place
+.ifdef X16_USE_BCD
+.macro xm_bcd_subfrom p_value
+    lda #<(p_value)
+    ldx #>(p_value)
+    jsr bcd_subfrom
+.endmacro
+.endif
+
+; FAC = mem ^ FAC (the ROM's operand order)
+.ifdef X16_USE_FLOAT
+.macro xm_f_rpow p_addr
+    lda #<(p_addr)
+    ldy #>(p_addr)
+    jsr f_rpow
+.endmacro
+.endif
+
+; d_ac = the signed 32-bit little-endian value at addr
+.ifdef X16_USE_DOUBLE
+.macro xm_d_from_s32 p_addr
+    lda #<(p_addr)
+    sta X16_P0
+    lda #>(p_addr)
+    sta X16_P1
+    jsr d_from_s32
+.endmacro
+.endif
+
+; tile data base for a layer (base>>11<<2 | tile size bits)
+.ifdef X16_USE_TILE
+.macro xm_layer_set_tilebase p_layer, p_base
+    ldx #(p_layer)
+    lda #(p_base)
+    jsr layer_set_tilebase
+.endmacro
+.endif
+
+; set (sugar_set != 0) or clear (sugar_set = 0) the masked bits at addr
+.ifdef X16_USE_BITS
+.macro xm_bit_put p_addr, p_mask, p_set
+    lda #<(p_addr)
+    sta X16_PTR0
+    lda #>(p_addr)
+    sta X16_PTR0+1
+    ldx #(p_set)
+    lda #(p_mask)
+    jsr bit_put
+.endmacro
+.endif
+
+; load an instrument from a patch in RAM (the ROM-index form is xm_ym_patch_rom)
+.ifdef X16_USE_YM
+.macro xm_ym_patch_ram p_channel, p_addr
+    clc
+    ldx #<(p_addr)
+    ldy #>(p_addr)
+    lda #(p_channel)
+    jsr ym_patch
+.endmacro
+.endif
+
+; make a directory
+.ifdef X16_USE_DOS
+.macro xm_dos_mkdir p_name, p_len
+    lda #<(p_name)
+    ldx #>(p_name)
+    ldy #(p_len)
+    jsr dos_mkdir
+.endmacro
+.endif
+
+; remove a directory
+.ifdef X16_USE_DOS
+.macro xm_dos_rmdir p_name, p_len
+    lda #<(p_name)
+    ldx #>(p_name)
+    ldy #(p_len)
+    jsr dos_rmdir
+.endmacro
+.endif
+
+; change directory ("//" is the root)
+.ifdef X16_USE_DOS
+.macro xm_dos_chdir p_name, p_len
+    lda #<(p_name)
+    ldx #>(p_name)
+    ldy #(p_len)
+    jsr dos_chdir
+.endmacro
+.endif
+
+; rename oldname to newname
+.ifdef X16_USE_DOS
+.macro xm_dos_rename p_newname, p_newlen, p_oldname, p_oldlen
+    lda #<(p_oldname)
+    sta X16_P0
+    lda #>(p_oldname)
+    sta X16_P1
+    lda #(p_oldlen)
+    sta X16_P2
+    lda #<(p_newname)
+    ldx #>(p_newname)
+    ldy #(p_newlen)
+    jsr dos_rename
+.endmacro
+.endif
+
+; copy banked RAM to low RAM, advancing across bank boundaries
+.ifdef X16_USE_BANK
+.macro xm_bank_to_mem p_bank, p_offset, p_dst, p_count
+    lda #<(p_offset)
+    sta X16_P1
+    lda #>(p_offset)
+    sta X16_P2
+    lda #<(p_dst)
+    sta X16_P3
+    lda #>(p_dst)
+    sta X16_P4
+    lda #<(p_count)
+    sta X16_P5
+    lda #>(p_count)
+    sta X16_P6
+    lda #(p_bank)
+    sta X16_P0
+    jsr bank_to_mem
+.endmacro
+.endif
+
+; copy banked RAM to banked RAM
+.ifdef X16_USE_BANK
+.macro xm_bank_copy_far p_srcbank, p_srcoff, p_dstbank, p_dstoff, p_count
+    lda #<(p_srcoff)
+    sta X16_P1
+    lda #>(p_srcoff)
+    sta X16_P2
+    lda #<(p_dstoff)
+    sta X16_P4
+    lda #>(p_dstoff)
+    sta X16_P5
+    lda #<(p_count)
+    sta X16_P6
+    lda #>(p_count)
+    sta X16_P7
+    lda #(p_dstbank)
+    sta X16_P3
+    lda #(p_srcbank)
+    sta X16_P0
+    jsr bank_copy_far
+.endmacro
+.endif
+
+; save a block of memory as a PRG
+.ifdef X16_USE_LOAD
+.macro xm_fs_save p_name, p_len, p_device, p_start, p_end
+    lda #<(p_name)
+    sta X16_P0
+    lda #>(p_name)
+    sta X16_P1
+    lda #(p_len)
+    sta X16_P2
+    lda #(p_device)
+    sta X16_P3
+    lda #<(p_start)
+    sta X16_P5
+    lda #>(p_start)
+    sta X16_P6
+    lda #<(p_end)
+    sta X16_T6
+    lda #>(p_end)
+    sta X16_T7
+    jsr fs_save
+.endmacro
+.endif
+
+; write a BMX file from VRAM (bmx_width/height/bpp/... describe the image)
+.ifdef X16_USE_BMX
+.macro xm_bmx_save p_name, p_len, p_device, p_vbank, p_vaddr
+    lda #<(p_name)
+    sta X16_P0
+    lda #>(p_name)
+    sta X16_P1
+    lda #(p_len)
+    sta X16_P2
+    lda #(p_device)
+    sta X16_P3
+    lda #(p_vbank)
+    sta X16_P4
+    lda #<(p_vaddr)
+    sta X16_P5
+    lda #>(p_vaddr)
+    sta X16_P6
+    jsr bmx_save
+.endmacro
+.endif
+
+; play a sample living in banked RAM (count is 24-bit: low word, then high byte)
+.ifdef X16_USE_PCM_STREAM
+.macro xm_pcm_stream_start_bank p_offset, p_count, p_counthi, p_bank, p_rate
+    lda #<(p_offset)
+    sta X16_P0
+    lda #>(p_offset)
+    sta X16_P1
+    lda #<(p_count)
+    sta X16_P2
+    lda #>(p_count)
+    sta X16_P3
+    lda #(p_counthi)
+    sta X16_P4
+    lda #(p_bank)
+    sta X16_P5
+    lda #(p_rate)
+    jsr pcm_stream_start_bank
+.endmacro
+.endif
+
+; VRAM to VRAM through the 32-bit cache; the destination must be 4-byte aligned
+.ifdef X16_USE_VERAFX_COPY
+.macro xm_fx_copy p_src, p_srchi, p_dst, p_dsthi, p_count
+    lda #<(p_src)
+    sta X16_P0
+    lda #>(p_src)
+    sta X16_P1
+    lda #(p_srchi)
+    sta X16_P2
+    lda #<(p_dst)
+    sta X16_P3
+    lda #>(p_dst)
+    sta X16_P4
+    lda #(p_dsthi)
+    sta X16_P5
+    lda #<(p_count)
+    sta X16_P6
+    lda #>(p_count)
+    sta X16_P7
+    jsr fx_copy
+.endmacro
+.endif
+
+; enter affine mode and describe the texture
+.ifdef X16_USE_VERAFX_AFFINE
+.macro xm_fx_affine_on p_tiledata, p_tiledatahi, p_tilemap, p_tilemaphi, p_mapsize, p_clip
+    lda #<(p_tiledata)
+    sta X16_P0
+    lda #>(p_tiledata)
+    sta X16_P1
+    lda #(p_tiledatahi)
+    sta X16_P2
+    lda #<(p_tilemap)
+    sta X16_P3
+    lda #>(p_tilemap)
+    sta X16_P4
+    lda #(p_tilemaphi)
+    sta X16_P5
+    lda #(p_mapsize)
+    sta X16_P6
+    lda #(p_clip)
+    sta X16_P7
+    jsr fx_affine_on
+.endmacro
+.endif
+
+; aim the sampler (dx/dy signed, 1/512 texel units)
+.ifdef X16_USE_VERAFX_AFFINE
+.macro xm_fx_affine_ray p_x, p_y, p_dx, p_dy
+    lda #<(p_x)
+    sta X16_P0
+    lda #>(p_x)
+    sta X16_P1
+    lda #<(p_y)
+    sta X16_P2
+    lda #>(p_y)
+    sta X16_P3
+    lda #<(p_dx)
+    sta X16_P4
+    lda #>(p_dx)
+    sta X16_P5
+    lda #<(p_dy)
+    sta X16_P6
+    lda #>(p_dy)
+    sta X16_P7
+    jsr fx_affine_ray
+.endmacro
+.endif
+
+; fetch texels along the ray into VRAM; port 0 must already point at the destination
+.ifdef X16_USE_VERAFX_AFFINE
+.macro xm_fx_affine_span p_count
+    lda #<(p_count)
+    sta X16_P0
+    lda #>(p_count)
+    sta X16_P1
+    jsr fx_affine_span
 .endmacro
 .endif

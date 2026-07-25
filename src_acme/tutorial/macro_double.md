@@ -235,3 +235,162 @@ work_buffer !fill 64, 0
 !source "x16_code.asm"
 ```
 
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of double
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `+xm_d_neg`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_neg` |
+| Purpose | d_ac = -d_ac d_abs -- d_ac = |d_ac| |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_abs`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_abs` |
+| Purpose | d_ac = |d_ac| |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_to_s32`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_to_s32` |
+| Purpose | X16_P0..P3 = (s32) d_ac, truncated toward zero |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_sqrt`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_sqrt` |
+| Purpose | d_ac = sqrt(d_ac) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_exp`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_exp` |
+| Purpose | d_ac = e^d_ac |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_ln`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_ln` |
+| Purpose | d_ac = ln(d_ac) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_sin`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_sin` |
+| Purpose | d_ac = sin/cos/tan(d_ac) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_cos`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_cos` |
+| Purpose | d_ac = sin/cos/tan(d_ac) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_tan`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_tan` |
+| Purpose | d_ac = sin/cos/tan(d_ac) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_atan`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_atan` |
+| Purpose | d_ac = atan(d_ac) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_sinh`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_sinh` |
+| Purpose | d_ac = sinh/cosh/tanh(d_ac), via exp |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_cosh`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_cosh` |
+| Purpose | d_ac = sinh/cosh/tanh(d_ac), via exp |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_tanh`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_tanh` |
+| Purpose | d_ac = sinh/cosh/tanh(d_ac), via exp |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_to_str`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_to_str` |
+| Purpose | format d_ac as a NUL-terminated decimal string |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+
+## `+xm_d_from_s32 addr`
+
+| Field | Details |
+|---|---|
+| Macro | `+xm_d_from_s32 addr` |
+| Purpose | in: X16_P0..P3 = signed 32-bit, little-endian |
+| Input parameters | `addr` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOUBLE` is enabled. |
+

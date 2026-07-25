@@ -896,6 +896,17 @@ X16_USE_SCREEN_ANY = 1
 X16_USE_SCREEN_ANY = 1
     ENDIF
     ENDIF
+; screen_scroll moves text with vera_copy
+    IFCONST X16_USE_SCREEN_EXTRA
+    IFNCONST X16_USE_VERA_COPY
+X16_USE_VERA_COPY = 1
+    ENDIF
+    ENDIF
+    IFCONST X16_USE_VERA_COPY
+    IFNCONST X16_USE_VERA_ANY
+X16_USE_VERA_ANY  = 1
+    ENDIF
+    ENDIF
 
 ; --- modules ---------------------------------------------------------
     IFCONST X16_USE_VERA_ANY

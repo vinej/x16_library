@@ -231,3 +231,22 @@ main
 
 .include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of tile
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_layer_set_tilebase layer, base`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_layer_set_tilebase layer, base` |
+| Purpose | in: X = layer, A = base>>11<<2 | tile size bits |
+| Input parameters | `layer`, `base` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_TILE` is enabled. |

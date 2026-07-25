@@ -229,7 +229,7 @@ xuse_verafx_fill = xuse_bitmap2h || X16_USE_VERAFX_FILL != 0 || xuse_bitmap2l ||
 xuse_irq_any = xuse_irq_core || xuse_irq_remove || xuse_irq_vsync || xuse_irq_sprcol
 xuse_verafx_any = xuse_verafx_mult || xuse_verafx_fill || xuse_verafx_copy || xuse_verafx_transp || xuse_verafx_affine || xuse_verafx_line || xuse_verafx_tri
 xuse_vera_core = xuse_vera || X16_USE_VERA_CORE != 0
-xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0
+xuse_vera_copy = xuse_vera || X16_USE_VERA_COPY != 0 || xuse_screen_extra
 xuse_vera_addr = xuse_vera_core || X16_USE_VERA_ADDR != 0
 xuse_vera_fill = xuse_vera_core || X16_USE_VERA_FILL != 0
 xuse_vera_fxprobe = xuse_vera_core || X16_USE_VERA_FXPROBE != 0

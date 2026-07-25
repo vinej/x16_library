@@ -145,3 +145,22 @@ main
 
 include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of vera
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_vera_has_fx`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_vera_has_fx` |
+| Purpose | A = major version (only meaningful when carry is set) |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_VERA_FXPROBE` is enabled. |

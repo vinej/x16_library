@@ -30,6 +30,7 @@
 #define X16_USE_STRING_FIND  // searching
 #define X16_USE_STRING_SLICE  // substrings
 #define X16_USE_STRING_SORT  // sort an array of string pointers
+#define X16_USE_SCREEN_EXTRA  // screen_addr / screen_scode / screen_blit
 
 #import "core/sugar.asm"        // optional friendly xm_* macros (gated; tested below)
 
@@ -111,11 +112,325 @@ main:
     jsr test_str_trim
     jsr test_str_sort
     jsr test_str_sugar
+    jsr test_screen_scode
+    jsr test_screen_addr
+    jsr test_screen_blit
+    jsr test_screen_scroll
     jsr test_g2_clear
     jsr test_g2_init
 
     jsr t_summary
     rts
+
+// =====================================================================
+// video/screen -- direct text-map access.
+//
+// screen_addr is checked for its arithmetic rather than against a
+// hard-coded VRAM layout, so the test survives a ROM that moves the map:
+// one column is two bytes, one row is the stride L1_CONFIG advertises,
+// the increment nibble is 1, and ADDRSEL is left at 0. The blits are
+// then verified by reading the map back through the independent port 1.
+// =====================================================================
+test_screen_scode:
+    lda #$41                    // 'a' unshifted -> 1
+    jsr screen_scode
+    cmp #$01
+    bne test_screen_scode__fail
+    lda #$C1                    // 'A' shifted   -> $41
+    jsr screen_scode
+    cmp #$41
+    bne test_screen_scode__fail
+    lda #$30                    // '0'           -> unchanged
+    jsr screen_scode
+    cmp #$30
+    bne test_screen_scode__fail
+    lda #$20                    // space         -> unchanged
+    jsr screen_scode
+    cmp #$20
+    bne test_screen_scode__fail
+    lda #$00
+    jsr screen_scode
+    cmp #$80
+    bne test_screen_scode__fail
+    lda #$60
+    jsr screen_scode
+    cmp #$40
+    bne test_screen_scode__fail
+    lda #$80
+    jsr screen_scode
+    cmp #$C0
+    bne test_screen_scode__fail
+    lda #$A0
+    jsr screen_scode
+    cmp #$60
+    bne test_screen_scode__fail
+    lda #$FF
+    jsr screen_scode
+    cmp #$7F
+    bne test_screen_scode__fail
+
+    lda #0
+    bra test_screen_scode__report
+test_screen_scode__fail:
+    lda #1
+test_screen_scode__report:
+    ldx #<test_screen_scode__name
+    ldy #>test_screen_scode__name
+    jmp t_result
+test_screen_scode__name: .text "SCREEN_SCODE"
+    .byte $00
+
+// ---------------------------------------------------------------------
+test_screen_addr:
+    ldx #0                      // (0,0)
+    ldy #0
+    jsr screen_addr
+    lda VERA_ADDR_L
+    sta X16_P4
+    lda VERA_ADDR_M
+    sta X16_P5
+    lda VERA_ADDR_H
+    and #$F0
+    cmp #$10                    // increment must be 1
+    bne test_screen_addr__fail
+    lda VERA_CTRL
+    and #$01                    // ...and port 0 still selected
+    bne test_screen_addr__fail
+
+    ldy #1                      // (0,1): one column on = two bytes
+    ldx #0
+    jsr screen_addr
+    sec
+    lda VERA_ADDR_L
+    sbc X16_P4
+    sta X16_P6
+    lda VERA_ADDR_M
+    sbc X16_P5
+    ora X16_P6
+    cmp #2
+    bne test_screen_addr__fail
+
+    ldx #1                      // (1,0): one row on = one stride
+    ldy #0
+    jsr screen_addr
+    sec
+    lda VERA_ADDR_L
+    sbc X16_P4
+    sta X16_P6
+    lda VERA_ADDR_M
+    sbc X16_P5
+    sta X16_P7
+
+    lda VERA_L1_CONFIG          // expected stride, straight from the spec
+    lsr
+    lsr
+    lsr
+    lsr
+    and #3
+    tax
+    lda test_screen_addr__stride_lo,x
+    cmp X16_P6
+    bne test_screen_addr__fail
+    lda test_screen_addr__stride_hi,x
+    cmp X16_P7
+    bne test_screen_addr__fail
+
+    lda #0
+    bra test_screen_addr__report
+test_screen_addr__fail:
+    lda #1
+test_screen_addr__report:
+    ldx #<test_screen_addr__name
+    ldy #>test_screen_addr__name
+    jmp t_result
+test_screen_addr__stride_lo: .byte <64, <128, <256, <512
+test_screen_addr__stride_hi: .byte >64, >128, >256, >512
+test_screen_addr__name: .text "SCREEN_ADDR"
+    .byte $00
+
+// ---------------------------------------------------------------------
+test_screen_blit:
+    ldx #50                     // well below the harness's own output
+    ldy #0
+    jsr screen_addr
+    lda VERA_ADDR_L
+    sta X16_P4
+    lda VERA_ADDR_M
+    sta X16_P5
+    lda VERA_ADDR_H
+    sta X16_P6
+
+    lda #<test_screen_blit__text
+    sta X16_P0
+    lda #>test_screen_blit__text
+    sta X16_P1
+    lda #3
+    ldx #$61                    // fg 1, bg 6
+    jsr screen_blit
+
+    lda #2                      // then two spaces in a different colour
+    ldx #$25
+    ldy #$20
+    jsr screen_blitfill
+
+    vera_addrsel(1)  // read the map back through port 1
+    lda X16_P4
+    sta VERA_ADDR_L
+    lda X16_P5
+    sta VERA_ADDR_M
+    lda X16_P6
+    sta VERA_ADDR_H
+
+    lda VERA_DATA1
+    cmp #$01                    // 'a'
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$61
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$42                    // 'B'
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$61
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$30                    // '0'
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$61
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$20                    // the fill
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$25
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$20
+    bne test_screen_blit__fail
+    lda VERA_DATA1
+    cmp #$25
+    bne test_screen_blit__fail
+
+    lda #0
+    bra test_screen_blit__report
+test_screen_blit__fail:
+    lda #1
+test_screen_blit__report:
+    pha                         // +vera_addrsel clobbers A; the verdict
+    vera_addrsel(0)  // has to survive it
+    pla
+    ldx #<test_screen_blit__name
+    ldy #>test_screen_blit__name
+    jmp t_result
+test_screen_blit__text: .byte $41, $C2, $30       // 'a', 'B', '0' in PETSCII
+test_screen_blit__name: .text "SCREEN_BLIT"
+    .byte $00
+
+// ---------------------------------------------------------------------
+// screen_scroll: write three marker rows, slide them, and check that the
+// picture moved and that the row it left behind was not touched.
+test_screen_scroll:
+    ldx #40                     // row 40 = "1", 41 = "2", 42 = "3"
+    ldy #0
+    jsr screen_addr
+    lda #1
+    ldx #$61
+    ldy #$31
+    jsr screen_blitfill
+    ldx #41
+    ldy #0
+    jsr screen_addr
+    lda #1
+    ldx #$61
+    ldy #$32
+    jsr screen_blitfill
+    ldx #42
+    ldy #0
+    jsr screen_addr
+    lda #1
+    ldx #$61
+    ldy #$33
+    jsr screen_blitfill
+
+    lda #40                     // move rows 40..42 up by one
+    sta X16_P0
+    stz X16_P1
+    lda #3
+    sta X16_P2
+    lda #1
+    sta X16_P3
+    sta X16_P4
+    lda #0                      // up
+    jsr screen_scroll
+
+    ldx #40                     // row 40 now holds what row 41 had
+    ldy #0
+    jsr screen_addr1
+    lda VERA_DATA1
+    cmp #$32
+    bne test_screen_scroll__fail
+    ldx #41
+    ldy #0
+    jsr screen_addr1
+    lda VERA_DATA1
+    cmp #$33
+    bne test_screen_scroll__fail
+    ldx #42                     // the vacated row is left alone
+    ldy #0
+    jsr screen_addr1
+    lda VERA_DATA1
+    cmp #$33
+    bne test_screen_scroll__fail
+
+    lda #40                     // and back down again
+    sta X16_P0
+    stz X16_P1
+    lda #3
+    sta X16_P2
+    lda #1
+    sta X16_P3
+    sta X16_P4
+    lda #1                      // down
+    jsr screen_scroll
+    ldx #41
+    ldy #0
+    jsr screen_addr1
+    lda VERA_DATA1
+    cmp #$32
+    bne test_screen_scroll__fail
+
+    lda #40                     // a distance that leaves nothing does nothing
+    sta X16_P0
+    stz X16_P1
+    lda #3
+    sta X16_P2
+    lda #1
+    sta X16_P3
+    lda #3
+    sta X16_P4
+    lda #0
+    jsr screen_scroll
+    ldx #41
+    ldy #0
+    jsr screen_addr1
+    lda VERA_DATA1
+    cmp #$32
+    bne test_screen_scroll__fail
+
+    lda #0
+    bra test_screen_scroll__report
+test_screen_scroll__fail:
+    lda #1
+test_screen_scroll__report:
+    pha
+    vera_addrsel(0)
+    pla
+    ldx #<test_screen_scroll__name
+    ldy #>test_screen_scroll__name
+    jmp t_result
+test_screen_scroll__name: .text "SCREEN_SCROLL"
+    .byte $00
 
 // =====================================================================
 // gfx2 (640x480@2bpp): 4 pixels per byte, MSB-first, rows of 160.

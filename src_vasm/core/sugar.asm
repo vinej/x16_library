@@ -266,6 +266,67 @@
     jsr screen_charset
     endm
     endif
+; point VERA port 0 at a character cell, for the blit calls below
+    ifdef X16_USE_SCREEN
+    macro xm_screen_addr
+    ldx #(\1)
+    ldy #(\2)
+    jsr screen_addr
+    endm
+    endif
+; ...and port 1, which is where a vera_copy destination goes
+    ifdef X16_USE_SCREEN
+    macro xm_screen_addr1
+    ldx #(\1)
+    ldy #(\2)
+    jsr screen_addr1
+    endm
+    endif
+; slide a rectangle of text rows: sugar_dir 0 moves the picture up, 1 down
+    ifdef X16_USE_SCREEN
+    macro xm_screen_scroll
+    lda #(\1)
+    sta X16_P0
+    lda #(\2)
+    sta X16_P1
+    lda #(\3)
+    sta X16_P2
+    lda #(\4)
+    sta X16_P3
+    lda #(\5)
+    sta X16_P4
+    lda #(\6)
+    jsr screen_scroll
+    endm
+    endif
+; PETSCII -> screen code
+    ifdef X16_USE_SCREEN
+    macro xm_screen_scode
+    lda #(\1)
+    jsr screen_scode
+    endm
+    endif
+; write sugar_count characters from sugar_addr, all in colour sugar_col (fg | bg << 4)
+    ifdef X16_USE_SCREEN
+    macro xm_screen_blit
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    ldx #(\3)
+    jsr screen_blit
+    endm
+    endif
+; write sugar_count copies of sugar_ch in colour sugar_col
+    ifdef X16_USE_SCREEN
+    macro xm_screen_blitfill
+    lda #(\1)
+    ldx #(\2)
+    ldy #(\3)
+    jsr screen_blitfill
+    endm
+    endif
 ; print a NUL-terminated string
     ifdef X16_USE_SCREEN
     macro xm_screen_puts
@@ -5349,5 +5410,1012 @@
     lda #<(\1)
     ldx #>(\1)
     jsr str_trim
+    endm
+    endif
+
+; =====================================================================
+; Routines that had no friendly macro until now. Most work on their
+; module's accumulator -- FAC, d_ac, i16_a/i16_b, i32_a/i32_b,
+; bcd_a/bcd_b, the stack or the queue -- so they take no arguments;
+; the rest carry the parameters their own header documents.
+; =====================================================================
+    ifdef X16_USE_FLOAT
+    macro xm_f_zero
+    jsr f_zero
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_neg
+    jsr f_neg
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_abs
+    jsr f_abs
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_int
+    jsr f_int
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_sgn
+    jsr f_sgn
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_to_s16
+    jsr f_to_s16
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_sqrt
+    jsr f_sqrt
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_ln
+    jsr f_ln
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_exp
+    jsr f_exp
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_sin
+    jsr f_sin
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_cos
+    jsr f_cos
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_tan
+    jsr f_tan
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_atan
+    jsr f_atan
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_to_str
+    jsr f_to_str
+    endm
+    endif
+
+    ifdef X16_USE_FLOAT
+    macro xm_f_to_str_trim
+    jsr f_to_str_trim
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_neg
+    jsr d_neg
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_abs
+    jsr d_abs
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_to_s32
+    jsr d_to_s32
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_sqrt
+    jsr d_sqrt
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_exp
+    jsr d_exp
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_ln
+    jsr d_ln
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_sin
+    jsr d_sin
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_cos
+    jsr d_cos
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_tan
+    jsr d_tan
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_atan
+    jsr d_atan
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_sinh
+    jsr d_sinh
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_cosh
+    jsr d_cosh
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_tanh
+    jsr d_tanh
+    endm
+    endif
+
+    ifdef X16_USE_DOUBLE
+    macro xm_d_to_str
+    jsr d_to_str
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_add
+    jsr i16_add
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_sub
+    jsr i16_sub
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_neg
+    jsr i16_neg
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_abs
+    jsr i16_abs
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_shl
+    jsr i16_shl
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_shr
+    jsr i16_shr
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_asr
+    jsr i16_asr
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_cmpu
+    jsr i16_cmpu
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_cmps
+    jsr i16_cmps
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_mul
+    jsr i16_mul
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_divmod
+    jsr i16_divmod
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_divmod_s
+    jsr i16_divmod_s
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_sqrt
+    jsr i16_sqrt
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_to_dec
+    jsr i16_to_dec
+    endm
+    endif
+
+    ifdef X16_USE_INT16
+    macro xm_i16_to_dec_s
+    jsr i16_to_dec_s
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_to_s16
+    jsr i32_to_s16
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_add
+    jsr i32_add
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_sub
+    jsr i32_sub
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_neg
+    jsr i32_neg
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_abs
+    jsr i32_abs
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_shl
+    jsr i32_shl
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_shr
+    jsr i32_shr
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_asr
+    jsr i32_asr
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_cmpu
+    jsr i32_cmpu
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_cmps
+    jsr i32_cmps
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_mul
+    jsr i32_mul
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_divmod
+    jsr i32_divmod
+    endm
+    endif
+
+    ifdef X16_USE_INT32
+    macro xm_i32_to_dec
+    jsr i32_to_dec
+    endm
+    endif
+
+    ifdef X16_USE_BCD
+    macro xm_bcd_add8
+    jsr bcd_add8
+    endm
+    endif
+
+    ifdef X16_USE_BCD
+    macro xm_bcd_add16
+    jsr bcd_add16
+    endm
+    endif
+
+    ifdef X16_USE_BCD
+    macro xm_bcd_add32
+    jsr bcd_add32
+    endm
+    endif
+
+    ifdef X16_USE_BCD
+    macro xm_bcd_sub8
+    jsr bcd_sub8
+    endm
+    endif
+
+    ifdef X16_USE_BCD
+    macro xm_bcd_sub16
+    jsr bcd_sub16
+    endm
+    endif
+
+    ifdef X16_USE_BCD
+    macro xm_bcd_sub32
+    jsr bcd_sub32
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_pop
+    jsr stack_pop
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_popw
+    jsr stack_popw
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_size
+    jsr stack_size
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_free
+    jsr stack_free
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_isempty
+    jsr stack_isempty
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_isfull
+    jsr stack_isfull
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_get
+    jsr ring_get
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_getw
+    jsr ring_getw
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_size
+    jsr ring_size
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_free
+    jsr ring_free
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_isempty
+    jsr ring_isempty
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_isfull
+    jsr ring_isfull
+    endm
+    endif
+
+    ifdef X16_USE_PCM
+    macro xm_pcm_full
+    jsr pcm_full
+    endm
+    endif
+
+    ifdef X16_USE_PCM
+    macro xm_pcm_empty
+    jsr pcm_empty
+    endm
+    endif
+
+    ifdef X16_USE_PCM_STREAM
+    macro xm_pcm_stream_active
+    jsr pcm_stream_active
+    endm
+    endif
+
+    ifdef X16_USE_YM
+    macro xm_ym_busy
+    jsr ym_busy
+    endm
+    endif
+
+    ifdef X16_USE_BANK
+    macro xm_bank_get
+    jsr bank_get
+    endm
+    endif
+
+    ifdef X16_USE_IRQ_ANY
+    macro xm_irq_line_remove
+    jsr irq_line_remove
+    endm
+    endif
+
+    ifdef X16_USE_IRQ_ANY
+    macro xm_irq_save_regs
+    jsr irq_save_regs
+    endm
+    endif
+
+    ifdef X16_USE_IRQ_ANY
+    macro xm_irq_restore_regs
+    jsr irq_restore_regs
+    endm
+    endif
+
+    ifdef X16_USE_IRQ_ANY
+    macro xm_irq_frames
+    jsr irq_frames
+    endm
+    endif
+
+    ifdef X16_USE_IRQ_SPRCOL_API
+    macro xm_sprite_collisions
+    jsr sprite_collisions
+    endm
+    endif
+
+    ifdef X16_USE_CLIP
+    macro xm_clip_line
+    jsr clip_line
+    endm
+    endif
+
+    ifdef X16_USE_VERAFX_TRI
+    macro xm_fx_triangle
+    jsr fx_triangle
+    endm
+    endif
+
+    ifdef X16_USE_MATH
+    macro xm_rnd16
+    jsr rnd16
+    endm
+    endif
+
+    ifdef X16_USE_SCREEN_EXTRA
+    macro xm_screen_get_mode
+    jsr screen_get_mode
+    endm
+    endif
+
+    ifdef X16_USE_SCREEN_EXTRA
+    macro xm_screen_get_cursor
+    jsr screen_get_cursor
+    endm
+    endif
+
+    ifdef X16_USE_VERA_FXPROBE
+    macro xm_vera_has_fx
+    jsr vera_has_fx
+    endm
+    endif
+
+    ifdef X16_USE_FILEIO
+    macro xm_fio_open
+    jsr fio_open
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isdigit
+    lda #(\1)
+    jsr str_isdigit
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isxdigit
+    lda #(\1)
+    jsr str_isxdigit
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_islower
+    lda #(\1)
+    jsr str_islower
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isupper
+    lda #(\1)
+    jsr str_isupper
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isupper_iso
+    lda #(\1)
+    jsr str_isupper_iso
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isletter
+    lda #(\1)
+    jsr str_isletter
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isletter_iso
+    lda #(\1)
+    jsr str_isletter_iso
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isspace
+    lda #(\1)
+    jsr str_isspace
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isprint
+    lda #(\1)
+    jsr str_isprint
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CTYPE
+    macro xm_str_isprint_iso
+    lda #(\1)
+    jsr str_isprint_iso
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CASE
+    macro xm_str_lowerchar
+    lda #(\1)
+    jsr str_lowerchar
+    endm
+    endif
+
+    ifdef X16_USE_STRING_CASE
+    macro xm_str_upperchar
+    lda #(\1)
+    jsr str_upperchar
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_init
+    lda #(\1)
+    jsr stack_init
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_init
+    lda #(\1)
+    jsr ring_init
+    endm
+    endif
+
+    ifdef X16_USE_STACK
+    macro xm_stack_push
+    lda #(\1)
+    jsr stack_push
+    endm
+    endif
+
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_put
+    lda #(\1)
+    jsr ring_put
+    endm
+    endif
+
+    ifdef X16_USE_YM
+    macro xm_ym_get_pan
+    lda #(\1)
+    jsr ym_get_pan
+    endm
+    endif
+
+    ifdef X16_USE_YM
+    macro xm_ym_get_vol
+    lda #(\1)
+    jsr ym_get_vol
+    endm
+    endif
+
+; push one word (low byte first, then high)
+    ifdef X16_USE_STACK
+    macro xm_stack_pushw
+    lda #<(\1)
+    ldx #>(\1)
+    jsr stack_pushw
+    endm
+    endif
+
+; enqueue one word (low byte first)
+    ifdef X16_USE_RINGBUFFER
+    macro xm_ring_putw
+    lda #<(\1)
+    ldx #>(\1)
+    jsr ring_putw
+    endm
+    endif
+
+; add bcd_b to a 4-byte BCD value in place
+    ifdef X16_USE_BCD
+    macro xm_bcd_addto
+    lda #<(\1)
+    ldx #>(\1)
+    jsr bcd_addto
+    endm
+    endif
+
+; subtract bcd_b from a 4-byte BCD value in place
+    ifdef X16_USE_BCD
+    macro xm_bcd_subfrom
+    lda #<(\1)
+    ldx #>(\1)
+    jsr bcd_subfrom
+    endm
+    endif
+
+; FAC = mem ^ FAC (the ROM's operand order)
+    ifdef X16_USE_FLOAT
+    macro xm_f_rpow
+    lda #<(\1)
+    ldy #>(\1)
+    jsr f_rpow
+    endm
+    endif
+
+; d_ac = the signed 32-bit little-endian value at addr
+    ifdef X16_USE_DOUBLE
+    macro xm_d_from_s32
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    jsr d_from_s32
+    endm
+    endif
+
+; tile data base for a layer (base>>11<<2 | tile size bits)
+    ifdef X16_USE_TILE
+    macro xm_layer_set_tilebase
+    ldx #(\1)
+    lda #(\2)
+    jsr layer_set_tilebase
+    endm
+    endif
+
+; set (sugar_set != 0) or clear (sugar_set = 0) the masked bits at addr
+    ifdef X16_USE_BITS
+    macro xm_bit_put
+    lda #<(\1)
+    sta X16_PTR0
+    lda #>(\1)
+    sta X16_PTR0+1
+    ldx #(\3)
+    lda #(\2)
+    jsr bit_put
+    endm
+    endif
+
+; load an instrument from a patch in RAM (the ROM-index form is xm_ym_patch_rom)
+    ifdef X16_USE_YM
+    macro xm_ym_patch_ram
+    clc
+    ldx #<(\2)
+    ldy #>(\2)
+    lda #(\1)
+    jsr ym_patch
+    endm
+    endif
+
+; make a directory
+    ifdef X16_USE_DOS
+    macro xm_dos_mkdir
+    lda #<(\1)
+    ldx #>(\1)
+    ldy #(\2)
+    jsr dos_mkdir
+    endm
+    endif
+
+; remove a directory
+    ifdef X16_USE_DOS
+    macro xm_dos_rmdir
+    lda #<(\1)
+    ldx #>(\1)
+    ldy #(\2)
+    jsr dos_rmdir
+    endm
+    endif
+
+; change directory ("//" is the root)
+    ifdef X16_USE_DOS
+    macro xm_dos_chdir
+    lda #<(\1)
+    ldx #>(\1)
+    ldy #(\2)
+    jsr dos_chdir
+    endm
+    endif
+
+; rename oldname to newname
+    ifdef X16_USE_DOS
+    macro xm_dos_rename
+    lda #<(\3)
+    sta X16_P0
+    lda #>(\3)
+    sta X16_P1
+    lda #(\4)
+    sta X16_P2
+    lda #<(\1)
+    ldx #>(\1)
+    ldy #(\2)
+    jsr dos_rename
+    endm
+    endif
+
+; copy banked RAM to low RAM, advancing across bank boundaries
+    ifdef X16_USE_BANK
+    macro xm_bank_to_mem
+    lda #<(\2)
+    sta X16_P1
+    lda #>(\2)
+    sta X16_P2
+    lda #<(\3)
+    sta X16_P3
+    lda #>(\3)
+    sta X16_P4
+    lda #<(\4)
+    sta X16_P5
+    lda #>(\4)
+    sta X16_P6
+    lda #(\1)
+    sta X16_P0
+    jsr bank_to_mem
+    endm
+    endif
+
+; copy banked RAM to banked RAM
+    ifdef X16_USE_BANK
+    macro xm_bank_copy_far
+    lda #<(\2)
+    sta X16_P1
+    lda #>(\2)
+    sta X16_P2
+    lda #<(\4)
+    sta X16_P4
+    lda #>(\4)
+    sta X16_P5
+    lda #<(\5)
+    sta X16_P6
+    lda #>(\5)
+    sta X16_P7
+    lda #(\3)
+    sta X16_P3
+    lda #(\1)
+    sta X16_P0
+    jsr bank_copy_far
+    endm
+    endif
+
+; save a block of memory as a PRG
+    ifdef X16_USE_LOAD
+    macro xm_fs_save
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    lda #(\3)
+    sta X16_P3
+    lda #<(\4)
+    sta X16_P5
+    lda #>(\4)
+    sta X16_P6
+    lda #<(\5)
+    sta X16_T6
+    lda #>(\5)
+    sta X16_T7
+    jsr fs_save
+    endm
+    endif
+
+; write a BMX file from VRAM (bmx_width/height/bpp/... describe the image)
+    ifdef X16_USE_BMX
+    macro xm_bmx_save
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    lda #(\3)
+    sta X16_P3
+    lda #(\4)
+    sta X16_P4
+    lda #<(\5)
+    sta X16_P5
+    lda #>(\5)
+    sta X16_P6
+    jsr bmx_save
+    endm
+    endif
+
+; play a sample living in banked RAM (count is 24-bit: low word, then high byte)
+    ifdef X16_USE_PCM_STREAM
+    macro xm_pcm_stream_start_bank
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    lda #(\3)
+    sta X16_P4
+    lda #(\4)
+    sta X16_P5
+    lda #(\5)
+    jsr pcm_stream_start_bank
+    endm
+    endif
+
+; VRAM to VRAM through the 32-bit cache; the destination must be 4-byte aligned
+    ifdef X16_USE_VERAFX_COPY
+    macro xm_fx_copy
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    lda #<(\3)
+    sta X16_P3
+    lda #>(\3)
+    sta X16_P4
+    lda #(\4)
+    sta X16_P5
+    lda #<(\5)
+    sta X16_P6
+    lda #>(\5)
+    sta X16_P7
+    jsr fx_copy
+    endm
+    endif
+
+; enter affine mode and describe the texture
+    ifdef X16_USE_VERAFX_AFFINE
+    macro xm_fx_affine_on
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    lda #<(\3)
+    sta X16_P3
+    lda #>(\3)
+    sta X16_P4
+    lda #(\4)
+    sta X16_P5
+    lda #(\5)
+    sta X16_P6
+    lda #(\6)
+    sta X16_P7
+    jsr fx_affine_on
+    endm
+    endif
+
+; aim the sampler (dx/dy signed, 1/512 texel units)
+    ifdef X16_USE_VERAFX_AFFINE
+    macro xm_fx_affine_ray
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #<(\2)
+    sta X16_P2
+    lda #>(\2)
+    sta X16_P3
+    lda #<(\3)
+    sta X16_P4
+    lda #>(\3)
+    sta X16_P5
+    lda #<(\4)
+    sta X16_P6
+    lda #>(\4)
+    sta X16_P7
+    jsr fx_affine_ray
+    endm
+    endif
+
+; fetch texels along the ray into VRAM; port 0 must already point at the destination
+    ifdef X16_USE_VERAFX_AFFINE
+    macro xm_fx_affine_span
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    jsr fx_affine_span
     endm
     endif

@@ -32,6 +32,7 @@ fio_set_lfs
 fio_set_name
     jmp SETNAM                  ; A = length, X/Y = name pointer
 
+; fio_open -- out: carry set on error, A = the KERNAL error code
 fio_open
     jmp OPEN
 
@@ -47,15 +48,18 @@ fio_chkout
 fio_clrchn
     jmp CLRCHN
 
+; fio_chrin -- out: A = the byte read from the current input channel
 fio_chrin
     jmp CHRIN
 
 fio_chrout
     jmp CHROUT
 
+; fio_readst -- out: A = the KERNAL status byte (bit 6 = end of file)
 fio_readst
     jmp READST
 
+; fio_getin -- out: A = one byte, 0 if nothing is waiting
 fio_getin
     jmp GETIN
 

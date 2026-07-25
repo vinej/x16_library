@@ -41,3 +41,22 @@ main
 
 #import "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of clip
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_clip_line()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_clip_line()` |
+| Purpose | clip clipl_* against the rectangle |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns the carry flag. |
+| More info | Available when `X16_USE_CLIP` is enabled. |

@@ -199,3 +199,62 @@ main
 
 .include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of verafx
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_fx_triangle`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fx_triangle` |
+| Purpose | filled triangle via the polygon helper |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_VERAFX_TRI` is enabled. |
+
+## `xm_fx_copy src, srchi, dst, dsthi, count`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fx_copy src, srchi, dst, dsthi, count` |
+| Purpose | VRAM to VRAM through the 32-bit cache (~4x a byte loop) |
+| Input parameters | `src`, `srchi`, `dst`, `dsthi`, `count` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_VERAFX_COPY` is enabled. |
+
+## `xm_fx_affine_on tiledata, tiledatahi, tilemap, tilemaphi, mapsize, clip`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fx_affine_on tiledata, tiledatahi, tilemap, tilemaphi, mapsize, clip` |
+| Purpose | enter affine mode and describe the texture |
+| Input parameters | `tiledata`, `tiledatahi`, `tilemap`, `tilemaphi`, `mapsize`, `clip` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_VERAFX_AFFINE` is enabled. |
+
+## `xm_fx_affine_ray x, y, dx, dy`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fx_affine_ray x, y, dx, dy` |
+| Purpose | aim the sampler |
+| Input parameters | `x`, `y`, `dx`, `dy` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_VERAFX_AFFINE` is enabled. |
+
+## `xm_fx_affine_span count`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fx_affine_span count` |
+| Purpose | fetch texels along the ray into VRAM |
+| Input parameters | `count` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_VERAFX_AFFINE` is enabled. |

@@ -554,6 +554,9 @@
 }
 !ifdef X16_USE_SCREEN_CORE  { !ifndef X16_USE_SCREEN_ANY { X16_USE_SCREEN_ANY = 1 } }
 !ifdef X16_USE_SCREEN_EXTRA { !ifndef X16_USE_SCREEN_ANY { X16_USE_SCREEN_ANY = 1 } }
+; screen_scroll moves text with vera_copy
+!ifdef X16_USE_SCREEN_EXTRA { !ifndef X16_USE_VERA_COPY { X16_USE_VERA_COPY = 1 } }
+!ifdef X16_USE_VERA_COPY    { !ifndef X16_USE_VERA_ANY  { X16_USE_VERA_ANY  = 1 } }
 
 ; --- modules ---------------------------------------------------------
 !ifdef X16_USE_VERA_ANY { !source "video/vera.asm" }

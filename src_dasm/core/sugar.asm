@@ -266,6 +266,67 @@
     jsr screen_charset
     ENDM
     ENDIF
+; point VERA port 0 at a character cell, for the blit calls below
+    IFCONST X16_USE_SCREEN
+    MAC xm_screen_addr
+    ldx #({1})
+    ldy #({2})
+    jsr screen_addr
+    ENDM
+    ENDIF
+; ...and port 1, which is where a vera_copy destination goes
+    IFCONST X16_USE_SCREEN
+    MAC xm_screen_addr1
+    ldx #({1})
+    ldy #({2})
+    jsr screen_addr1
+    ENDM
+    ENDIF
+; slide a rectangle of text rows: sugar_dir 0 moves the picture up, 1 down
+    IFCONST X16_USE_SCREEN
+    MAC xm_screen_scroll
+    lda #({1})
+    sta X16_P0
+    lda #({2})
+    sta X16_P1
+    lda #({3})
+    sta X16_P2
+    lda #({4})
+    sta X16_P3
+    lda #({5})
+    sta X16_P4
+    lda #({6})
+    jsr screen_scroll
+    ENDM
+    ENDIF
+; PETSCII -> screen code
+    IFCONST X16_USE_SCREEN
+    MAC xm_screen_scode
+    lda #({1})
+    jsr screen_scode
+    ENDM
+    ENDIF
+; write sugar_count characters from sugar_addr, all in colour sugar_col (fg | bg << 4)
+    IFCONST X16_USE_SCREEN
+    MAC xm_screen_blit
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    ldx #({3})
+    jsr screen_blit
+    ENDM
+    ENDIF
+; write sugar_count copies of sugar_ch in colour sugar_col
+    IFCONST X16_USE_SCREEN
+    MAC xm_screen_blitfill
+    lda #({1})
+    ldx #({2})
+    ldy #({3})
+    jsr screen_blitfill
+    ENDM
+    ENDIF
 ; print a NUL-terminated string
     IFCONST X16_USE_SCREEN
     MAC xm_screen_puts
@@ -5349,5 +5410,1012 @@
     lda #<({1})
     ldx #>({1})
     jsr str_trim
+    ENDM
+    ENDIF
+
+; =====================================================================
+; Routines that had no friendly macro until now. Most work on their
+; module's accumulator -- FAC, d_ac, i16_a/i16_b, i32_a/i32_b,
+; bcd_a/bcd_b, the stack or the queue -- so they take no arguments;
+; the rest carry the parameters their own header documents.
+; =====================================================================
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_zero
+    jsr f_zero
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_neg
+    jsr f_neg
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_abs
+    jsr f_abs
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_int
+    jsr f_int
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_sgn
+    jsr f_sgn
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_to_s16
+    jsr f_to_s16
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_sqrt
+    jsr f_sqrt
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_ln
+    jsr f_ln
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_exp
+    jsr f_exp
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_sin
+    jsr f_sin
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_cos
+    jsr f_cos
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_tan
+    jsr f_tan
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_atan
+    jsr f_atan
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_to_str
+    jsr f_to_str
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_to_str_trim
+    jsr f_to_str_trim
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_neg
+    jsr d_neg
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_abs
+    jsr d_abs
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_to_s32
+    jsr d_to_s32
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_sqrt
+    jsr d_sqrt
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_exp
+    jsr d_exp
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_ln
+    jsr d_ln
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_sin
+    jsr d_sin
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_cos
+    jsr d_cos
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_tan
+    jsr d_tan
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_atan
+    jsr d_atan
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_sinh
+    jsr d_sinh
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_cosh
+    jsr d_cosh
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_tanh
+    jsr d_tanh
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_to_str
+    jsr d_to_str
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_add
+    jsr i16_add
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_sub
+    jsr i16_sub
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_neg
+    jsr i16_neg
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_abs
+    jsr i16_abs
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_shl
+    jsr i16_shl
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_shr
+    jsr i16_shr
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_asr
+    jsr i16_asr
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_cmpu
+    jsr i16_cmpu
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_cmps
+    jsr i16_cmps
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_mul
+    jsr i16_mul
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_divmod
+    jsr i16_divmod
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_divmod_s
+    jsr i16_divmod_s
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_sqrt
+    jsr i16_sqrt
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_to_dec
+    jsr i16_to_dec
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT16
+    MAC xm_i16_to_dec_s
+    jsr i16_to_dec_s
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_to_s16
+    jsr i32_to_s16
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_add
+    jsr i32_add
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_sub
+    jsr i32_sub
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_neg
+    jsr i32_neg
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_abs
+    jsr i32_abs
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_shl
+    jsr i32_shl
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_shr
+    jsr i32_shr
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_asr
+    jsr i32_asr
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_cmpu
+    jsr i32_cmpu
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_cmps
+    jsr i32_cmps
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_mul
+    jsr i32_mul
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_divmod
+    jsr i32_divmod
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_INT32
+    MAC xm_i32_to_dec
+    jsr i32_to_dec
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_add8
+    jsr bcd_add8
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_add16
+    jsr bcd_add16
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_add32
+    jsr bcd_add32
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_sub8
+    jsr bcd_sub8
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_sub16
+    jsr bcd_sub16
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_sub32
+    jsr bcd_sub32
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_pop
+    jsr stack_pop
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_popw
+    jsr stack_popw
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_size
+    jsr stack_size
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_free
+    jsr stack_free
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_isempty
+    jsr stack_isempty
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_isfull
+    jsr stack_isfull
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_get
+    jsr ring_get
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_getw
+    jsr ring_getw
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_size
+    jsr ring_size
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_free
+    jsr ring_free
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_isempty
+    jsr ring_isempty
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_isfull
+    jsr ring_isfull
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_PCM
+    MAC xm_pcm_full
+    jsr pcm_full
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_PCM
+    MAC xm_pcm_empty
+    jsr pcm_empty
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_PCM_STREAM
+    MAC xm_pcm_stream_active
+    jsr pcm_stream_active
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_YM
+    MAC xm_ym_busy
+    jsr ym_busy
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_BANK
+    MAC xm_bank_get
+    jsr bank_get
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_IRQ_ANY
+    MAC xm_irq_line_remove
+    jsr irq_line_remove
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_IRQ_ANY
+    MAC xm_irq_save_regs
+    jsr irq_save_regs
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_IRQ_ANY
+    MAC xm_irq_restore_regs
+    jsr irq_restore_regs
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_IRQ_ANY
+    MAC xm_irq_frames
+    jsr irq_frames
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_IRQ_SPRCOL_API
+    MAC xm_sprite_collisions
+    jsr sprite_collisions
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_CLIP
+    MAC xm_clip_line
+    jsr clip_line
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_VERAFX_TRI
+    MAC xm_fx_triangle
+    jsr fx_triangle
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_MATH
+    MAC xm_rnd16
+    jsr rnd16
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_SCREEN_EXTRA
+    MAC xm_screen_get_mode
+    jsr screen_get_mode
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_SCREEN_EXTRA
+    MAC xm_screen_get_cursor
+    jsr screen_get_cursor
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_VERA_FXPROBE
+    MAC xm_vera_has_fx
+    jsr vera_has_fx
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_FILEIO
+    MAC xm_fio_open
+    jsr fio_open
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isdigit
+    lda #({1})
+    jsr str_isdigit
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isxdigit
+    lda #({1})
+    jsr str_isxdigit
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_islower
+    lda #({1})
+    jsr str_islower
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isupper
+    lda #({1})
+    jsr str_isupper
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isupper_iso
+    lda #({1})
+    jsr str_isupper_iso
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isletter
+    lda #({1})
+    jsr str_isletter
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isletter_iso
+    lda #({1})
+    jsr str_isletter_iso
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isspace
+    lda #({1})
+    jsr str_isspace
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isprint
+    lda #({1})
+    jsr str_isprint
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CTYPE
+    MAC xm_str_isprint_iso
+    lda #({1})
+    jsr str_isprint_iso
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_lowerchar
+    lda #({1})
+    jsr str_lowerchar
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STRING_CASE
+    MAC xm_str_upperchar
+    lda #({1})
+    jsr str_upperchar
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_init
+    lda #({1})
+    jsr stack_init
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_init
+    lda #({1})
+    jsr ring_init
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_STACK
+    MAC xm_stack_push
+    lda #({1})
+    jsr stack_push
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_put
+    lda #({1})
+    jsr ring_put
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_YM
+    MAC xm_ym_get_pan
+    lda #({1})
+    jsr ym_get_pan
+    ENDM
+    ENDIF
+
+    IFCONST X16_USE_YM
+    MAC xm_ym_get_vol
+    lda #({1})
+    jsr ym_get_vol
+    ENDM
+    ENDIF
+
+; push one word (low byte first, then high)
+    IFCONST X16_USE_STACK
+    MAC xm_stack_pushw
+    lda #<({1})
+    ldx #>({1})
+    jsr stack_pushw
+    ENDM
+    ENDIF
+
+; enqueue one word (low byte first)
+    IFCONST X16_USE_RINGBUFFER
+    MAC xm_ring_putw
+    lda #<({1})
+    ldx #>({1})
+    jsr ring_putw
+    ENDM
+    ENDIF
+
+; add bcd_b to a 4-byte BCD value in place
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_addto
+    lda #<({1})
+    ldx #>({1})
+    jsr bcd_addto
+    ENDM
+    ENDIF
+
+; subtract bcd_b from a 4-byte BCD value in place
+    IFCONST X16_USE_BCD
+    MAC xm_bcd_subfrom
+    lda #<({1})
+    ldx #>({1})
+    jsr bcd_subfrom
+    ENDM
+    ENDIF
+
+; FAC = mem ^ FAC (the ROM's operand order)
+    IFCONST X16_USE_FLOAT
+    MAC xm_f_rpow
+    lda #<({1})
+    ldy #>({1})
+    jsr f_rpow
+    ENDM
+    ENDIF
+
+; d_ac = the signed 32-bit little-endian value at addr
+    IFCONST X16_USE_DOUBLE
+    MAC xm_d_from_s32
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    jsr d_from_s32
+    ENDM
+    ENDIF
+
+; tile data base for a layer (base>>11<<2 | tile size bits)
+    IFCONST X16_USE_TILE
+    MAC xm_layer_set_tilebase
+    ldx #({1})
+    lda #({2})
+    jsr layer_set_tilebase
+    ENDM
+    ENDIF
+
+; set (sugar_set != 0) or clear (sugar_set = 0) the masked bits at addr
+    IFCONST X16_USE_BITS
+    MAC xm_bit_put
+    lda #<({1})
+    sta X16_PTR0
+    lda #>({1})
+    sta X16_PTR0+1
+    ldx #({3})
+    lda #({2})
+    jsr bit_put
+    ENDM
+    ENDIF
+
+; load an instrument from a patch in RAM (the ROM-index form is xm_ym_patch_rom)
+    IFCONST X16_USE_YM
+    MAC xm_ym_patch_ram
+    clc
+    ldx #<({2})
+    ldy #>({2})
+    lda #({1})
+    jsr ym_patch
+    ENDM
+    ENDIF
+
+; make a directory
+    IFCONST X16_USE_DOS
+    MAC xm_dos_mkdir
+    lda #<({1})
+    ldx #>({1})
+    ldy #({2})
+    jsr dos_mkdir
+    ENDM
+    ENDIF
+
+; remove a directory
+    IFCONST X16_USE_DOS
+    MAC xm_dos_rmdir
+    lda #<({1})
+    ldx #>({1})
+    ldy #({2})
+    jsr dos_rmdir
+    ENDM
+    ENDIF
+
+; change directory ("//" is the root)
+    IFCONST X16_USE_DOS
+    MAC xm_dos_chdir
+    lda #<({1})
+    ldx #>({1})
+    ldy #({2})
+    jsr dos_chdir
+    ENDM
+    ENDIF
+
+; rename oldname to newname
+    IFCONST X16_USE_DOS
+    MAC xm_dos_rename
+    lda #<({3})
+    sta X16_P0
+    lda #>({3})
+    sta X16_P1
+    lda #({4})
+    sta X16_P2
+    lda #<({1})
+    ldx #>({1})
+    ldy #({2})
+    jsr dos_rename
+    ENDM
+    ENDIF
+
+; copy banked RAM to low RAM, advancing across bank boundaries
+    IFCONST X16_USE_BANK
+    MAC xm_bank_to_mem
+    lda #<({2})
+    sta X16_P1
+    lda #>({2})
+    sta X16_P2
+    lda #<({3})
+    sta X16_P3
+    lda #>({3})
+    sta X16_P4
+    lda #<({4})
+    sta X16_P5
+    lda #>({4})
+    sta X16_P6
+    lda #({1})
+    sta X16_P0
+    jsr bank_to_mem
+    ENDM
+    ENDIF
+
+; copy banked RAM to banked RAM
+    IFCONST X16_USE_BANK
+    MAC xm_bank_copy_far
+    lda #<({2})
+    sta X16_P1
+    lda #>({2})
+    sta X16_P2
+    lda #<({4})
+    sta X16_P4
+    lda #>({4})
+    sta X16_P5
+    lda #<({5})
+    sta X16_P6
+    lda #>({5})
+    sta X16_P7
+    lda #({3})
+    sta X16_P3
+    lda #({1})
+    sta X16_P0
+    jsr bank_copy_far
+    ENDM
+    ENDIF
+
+; save a block of memory as a PRG
+    IFCONST X16_USE_LOAD
+    MAC xm_fs_save
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #({3})
+    sta X16_P3
+    lda #<({4})
+    sta X16_P5
+    lda #>({4})
+    sta X16_P6
+    lda #<({5})
+    sta X16_T6
+    lda #>({5})
+    sta X16_T7
+    jsr fs_save
+    ENDM
+    ENDIF
+
+; write a BMX file from VRAM (bmx_width/height/bpp/... describe the image)
+    IFCONST X16_USE_BMX
+    MAC xm_bmx_save
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #({3})
+    sta X16_P3
+    lda #({4})
+    sta X16_P4
+    lda #<({5})
+    sta X16_P5
+    lda #>({5})
+    sta X16_P6
+    jsr bmx_save
+    ENDM
+    ENDIF
+
+; play a sample living in banked RAM (count is 24-bit: low word, then high byte)
+    IFCONST X16_USE_PCM_STREAM
+    MAC xm_pcm_stream_start_bank
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    lda #({3})
+    sta X16_P4
+    lda #({4})
+    sta X16_P5
+    lda #({5})
+    jsr pcm_stream_start_bank
+    ENDM
+    ENDIF
+
+; VRAM to VRAM through the 32-bit cache; the destination must be 4-byte aligned
+    IFCONST X16_USE_VERAFX_COPY
+    MAC xm_fx_copy
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #<({3})
+    sta X16_P3
+    lda #>({3})
+    sta X16_P4
+    lda #({4})
+    sta X16_P5
+    lda #<({5})
+    sta X16_P6
+    lda #>({5})
+    sta X16_P7
+    jsr fx_copy
+    ENDM
+    ENDIF
+
+; enter affine mode and describe the texture
+    IFCONST X16_USE_VERAFX_AFFINE
+    MAC xm_fx_affine_on
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #<({3})
+    sta X16_P3
+    lda #>({3})
+    sta X16_P4
+    lda #({4})
+    sta X16_P5
+    lda #({5})
+    sta X16_P6
+    lda #({6})
+    sta X16_P7
+    jsr fx_affine_on
+    ENDM
+    ENDIF
+
+; aim the sampler (dx/dy signed, 1/512 texel units)
+    IFCONST X16_USE_VERAFX_AFFINE
+    MAC xm_fx_affine_ray
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #<({2})
+    sta X16_P2
+    lda #>({2})
+    sta X16_P3
+    lda #<({3})
+    sta X16_P4
+    lda #>({3})
+    sta X16_P5
+    lda #<({4})
+    sta X16_P6
+    lda #>({4})
+    sta X16_P7
+    jsr fx_affine_ray
+    ENDM
+    ENDIF
+
+; fetch texels along the ray into VRAM; port 0 must already point at the destination
+    IFCONST X16_USE_VERAFX_AFFINE
+    MAC xm_fx_affine_span
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    jsr fx_affine_span
     ENDM
     ENDIF

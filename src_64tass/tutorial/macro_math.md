@@ -159,3 +159,22 @@ main
 
 .include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of math
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `#xm_rnd16`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_rnd16` |
+| Purpose | A = low, X = high |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Returns `A` = low, `X` = high. |
+| More info | Available when `X16_USE_MATH` is enabled. |

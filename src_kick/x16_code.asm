@@ -896,6 +896,17 @@
 #define X16_USE_SCREEN_ANY
 #endif
 #endif
+// screen_scroll moves text with vera_copy
+#if X16_USE_SCREEN_EXTRA
+#if !X16_USE_VERA_COPY
+#define X16_USE_VERA_COPY
+#endif
+#endif
+#if X16_USE_VERA_COPY
+#if !X16_USE_VERA_ANY
+#define X16_USE_VERA_ANY
+#endif
+#endif
 
 // --- modules ---------------------------------------------------------
 #if X16_USE_VERA_ANY

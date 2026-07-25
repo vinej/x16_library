@@ -78,3 +78,22 @@ file_name .byte "SAVEGAME,S,R", 0
 
 .include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of bmx
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_bmx_save name, len, device, vbank, vaddr`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_bmx_save name, len, device, vbank, vaddr` |
+| Purpose | write a BMX file from VRAM |
+| Input parameters | `name`, `len`, `device`, `vbank`, `vaddr` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_BMX` is enabled. |

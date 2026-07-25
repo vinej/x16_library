@@ -101,3 +101,52 @@ file_name .text "SAVEGAME,S,R", 0
 
 .include "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of dos
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `#xm_dos_mkdir name, len`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_dos_mkdir name, len` |
+| Purpose | make a directory |
+| Input parameters | `name`, `len` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOS` is enabled. |
+
+## `#xm_dos_rmdir name, len`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_dos_rmdir name, len` |
+| Purpose | remove a directory |
+| Input parameters | `name`, `len` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOS` is enabled. |
+
+## `#xm_dos_chdir name, len`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_dos_chdir name, len` |
+| Purpose | change directory ("//" is the root) |
+| Input parameters | `name`, `len` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOS` is enabled. |
+
+## `#xm_dos_rename newname, newlen, oldname, oldlen`
+
+| Field | Details |
+|---|---|
+| Macro | `#xm_dos_rename newname, newlen, oldname, oldlen` |
+| Purpose | One-call wrappers. Each takes A = name low, X = name high, |
+| Input parameters | `newname`, `newlen`, `oldname`, `oldlen` |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_DOS` is enabled. |

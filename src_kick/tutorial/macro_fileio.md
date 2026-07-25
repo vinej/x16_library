@@ -228,3 +228,22 @@ main
 
 #import "x16_code.asm"
 ```
+
+<!-- generated: friendly macros for previously unwrapped routines -->
+
+## More of fileio
+
+These routines were always in the library; what they lacked was a
+friendly macro, so this is how to call them without writing the
+register set-up by hand. Most of them work on their module's own
+accumulator rather than on arguments.
+
+## `xm_fio_open()`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fio_open()` |
+| Purpose | carry set on error, A = the KERNAL error code |
+| Input parameters | None — operates on the module's own state. |
+| Output parameters | Nothing the macro can hand back; see the routine's header. |
+| More info | Available when `X16_USE_FILEIO` is enabled. |
