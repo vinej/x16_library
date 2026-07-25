@@ -159,6 +159,40 @@ main
     include "x16_code.asm"
 ```
 
+## `xm_sprite_image_at sprite, vbank, vaddr, mode`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_sprite_image_at sprite, vbank, vaddr, mode` |
+| Purpose | the same as `xm_sprite_image`, with the VRAM address already split |
+| Input parameters | `sprite, vbank, vaddr, mode` -- `vbank` is address bit 16, `vaddr` the low 16 bits |
+| Output parameters | No direct return documented. Expect normal routine register/flag clobbers unless the macro description says otherwise. |
+| More info | Available when `X16_USE_SPRITE` is enabled. |
+| Example | See below. |
+
+`xm_sprite_image` shifts its address at assemble time, so every
+argument must be a constant. Use this one when the image address is
+computed at run time -- a program building N sprite images into VRAM
+in a loop knows the address only as a variable.
+
+```asm
+; vasm: pass -c02 on the command line
+    include "x16.asm"
+
+X16_USE_SPRITE = 1
+    include "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
+main
+  ; $10000 written out as bank 1, offset $0000
+    xm_sprite_image_at 1, 1, $0000, SPRITE_MODE_4BPP
+    rts
+
+    include "x16_code.asm"
+```
+
 ## `xm_sprite_flags sprite, flags`
 
 | Field | Details |

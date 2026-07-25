@@ -490,6 +490,21 @@
     jsr sprite_image
     ENDM
     ENDIF
+; The same call with the address already split, so every argument can be
+; a variable: vbank = address bit 16, vaddr = the low 16 bits.
+    IFCONST X16_USE_SPRITE
+    MAC xm_sprite_image_at
+    ldx #({1})
+    lda #<({3})
+    sta X16_P0
+    lda #>({3})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #({4})
+    jsr sprite_image
+    ENDM
+    ENDIF
     IFCONST X16_USE_SPRITE
     MAC xm_sprite_flags
     ldx #({1})
@@ -3992,6 +4007,20 @@
     lda #>({5})
     sta X16_P6
     jsr fs_vload
+    ENDM
+    ENDIF
+; -> X/Y = entry address, or $0000 if the file has no BASIC stub
+    IFCONST X16_USE_LOAD
+    MAC xm_fs_prg_entry
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #({3})
+    sta X16_P3
+    jsr fs_prg_entry
     ENDM
     ENDIF
 

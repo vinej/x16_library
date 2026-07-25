@@ -490,6 +490,21 @@
     jsr sprite_image
 }
 #endif
+// The same call with the address already split, so every argument can be
+// a variable: vbank = address bit 16, vaddr = the low 16 bits.
+#if X16_USE_SPRITE
+.macro xm_sprite_image_at(sprite, vbank, vaddr, mode) {
+    ldx #(sprite)
+    lda #<(vaddr)
+    sta X16_P0
+    lda #>(vaddr)
+    sta X16_P1
+    lda #(vbank)
+    sta X16_P2
+    lda #(mode)
+    jsr sprite_image
+}
+#endif
 #if X16_USE_SPRITE
 .macro xm_sprite_flags(sprite, flags) {
     ldx #(sprite)
@@ -3992,6 +4007,20 @@
     lda #>(vaddr)
     sta X16_P6
     jsr fs_vload
+}
+#endif
+// -> X/Y = entry address, or $0000 if the file has no BASIC stub
+#if X16_USE_LOAD
+.macro xm_fs_prg_entry(name, len, device) {
+    lda #<(name)
+    sta X16_P0
+    lda #>(name)
+    sta X16_P1
+    lda #(len)
+    sta X16_P2
+    lda #(device)
+    sta X16_P3
+    jsr fs_prg_entry
 }
 #endif
 

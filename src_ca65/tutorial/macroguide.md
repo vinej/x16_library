@@ -262,6 +262,7 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `xm_sprite_pos sprite, x, y` | set a sprite's 10-bit position |
 | `xm_sprite_get_pos sprite` | read it back (→ P0/1 = x, P2/3 = y) |
 | `xm_sprite_image sprite, vaddr, mode` | point at pixels; `mode` = `SPRITE_MODE_4BPP`/`8BPP` |
+| `xm_sprite_image_at sprite, vbank, vaddr, mode` | the same, with the address pre-split so it can come from variables |
 | `xm_sprite_flags sprite, flags` | byte 6: collision mask, Z, flips |
 | `xm_sprite_z sprite, z` | change only the Z-depth |
 | `xm_sprite_size sprite, wcode, hcode, paloff` | size codes + palette offset |
@@ -594,6 +595,7 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `xm_fs_setname name, len` | set KERNAL filename |
 | `xm_fs_load name, len, device, sa, dst` | load to RAM; → carry set = error, A = code |
 | `xm_fs_vload name, len, device, vbank, vaddr` | load to VRAM |
+| `xm_fs_prg_entry name, len, device` | a PRG's SYS entry address, read without loading it; -> X/Y, or $0000 |
 
 **File I/O (X16_USE_FILEIO)**
 

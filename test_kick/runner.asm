@@ -166,6 +166,8 @@ main:
     jsr test_key_empty
     jsr test_fs_missing
     jsr test_fs_vload
+    jsr test_prg_entry
+    jsr test_prg_entry_bad      // after FS_ROUNDTRIP: it reads its file
     jsr test_bank_poke
     jsr test_bank_zero_count
     jsr test_screen_mode_rt
@@ -4610,6 +4612,107 @@ test_fs_missing__fname: .text "NOFILE.XYZ"
 .label test_fs_missing__fname_len = 10
 test_fs_missing__dst: .fill 2, 0
 test_fs_missing__name: .text "FS_MISSING"
+    .byte $00
+
+// =====================================================================
+// fs_prg_entry reads a PRG's entry address off the disk without loading
+// it. Write a file that is nothing but a BASIC stub -- fs_save cannot
+// be used, as SAVE would prepend a load address of its own -- and check
+// the SYS argument comes back. 2071 is $0817, and the parser has to do
+// the decimal itself.
+// =====================================================================
+test_prg_entry:
+    lda #<test_prg_entry__stub
+    sta X16_P0
+    lda #>test_prg_entry__stub
+    sta X16_P1
+    lda #test_prg_entry__stub_len
+    sta X16_P2
+    lda #test_prg_entry__fname_len             // t_write_file takes A/X/Y as SETNAM does
+    ldx #<test_prg_entry__fname
+    ldy #>test_prg_entry__fname
+    jsr t_write_file
+    bcs test_prg_entry__fail
+
+    lda #<test_prg_entry__fname
+    sta X16_P0
+    lda #>test_prg_entry__fname
+    sta X16_P1
+    lda #test_prg_entry__fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr fs_prg_entry
+    cpx #$17
+    bne test_prg_entry__fail
+    cpy #$08
+    bne test_prg_entry__fail
+
+    lda #0
+    bra test_prg_entry__report
+test_prg_entry__fail:
+    lda #1
+test_prg_entry__report:
+    ldx #<test_prg_entry__name
+    ldy #>test_prg_entry__name
+    jmp t_result
+test_prg_entry__fname: .text "PRGSTUB.PRG"
+.label test_prg_entry__fname_len = 11
+// $0801 load address, link, line 10, SYS, spaces, "2071", terminators
+test_prg_entry__stub: .byte $01, $08, $0C, $08, $0A, $00, $9E, $20, $20
+    .text "2071"
+           .byte $00, $00, $00
+.label test_prg_entry__stub_len = 16
+test_prg_entry__name: .text "PRG_ENTRY"
+    .byte $00
+
+// =====================================================================
+// ...and it must answer $0000, not a wild address, when the file has no
+// stub to read and when it is not there at all. A launcher JSRs to what
+// this returns, so a wrong answer runs the machine off a cliff.
+// =====================================================================
+test_prg_entry_bad:
+    lda #<test_prg_entry_bad__fname
+    sta X16_P0
+    lda #>test_prg_entry_bad__fname
+    sta X16_P1
+    lda #test_prg_entry_bad__fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr fs_prg_entry            // TESTDATA.BIN: eight bytes, no stub
+    cpx #0
+    bne test_prg_entry_bad__fail
+    cpy #0
+    bne test_prg_entry_bad__fail
+
+    lda #<test_prg_entry_bad__gone
+    sta X16_P0
+    lda #>test_prg_entry_bad__gone
+    sta X16_P1
+    lda #test_prg_entry_bad__gone_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr fs_prg_entry            // and a file that does not exist
+    cpx #0
+    bne test_prg_entry_bad__fail
+    cpy #0
+    bne test_prg_entry_bad__fail
+
+    lda #0
+    bra test_prg_entry_bad__report
+test_prg_entry_bad__fail:
+    lda #1
+test_prg_entry_bad__report:
+    ldx #<test_prg_entry_bad__name
+    ldy #>test_prg_entry_bad__name
+    jmp t_result
+test_prg_entry_bad__fname: .text "TESTDATA.BIN"
+.label test_prg_entry_bad__fname_len = 12
+test_prg_entry_bad__gone: .text "NOFILE.XYZ"
+.label test_prg_entry_bad__gone_len = 10
+test_prg_entry_bad__name: .text "PRG_ENTRY_BAD"
     .byte $00
 
 // =====================================================================

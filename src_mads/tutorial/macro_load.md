@@ -108,6 +108,57 @@ file_name .byte "SAVEGAME,S,R", 0
     icl "x16_code.asm"
 ```
 
+## `xm_fs_prg_entry name, len, device`
+
+| Field | Details |
+|---|---|
+| Macro | `xm_fs_prg_entry name, len, device` |
+| Purpose | a PRG's entry address, read without loading the file |
+| Input parameters | `name, len, device` |
+| Output parameters | X/Y = the SYS address out of the file's BASIC stub, or `$0000` if it cannot be read or has no stub |
+| More info | Available when `X16_USE_LOAD` is enabled. |
+| Example | See below. |
+
+A launcher has to know where to `jsr` before it hands the machine over,
+and loading the program to find out is the one thing it cannot do: the
+load overwrites the code asking the question. This reads the first few
+bytes off the disk and parses the BASIC stub where it lies. `$0000`
+doubles as "no entry here", since no PRG can start there.
+
+Read the address, never assume it. A compiler emitting `SYS 2071` today
+moves that number the moment its stub text changes.
+
+```asm
+; MADS: assemble for 65C02
+    icl "x16.asm"
+
+X16_USE_LOAD = 1
+    icl "core/sugar.asm"
+
+    org $0801
+    basic_stub
+
+main
+  ; where does GAME.PRG start?
+    xm_fs_prg_entry file_name, 8, 8
+    stx entry
+    sty entry+1
+    cpx #0
+    bne @ok
+    cpy #0
+    beq @no_such_program  ; $0000: unreadable, or not a PRG
+@ok
+    rts
+
+@no_such_program
+    rts
+
+file_name .byte "GAME.PRG"
+entry .word 0
+
+    icl "x16_code.asm"
+```
+
 <!-- generated: friendly macros for previously unwrapped routines -->
 
 ## More of load

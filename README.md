@@ -163,7 +163,7 @@ Two ways in, pick per project:
 | Contract | Same file layout, module gates, macros, and routine contracts in every tree. |
 | Converters | `tools/acme2ca65.py`, `tools/acme2tass.py`, `tools/acme2kick.py`, `tools/acme2dasm.py`, `tools/acme2mads.py`, `tools/acme2vasm.py`. |
 | Hand-maintained files | A few dialect-specific files remain manual; each support tree README lists them. |
-| Release check | Each port's test runner must assemble to the same SHA-256 PRG as ACME and pass the same 152-test suite, or 154 tests windowed. |
+| Release check | Each port's test runner must assemble to the same SHA-256 PRG as ACME and pass the same 199-test suite, or 201 tests windowed. |
 
 ### Tutorial documentation
 

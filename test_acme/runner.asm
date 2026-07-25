@@ -166,6 +166,8 @@ main
     jsr test_key_empty
     jsr test_fs_missing
     jsr test_fs_vload
+    jsr test_prg_entry
+    jsr test_prg_entry_bad      ; after FS_ROUNDTRIP: it reads its file
     jsr test_bank_poke
     jsr test_bank_zero_count
     jsr test_screen_mode_rt
@@ -4463,6 +4465,105 @@ test_fs_missing
 @fname_len = 10
 @dst       !fill 2, 0
 @name      !text "FS_MISSING", $00
+
+; =====================================================================
+; fs_prg_entry reads a PRG's entry address off the disk without loading
+; it. Write a file that is nothing but a BASIC stub -- fs_save cannot
+; be used, as SAVE would prepend a load address of its own -- and check
+; the SYS argument comes back. 2071 is $0817, and the parser has to do
+; the decimal itself.
+; =====================================================================
+test_prg_entry
+    lda #<@stub
+    sta X16_P0
+    lda #>@stub
+    sta X16_P1
+    lda #@stub_len
+    sta X16_P2
+    lda #@fname_len             ; t_write_file takes A/X/Y as SETNAM does
+    ldx #<@fname
+    ldy #>@fname
+    jsr t_write_file
+    bcs @fail
+
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr fs_prg_entry
+    cpx #$17
+    bne @fail
+    cpy #$08
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@fname     !text "PRGSTUB.PRG"
+@fname_len = 11
+; $0801 load address, link, line 10, SYS, spaces, "2071", terminators
+@stub      !byte $01, $08, $0C, $08, $0A, $00, $9E, $20, $20
+           !text "2071"
+           !byte $00, $00, $00
+@stub_len  = 16
+@name      !text "PRG_ENTRY", $00
+
+; =====================================================================
+; ...and it must answer $0000, not a wild address, when the file has no
+; stub to read and when it is not there at all. A launcher JSRs to what
+; this returns, so a wrong answer runs the machine off a cliff.
+; =====================================================================
+test_prg_entry_bad
+    lda #<@fname
+    sta X16_P0
+    lda #>@fname
+    sta X16_P1
+    lda #@fname_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr fs_prg_entry            ; TESTDATA.BIN: eight bytes, no stub
+    cpx #0
+    bne @fail
+    cpy #0
+    bne @fail
+
+    lda #<@gone
+    sta X16_P0
+    lda #>@gone
+    sta X16_P1
+    lda #@gone_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr fs_prg_entry            ; and a file that does not exist
+    cpx #0
+    bne @fail
+    cpy #0
+    bne @fail
+
+    lda #0
+    bra @report
+@fail
+    lda #1
+@report
+    ldx #<@name
+    ldy #>@name
+    jmp t_result
+@fname     !text "TESTDATA.BIN"
+@fname_len = 12
+@gone      !text "NOFILE.XYZ"
+@gone_len  = 10
+@name      !text "PRG_ENTRY_BAD", $00
 
 ; =====================================================================
 ; fs_vload pulls a file straight into VRAM. TESTDATA.BIN was written by
