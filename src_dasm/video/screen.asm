@@ -68,6 +68,14 @@ screen_get_mode
     vera_addrsel 0
     sec
     jmp SCREEN_MODE
+
+; ---------------------------------------------------------------------
+; screen_get_size -- the live text grid, after any screen_set_mode
+;   out: X = columns, Y = rows
+; ---------------------------------------------------------------------
+    SUBROUTINE
+screen_get_size
+    jmp SCREEN
     ENDIF
 
 ; ---------------------------------------------------------------------

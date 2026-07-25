@@ -342,7 +342,7 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 |   `X16_USE_VERA_FILL` | `vera_fill` alone — a program that only fills does not carry the address setters or the FX probe |
 |   `X16_USE_VERA_FXPROBE` | `vera_has_fx` alone |
 |   `X16_USE_VERA_COPY` | `vera_copy` (VRAM→VRAM) alone |
-| `X16_USE_SCREEN` | `screen_set_mode`/`get_mode`/`reset`/`cls`/`chrout`/`color`/`border`, `screen_locate`, `screen_get_cursor`, `screen_charset`, `screen_puts` |
+| `X16_USE_SCREEN` | `screen_set_mode`/`get_mode`/`get_size`/`reset`/`cls`/`chrout`/`color`/`border`, `screen_locate`, `screen_get_cursor`, `screen_charset`, `screen_puts` |
 | `X16_USE_PALETTE` | `pal_set`, `pal_load` |
 | `X16_USE_TILE` | `layer_on`/`off`, `layer_set_config`/`mapbase`/`tilebase`, `layer_scroll_x`/`y`, `tile_setptr`, `tile_put`, `tile_get` |
 | `X16_USE_SPRITE` | `sprites_on`/`off`, `sprite_pos`, `sprite_get_pos`, `sprite_image`, `sprite_flags`, `sprite_z`, `sprite_size`, `sprite_init_all` |
