@@ -29,6 +29,10 @@ X16_USE_STRING_FIND = 1         ; searching
 X16_USE_STRING_SLICE = 1        ; substrings
 X16_USE_STRING_SORT = 1         ; sort an array of string pointers
 X16_USE_SCREEN_EXTRA = 1        ; screen_addr / screen_scode / screen_blit
+X16_USE_LOAD = 1                ; fs_save, to lay down a file to find
+X16_USE_DOS = 1                 ; mkdir/chdir around the directory tests
+X16_USE_DIR = 1                 ; reading a directory listing
+X16_USE_BMX = 1                 ; bmx_lasterr: the code behind the carry
 
 .include "core/sugar.asm"        ; optional friendly xm_* macros (gated; tested below)
 
@@ -117,6 +121,9 @@ main
     jsr test_screen_scroll
     jsr test_g2_clear
     jsr test_g2_init
+    jsr test_bmx_lasterr
+    jsr test_dir_reads
+    jsr test_dir_chdir
 
     jsr t_summary
     rts
@@ -2776,5 +2783,233 @@ shp_clear40y                    ; ...or over (A,X)+40x40
     stz X16_P7
     lda #0
     jmp gfx2h_rect
+
+; =====================================================================
+; dir_open/dir_next must walk the listing the drive returns and find
+; TESTDATA.BIN, which it writes first, so it stands alone. The
+; header line has to come back as HOST and the file as PRG -- proving
+; the type is read, not assumed -- and the name has to match exactly,
+; which means the quotes were stripped and the terminator placed.
+; =====================================================================
+test_dir_reads
+    lda #<_want                 ; lay down the file this test looks for,
+    sta X16_P0                  ; so it does not lean on another runner
+    lda #>_want
+    sta X16_P1
+    lda #12
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    lda #<_src
+    sta X16_P5
+    lda #>_src
+    sta X16_P6
+    lda #<(_src + 4)
+    sta X16_T6
+    lda #>(_src + 4)
+    sta X16_T7
+    jsr fs_save
+
+    lda #0                      ; no path: the current directory
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr dir_open
+    bcs _fail
+
+    jsr _entry                  ; the header names the volume
+    bcc _fail_close
+    jsr dir_type
+    cmp #DIR_TYPE_HOST
+    bne _fail_close
+
+    stz _found
+_scan
+    jsr _entry
+    bcc _done                   ; end of the listing
+    jsr dir_type
+    cmp #DIR_TYPE_PRG
+    bne _scan
+    ldx #0
+_cmp
+    lda _want,x
+    cmp _buf,x
+    bne _scan                   ; a different file: keep looking
+    inx
+    cpx #13                     ; 12 characters and the terminator
+    bne _cmp
+    lda #1
+    sta _found
+    bra _scan
+_done
+    jsr dir_close
+    lda _found
+    beq _fail
+    lda #0
+    bra _report
+_fail_close
+    jsr dir_close
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_entry
+    lda #<_buf
+    sta X16_P0
+    lda #>_buf
+    sta X16_P1
+    lda #_buf_size
+    sta X16_P2
+    jmp dir_next
+_want      .text "TESTDATA.BIN", $00
+_src       .byte $DE, $AD, $BE, $EF
+_found     .byte 0
+_buf_size  = 40
+_buf       .fill 40, 0
+_name      .text "DIR_READS", $00
+
+; =====================================================================
+; A directory made, entered, listed and left again. Inside it the only
+; entries are "." and ".." -- both DIR -- which is also the proof that
+; dir_next follows the current directory rather than the root, and that
+; a name shorter than the buffer terminates where it should.
+; =====================================================================
+test_dir_chdir
+    lda #<_sub                  ; make it (ignore "already exists")
+    ldx #>_sub
+    ldy #_sub_len
+    jsr dos_mkdir
+
+    lda #<_sub
+    ldx #>_sub
+    ldy #_sub_len
+    jsr dos_chdir
+    bcs _fail
+
+    lda #0
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr dir_open
+    bcs _fail_root
+
+    stz _dirs
+    stz _others
+_scan
+    lda #<_buf
+    sta X16_P0
+    lda #>_buf
+    sta X16_P1
+    lda #_buf_size
+    sta X16_P2
+    jsr dir_next
+    bcc _done
+    jsr dir_type
+    cmp #DIR_TYPE_DIR
+    bne _notdir
+    inc _dirs
+    bra _scan
+_notdir
+    cmp #DIR_TYPE_HOST          ; the header line is expected
+    beq _scan
+    cmp #DIR_TYPE_NONE          ; ...and so is "BLOCKS FREE."
+    beq _scan
+    inc _others
+    bra _scan
+_done
+    jsr dir_close
+
+    lda #<_root                 ; back to where the other tests live
+    ldx #>_root
+    ldy #_root_len
+    jsr dos_chdir
+    bcs _fail
+
+    lda _others                 ; nothing but . and .. in a new directory
+    bne _fail
+    lda _dirs
+    cmp #2
+    bne _fail
+    lda #0
+    bra _report
+_fail_root
+    lda #<_root
+    ldx #>_root
+    ldy #_root_len
+    jsr dos_chdir
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_sub       .text "dirtest"
+_sub_len   = 7
+_root      .text "//"
+_root_len  = 2
+_dirs      .byte 0
+_others    .byte 0
+_buf_size  = 40
+_buf       .fill 40, 0
+_name      .text "DIR_CHDIR", $00
+
+; =====================================================================
+; The carry says a bmx_* call failed; bmx_lasterr says why. Loading a
+; file that is not there has to report BMX_ERR_IO and not, say, leave
+; the code from some earlier call lying around -- so ask twice, either
+; side of a call that works, and check it clears.
+; =====================================================================
+test_bmx_lasterr
+    lda #<_gone
+    sta X16_P0
+    lda #>_gone
+    sta X16_P1
+    lda #_gone_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4
+    stz X16_P5
+    stz X16_P6
+    jsr bmx_load
+    bcc _fail                   ; it "loaded" a file that is not there
+    jsr bmx_lasterr
+    cmp #BMX_ERR_IO
+    bne _fail
+
+    lda #<_bmx                  ; a real one, written here and read back
+    sta X16_P0
+    lda #>_bmx
+    sta X16_P1
+    lda #_bmx_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4
+    lda #<$4000
+    sta X16_P5
+    lda #>$4000
+    sta X16_P6
+    jsr bmx_save
+    bcs _fail
+    jsr bmx_lasterr
+    cmp #0                      ; a call that worked leaves nothing behind
+    bne _fail
+
+    lda #0
+    bra _report
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_gone      .text "NOSUCH.BMX"
+_gone_len  = 10
+_bmx       .text "TESTOUT.BMX"
+_bmx_len   = 11
+_name      .text "BMX_LASTERR", $00
 
 .include "x16_code.asm"

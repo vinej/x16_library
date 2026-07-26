@@ -96,11 +96,21 @@ def split_statements(line):
 
 
 def conv_comment(s):
-    """; -> // outside of double quotes."""
+    """; -> // outside of double quotes.
+
+    A character literal can hold a double quote -- cmp #'"' is how you
+    test for one -- and reading that as the start of a string swallows
+    the rest of the line, so the comment after it never gets converted
+    and the assembler sees a stray ';'.
+    """
     out, inq = [], False
     i = 0
     while i < len(s):
         c = s[i]
+        if not inq and c == "'" and i + 2 < len(s) and s[i + 2] == "'":
+            out.append(s[i:i + 3])      # a character literal, quotes and all
+            i += 3
+            continue
         if c == '"':
             inq = not inq
         if c == ';' and not inq:

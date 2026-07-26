@@ -21,6 +21,8 @@
 ; (zone: file scope in ca65)
 
 dos_device .byte 8
+dos_code   .byte 0              ; the code from the last command, for
+                                ; dos_lasterr -- see its header below
 
 ; ---------------------------------------------------------------------
 ; dos_cmd -- send a raw DOS command and fetch the reply
@@ -85,6 +87,7 @@ dos_cmd
     sbc #'0'
     clc
     adc X16_T0
+    sta dos_code
     cmp #20                     ; carry set = error class
     rts
 
@@ -94,6 +97,8 @@ dos_cmd
     jsr CLOSE
     stz dos_msg
     ldy #0
+    lda #$FF
+    sta dos_code
     lda #$FF
     sec
     rts
@@ -110,13 +115,30 @@ dos_status
     jmp dos_cmd
 
 ; ---------------------------------------------------------------------
+; dos_lasterr -- the status code the last dos_* call came back with
+;   out: A = the code (0-19 success, 20-99 error, 255 = no channel)
+;
+; Every routine here reports twice: the carry says pass or fail, and A
+; says why. A caller that can only see one of those -- a generated
+; high-level binding, say, which will not guess a type for a routine
+; that documents both -- can call this afterwards and get the code.
+; ---------------------------------------------------------------------
+dos_lasterr
+    lda dos_code
+    rts
+
+; ---------------------------------------------------------------------
 ; One-call wrappers. Each takes A = name low, X = name high,
 ; Y = name length, and returns like dos_cmd.
 ;
 ;   dos_delete   S:name       scratch a file
 ;   dos_mkdir    MD:name      make a directory
 ;   dos_rmdir    RD:name      remove a directory
-;   dos_chdir    CD:name      change directory ("//" is the root)
+;   dos_chdir    CD:name      change directory ("/" is the root)
+;
+; Note "/" and not "//": an emulator's host-filesystem emulation accepts
+; CD://, but a real card answers 62, FILE NOT FOUND -- and a chdir that
+; fails says nothing, so the caller carries on in the wrong directory.
 ;
 ; dos_rename additionally takes the OLD name in X16_P0/P1 with its
 ; length in X16_P2, and renames it to the A/X/Y name:  R:new=old

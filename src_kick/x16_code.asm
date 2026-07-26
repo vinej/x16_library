@@ -181,8 +181,10 @@
 //   X16_USE_IEC       iec_listen/talk/second/tksa, iec_ciout/acptr,
 //                     iec_unlisten/untalk, iec_macptr/mciout
 //   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
-//   X16_USE_DOS       dos_cmd, dos_status, dos_delete, dos_rename,
-//                     dos_mkdir, dos_rmdir, dos_chdir
+//   X16_USE_DOS       dos_cmd, dos_status, dos_lasterr, dos_delete,
+//                     dos_rename, dos_mkdir, dos_rmdir, dos_chdir
+//   X16_USE_DIR       dir_open, dir_next, dir_type, dir_blocks,
+//                     dir_close (walks a drive's directory listing)
 //   X16_USE_BMX       bmx_load, bmx_save (the X16's native bitmap
 //                     format: header + palette + pixels)
 //   X16_USE_MATH      rnd_seed/rnd8/rnd16, sin8/cos8 (+u), atan2, lerp8
@@ -390,6 +392,9 @@
     #endif
     #if !X16_USE_DOS
     #define X16_USE_DOS
+    #endif
+    #if !X16_USE_DIR
+    #define X16_USE_DIR
     #endif
     #if !X16_USE_BMX
     #define X16_USE_BMX
@@ -1038,6 +1043,9 @@
 #endif
 #if X16_USE_DOS
 #import "storage/dos.asm"
+#endif
+#if X16_USE_DIR
+#import "storage/dir.asm"
 #endif
 #if X16_USE_BMX
 #import "storage/bmx.asm"

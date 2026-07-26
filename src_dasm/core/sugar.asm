@@ -3274,6 +3274,12 @@
 ; =====================================================================
 ; audio/zsm  (compact ZSM stream player)
 ; =====================================================================
+; -> A = ZSM_ERR_* from the last zsm_init
+    IFCONST X16_USE_ZSM
+    MAC xm_zsm_lasterr
+    jsr zsm_lasterr
+    ENDM
+    ENDIF
     IFCONST X16_USE_ZSM
     MAC xm_zsm_init
     lda #<({1})
@@ -4024,6 +4030,61 @@
     ENDM
     ENDIF
 
+; -> A = BMX_ERR_* from the last bmx_* call, or 0 if it worked
+    IFCONST X16_USE_BMX
+    MAC xm_bmx_lasterr
+    jsr bmx_lasterr
+    ENDM
+    ENDIF
+
+; =====================================================================
+; storage/dir
+; =====================================================================
+; a length of 0 asks for the current directory; -> carry set = failed
+    IFCONST X16_USE_DIR
+    MAC xm_dir_open
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    lda #({3})
+    sta X16_P3
+    jsr dir_open
+    ENDM
+    ENDIF
+; -> carry SET = an entry was read, CLEAR at the end of the listing
+    IFCONST X16_USE_DIR
+    MAC xm_dir_next
+    lda #<({1})
+    sta X16_P0
+    lda #>({1})
+    sta X16_P1
+    lda #({2})
+    sta X16_P2
+    jsr dir_next
+    ENDM
+    ENDIF
+
+; -> A = DIR_TYPE_PRG / _DIR / _HOST / ... for the entry just read
+    IFCONST X16_USE_DIR
+    MAC xm_dir_type
+    jsr dir_type
+    ENDM
+    ENDIF
+; -> X/Y = the block count for the entry just read
+    IFCONST X16_USE_DIR
+    MAC xm_dir_blocks
+    jsr dir_blocks
+    ENDM
+    ENDIF
+    IFCONST X16_USE_DIR
+    MAC xm_dir_close
+    jsr dir_close
+    ENDM
+    ENDIF
+
 ; =====================================================================
 ; storage/dos
 ; =====================================================================
@@ -4034,6 +4095,12 @@
     ldx #>({1})
     ldy #({2})
     jsr dos_cmd
+    ENDM
+    ENDIF
+; -> A = the status code from the last dos_* call
+    IFCONST X16_USE_DOS
+    MAC xm_dos_lasterr
+    jsr dos_lasterr
     ENDM
     ENDIF
     IFCONST X16_USE_DOS
@@ -5332,7 +5399,7 @@
 ; =====================================================================
 ; string/find
 ; =====================================================================
-; -> carry set + A = index if found
+; -> A = index, or 255 if not found
     IFCONST X16_USE_STRING_FIND
     MAC xm_str_find
     ldy #({2})

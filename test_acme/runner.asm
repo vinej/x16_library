@@ -4565,6 +4565,7 @@ test_prg_entry_bad
 @gone_len  = 10
 @name      !text "PRG_ENTRY_BAD", $00
 
+
 ; =====================================================================
 ; fs_vload pulls a file straight into VRAM. TESTDATA.BIN was written by
 ; FS_ROUNDTRIP earlier in this run; its 8 payload bytes must appear at

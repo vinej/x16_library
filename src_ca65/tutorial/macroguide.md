@@ -596,6 +596,9 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 | `xm_fs_load name, len, device, sa, dst` | load to RAM; → carry set = error, A = code |
 | `xm_fs_vload name, len, device, vbank, vaddr` | load to VRAM |
 | `xm_fs_prg_entry name, len, device` | a PRG's SYS entry address, read without loading it; -> X/Y, or $0000 |
+| `xm_bmx_lasterr` | why the last `bmx_*` call failed; -> A = `BMX_ERR_*`, 0 if it worked |
+| `xm_dir_open path, len, device` | open a directory (`len` 0 = the current one); -> carry set = failed |
+| `xm_dir_next buf, size` | next entry into `buf`; -> carry SET = got one, CLEAR at the end |
 
 **File I/O (X16_USE_FILEIO)**
 

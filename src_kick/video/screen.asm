@@ -153,6 +153,13 @@ screen_locate:
     clc
     jmp PLOT
 
+// ---------------------------------------------------------------------
+// screen_get_cursor -- where the cursor is
+//   out: X/Y = row and column
+//
+// PLOT with the carry SET reads rather than writes, which is the whole
+// difference between this and screen_locate above.
+// ---------------------------------------------------------------------
 #if X16_USE_SCREEN_EXTRA
 screen_get_cursor:
     sec

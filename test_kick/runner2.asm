@@ -31,6 +31,10 @@
 #define X16_USE_STRING_SLICE  // substrings
 #define X16_USE_STRING_SORT  // sort an array of string pointers
 #define X16_USE_SCREEN_EXTRA  // screen_addr / screen_scode / screen_blit
+#define X16_USE_LOAD  // fs_save, to lay down a file to find
+#define X16_USE_DOS  // mkdir/chdir around the directory tests
+#define X16_USE_DIR  // reading a directory listing
+#define X16_USE_BMX  // bmx_lasterr: the code behind the carry
 
 #import "core/sugar.asm"        // optional friendly xm_* macros (gated; tested below)
 
@@ -118,6 +122,9 @@ main:
     jsr test_screen_scroll
     jsr test_g2_clear
     jsr test_g2_init
+    jsr test_bmx_lasterr
+    jsr test_dir_reads
+    jsr test_dir_chdir
 
     jsr t_summary
     rts
@@ -2849,5 +2856,237 @@ shp_clear40y: // ...or over (A,X)+40x40
     stz X16_P7
     lda #0
     jmp gfx2h_rect
+
+// =====================================================================
+// dir_open/dir_next must walk the listing the drive returns and find
+// TESTDATA.BIN, which it writes first, so it stands alone. The
+// header line has to come back as HOST and the file as PRG -- proving
+// the type is read, not assumed -- and the name has to match exactly,
+// which means the quotes were stripped and the terminator placed.
+// =====================================================================
+test_dir_reads:
+    lda #<test_dir_reads__want                 // lay down the file this test looks for,
+    sta X16_P0                  // so it does not lean on another runner
+    lda #>test_dir_reads__want
+    sta X16_P1
+    lda #12
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    lda #<test_dir_reads__src
+    sta X16_P5
+    lda #>test_dir_reads__src
+    sta X16_P6
+    lda #<(test_dir_reads__src + 4)
+    sta X16_T6
+    lda #>(test_dir_reads__src + 4)
+    sta X16_T7
+    jsr fs_save
+
+    lda #0                      // no path: the current directory
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr dir_open
+    bcs test_dir_reads__fail
+
+    jsr test_dir_reads__entry                  // the header names the volume
+    bcc test_dir_reads__fail_close
+    jsr dir_type
+    cmp #DIR_TYPE_HOST
+    bne test_dir_reads__fail_close
+
+    stz test_dir_reads__found
+test_dir_reads__scan:
+    jsr test_dir_reads__entry
+    bcc test_dir_reads__done                   // end of the listing
+    jsr dir_type
+    cmp #DIR_TYPE_PRG
+    bne test_dir_reads__scan
+    ldx #0
+test_dir_reads__cmp:
+    lda test_dir_reads__want,x
+    cmp test_dir_reads__buf,x
+    bne test_dir_reads__scan                   // a different file: keep looking
+    inx
+    cpx #13                     // 12 characters and the terminator
+    bne test_dir_reads__cmp
+    lda #1
+    sta test_dir_reads__found
+    bra test_dir_reads__scan
+test_dir_reads__done:
+    jsr dir_close
+    lda test_dir_reads__found
+    beq test_dir_reads__fail
+    lda #0
+    bra test_dir_reads__report
+test_dir_reads__fail_close:
+    jsr dir_close
+test_dir_reads__fail:
+    lda #1
+test_dir_reads__report:
+    ldx #<test_dir_reads__name
+    ldy #>test_dir_reads__name
+    jmp t_result
+test_dir_reads__entry:
+    lda #<test_dir_reads__buf
+    sta X16_P0
+    lda #>test_dir_reads__buf
+    sta X16_P1
+    lda #test_dir_reads__buf_size
+    sta X16_P2
+    jmp dir_next
+test_dir_reads__want: .text "TESTDATA.BIN"
+    .byte $00
+test_dir_reads__src: .byte $DE, $AD, $BE, $EF
+test_dir_reads__found: .byte 0
+.label test_dir_reads__buf_size = 40
+test_dir_reads__buf: .fill 40, 0
+test_dir_reads__name: .text "DIR_READS"
+    .byte $00
+
+// =====================================================================
+// A directory made, entered, listed and left again. Inside it the only
+// entries are "." and ".." -- both DIR -- which is also the proof that
+// dir_next follows the current directory rather than the root, and that
+// a name shorter than the buffer terminates where it should.
+// =====================================================================
+test_dir_chdir:
+    lda #<test_dir_chdir__sub                  // make it (ignore "already exists")
+    ldx #>test_dir_chdir__sub
+    ldy #test_dir_chdir__sub_len
+    jsr dos_mkdir
+
+    lda #<test_dir_chdir__sub
+    ldx #>test_dir_chdir__sub
+    ldy #test_dir_chdir__sub_len
+    jsr dos_chdir
+    bcs test_dir_chdir__fail
+
+    lda #0
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    jsr dir_open
+    bcs test_dir_chdir__fail_root
+
+    stz test_dir_chdir__dirs
+    stz test_dir_chdir__others
+test_dir_chdir__scan:
+    lda #<test_dir_chdir__buf
+    sta X16_P0
+    lda #>test_dir_chdir__buf
+    sta X16_P1
+    lda #test_dir_chdir__buf_size
+    sta X16_P2
+    jsr dir_next
+    bcc test_dir_chdir__done
+    jsr dir_type
+    cmp #DIR_TYPE_DIR
+    bne test_dir_chdir__notdir
+    inc test_dir_chdir__dirs
+    bra test_dir_chdir__scan
+test_dir_chdir__notdir:
+    cmp #DIR_TYPE_HOST          // the header line is expected
+    beq test_dir_chdir__scan
+    cmp #DIR_TYPE_NONE          // ...and so is "BLOCKS FREE."
+    beq test_dir_chdir__scan
+    inc test_dir_chdir__others
+    bra test_dir_chdir__scan
+test_dir_chdir__done:
+    jsr dir_close
+
+    lda #<test_dir_chdir__root                 // back to where the other tests live
+    ldx #>test_dir_chdir__root
+    ldy #test_dir_chdir__root_len
+    jsr dos_chdir
+    bcs test_dir_chdir__fail
+
+    lda test_dir_chdir__others                 // nothing but . and .. in a new directory
+    bne test_dir_chdir__fail
+    lda test_dir_chdir__dirs
+    cmp #2
+    bne test_dir_chdir__fail
+    lda #0
+    bra test_dir_chdir__report
+test_dir_chdir__fail_root:
+    lda #<test_dir_chdir__root
+    ldx #>test_dir_chdir__root
+    ldy #test_dir_chdir__root_len
+    jsr dos_chdir
+test_dir_chdir__fail:
+    lda #1
+test_dir_chdir__report:
+    ldx #<test_dir_chdir__name
+    ldy #>test_dir_chdir__name
+    jmp t_result
+test_dir_chdir__sub: .text "dirtest"
+.label test_dir_chdir__sub_len = 7
+test_dir_chdir__root: .text "//"
+.label test_dir_chdir__root_len = 2
+test_dir_chdir__dirs: .byte 0
+test_dir_chdir__others: .byte 0
+.label test_dir_chdir__buf_size = 40
+test_dir_chdir__buf: .fill 40, 0
+test_dir_chdir__name: .text "DIR_CHDIR"
+    .byte $00
+
+// =====================================================================
+// The carry says a bmx_* call failed; bmx_lasterr says why. Loading a
+// file that is not there has to report BMX_ERR_IO and not, say, leave
+// the code from some earlier call lying around -- so ask twice, either
+// side of a call that works, and check it clears.
+// =====================================================================
+test_bmx_lasterr:
+    lda #<test_bmx_lasterr__gone
+    sta X16_P0
+    lda #>test_bmx_lasterr__gone
+    sta X16_P1
+    lda #test_bmx_lasterr__gone_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4
+    stz X16_P5
+    stz X16_P6
+    jsr bmx_load
+    bcc test_bmx_lasterr__fail                   // it "loaded" a file that is not there
+    jsr bmx_lasterr
+    cmp #BMX_ERR_IO
+    bne test_bmx_lasterr__fail
+
+    lda #<test_bmx_lasterr__bmx                  // a real one, written here and read back
+    sta X16_P0
+    lda #>test_bmx_lasterr__bmx
+    sta X16_P1
+    lda #test_bmx_lasterr__bmx_len
+    sta X16_P2
+    lda #8
+    sta X16_P3
+    stz X16_P4
+    lda #<$4000
+    sta X16_P5
+    lda #>$4000
+    sta X16_P6
+    jsr bmx_save
+    bcs test_bmx_lasterr__fail
+    jsr bmx_lasterr
+    cmp #0                      // a call that worked leaves nothing behind
+    bne test_bmx_lasterr__fail
+
+    lda #0
+    bra test_bmx_lasterr__report
+test_bmx_lasterr__fail:
+    lda #1
+test_bmx_lasterr__report:
+    ldx #<test_bmx_lasterr__name
+    ldy #>test_bmx_lasterr__name
+    jmp t_result
+test_bmx_lasterr__gone: .text "NOSUCH.BMX"
+.label test_bmx_lasterr__gone_len = 10
+test_bmx_lasterr__bmx: .text "TESTOUT.BMX"
+.label test_bmx_lasterr__bmx_len = 11
+test_bmx_lasterr__name: .text "BMX_LASTERR"
+    .byte $00
 
 #import "x16_code.asm"

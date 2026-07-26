@@ -64,6 +64,7 @@ X16_USE_FILEIO = 0
 X16_USE_IEC = 0
 X16_USE_LOAD = 0
 X16_USE_DOS = 0
+X16_USE_DIR = 0
 X16_USE_BMX = 0
 X16_USE_UTILITIES = 0
 X16_USE_MATH = 0
@@ -173,6 +174,7 @@ xuse_fileio = xuse_storage || X16_USE_FILEIO != 0
 xuse_iec = xuse_storage || X16_USE_IEC != 0
 xuse_load = xuse_storage || X16_USE_LOAD != 0
 xuse_dos = xuse_storage || X16_USE_DOS != 0
+xuse_dir = xuse_storage || X16_USE_DIR != 0
 xuse_bmx = xuse_storage || X16_USE_BMX != 0
 xuse_clip = xuse_utilities || X16_USE_CLIP != 0
 xuse_buffers = xuse_utilities || X16_USE_BUFFERS != 0
@@ -358,6 +360,9 @@ xuse_vera_any = xuse_vera_addr || xuse_vera_fill || xuse_vera_fxprobe || xuse_ve
 .endif
 .if xuse_dos
 .include "storage/dos.asm"
+.endif
+.if xuse_dir
+.include "storage/dir.asm"
 .endif
 .if xuse_bmx
 .include "storage/bmx.asm"

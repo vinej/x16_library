@@ -3274,6 +3274,12 @@ xm_ar_ym_get_chip_type .macro
 ; =====================================================================
 ; audio/zsm  (compact ZSM stream player)
 ; =====================================================================
+; -> A = ZSM_ERR_* from the last zsm_init
+.if xuse_zsm
+xm_zsm_lasterr .macro
+    jsr zsm_lasterr
+    .endm
+.endif
 .if xuse_zsm
 xm_zsm_init .macro header
     lda #<(\header)
@@ -4024,6 +4030,61 @@ xm_fs_prg_entry .macro name, len, device
     .endm
 .endif
 
+; -> A = BMX_ERR_* from the last bmx_* call, or 0 if it worked
+.if xuse_bmx
+xm_bmx_lasterr .macro
+    jsr bmx_lasterr
+    .endm
+.endif
+
+; =====================================================================
+; storage/dir
+; =====================================================================
+; a length of 0 asks for the current directory; -> carry set = failed
+.if xuse_dir
+xm_dir_open .macro path, len, device
+    lda #<(\path)
+    sta X16_P0
+    lda #>(\path)
+    sta X16_P1
+    lda #\len
+    sta X16_P2
+    lda #\device
+    sta X16_P3
+    jsr dir_open
+    .endm
+.endif
+; -> carry SET = an entry was read, CLEAR at the end of the listing
+.if xuse_dir
+xm_dir_next .macro buf, size
+    lda #<(\buf)
+    sta X16_P0
+    lda #>(\buf)
+    sta X16_P1
+    lda #\size
+    sta X16_P2
+    jsr dir_next
+    .endm
+.endif
+
+; -> A = DIR_TYPE_PRG / _DIR / _HOST / ... for the entry just read
+.if xuse_dir
+xm_dir_type .macro
+    jsr dir_type
+    .endm
+.endif
+; -> X/Y = the block count for the entry just read
+.if xuse_dir
+xm_dir_blocks .macro
+    jsr dir_blocks
+    .endm
+.endif
+.if xuse_dir
+xm_dir_close .macro
+    jsr dir_close
+    .endm
+.endif
+
 ; =====================================================================
 ; storage/dos
 ; =====================================================================
@@ -4034,6 +4095,12 @@ xm_dos_cmd .macro cmd, len
     ldx #>(\cmd)
     ldy #\len
     jsr dos_cmd
+    .endm
+.endif
+; -> A = the status code from the last dos_* call
+.if xuse_dos
+xm_dos_lasterr .macro
+    jsr dos_lasterr
     .endm
 .endif
 .if xuse_dos
@@ -5332,7 +5399,7 @@ xm_str_compare_nocase_iso .macro s1, s2
 ; =====================================================================
 ; string/find
 ; =====================================================================
-; -> carry set + A = index if found
+; -> A = index, or 255 if not found
 .if xuse_string_find
 xm_str_find .macro str, ch
     ldy #\ch

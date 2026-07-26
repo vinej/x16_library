@@ -4604,6 +4604,7 @@ _gone      .text "NOFILE.XYZ"
 _gone_len  = 10
 _name      .text "PRG_ENTRY_BAD", $00
 
+
 ; =====================================================================
 ; fs_vload pulls a file straight into VRAM. TESTDATA.BIN was written by
 ; FS_ROUNDTRIP earlier in this run; its 8 payload bytes must appear at

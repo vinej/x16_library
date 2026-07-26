@@ -3274,6 +3274,12 @@
 ; =====================================================================
 ; audio/zsm  (compact ZSM stream player)
 ; =====================================================================
+; -> A = ZSM_ERR_* from the last zsm_init
+!ifdef X16_USE_ZSM {
+!macro xm_zsm_lasterr {
+    jsr zsm_lasterr
+}
+}
 !ifdef X16_USE_ZSM {
 !macro xm_zsm_init .header {
     lda #<(.header)
@@ -4024,6 +4030,61 @@
 }
 }
 
+; -> A = BMX_ERR_* from the last bmx_* call, or 0 if it worked
+!ifdef X16_USE_BMX {
+!macro xm_bmx_lasterr {
+    jsr bmx_lasterr
+}
+}
+
+; =====================================================================
+; storage/dir
+; =====================================================================
+; a length of 0 asks for the current directory; -> carry set = failed
+!ifdef X16_USE_DIR {
+!macro xm_dir_open .path, .len, .device {
+    lda #<(.path)
+    sta X16_P0
+    lda #>(.path)
+    sta X16_P1
+    lda #(.len)
+    sta X16_P2
+    lda #(.device)
+    sta X16_P3
+    jsr dir_open
+}
+}
+; -> carry SET = an entry was read, CLEAR at the end of the listing
+!ifdef X16_USE_DIR {
+!macro xm_dir_next .buf, .size {
+    lda #<(.buf)
+    sta X16_P0
+    lda #>(.buf)
+    sta X16_P1
+    lda #(.size)
+    sta X16_P2
+    jsr dir_next
+}
+}
+
+; -> A = DIR_TYPE_PRG / _DIR / _HOST / ... for the entry just read
+!ifdef X16_USE_DIR {
+!macro xm_dir_type {
+    jsr dir_type
+}
+}
+; -> X/Y = the block count for the entry just read
+!ifdef X16_USE_DIR {
+!macro xm_dir_blocks {
+    jsr dir_blocks
+}
+}
+!ifdef X16_USE_DIR {
+!macro xm_dir_close {
+    jsr dir_close
+}
+}
+
 ; =====================================================================
 ; storage/dos
 ; =====================================================================
@@ -4034,6 +4095,12 @@
     ldx #>(.cmd)
     ldy #(.len)
     jsr dos_cmd
+}
+}
+; -> A = the status code from the last dos_* call
+!ifdef X16_USE_DOS {
+!macro xm_dos_lasterr {
+    jsr dos_lasterr
 }
 }
 !ifdef X16_USE_DOS {
@@ -5332,7 +5399,7 @@
 ; =====================================================================
 ; string/find
 ; =====================================================================
-; -> carry set + A = index if found
+; -> A = index, or 255 if not found
 !ifdef X16_USE_STRING_FIND {
 !macro xm_str_find .str, .ch {
     ldy #(.ch)

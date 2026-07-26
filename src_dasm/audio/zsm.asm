@@ -16,7 +16,21 @@
 ; 16-bit address space and uses the existing AFLOW PCM streamer.
 ;
 ; Call zsm_tick at the ZSM header's tick rate. Use zsm_get_tickrate after
-; zsm_init if you need to configure your scheduler.
+; ; ---------------------------------------------------------------------
+; zsm_lasterr -- why the last zsm_init failed
+;   out: A = ZSM_ERR_* (ZSM_ERR_NONE after one that worked)
+;
+; zsm_init answers with both a carry and a code, and a caller that can
+; only read one of them needs the code: "it would not start" is not much
+; to go on when the answer is that the file is a version too new.
+; ---------------------------------------------------------------------
+    SUBROUTINE
+zsm_lasterr
+    lda zsm_code
+    rts
+
+    SUBROUTINE
+zsm_init if you need to configure your scheduler.
 ; =====================================================================
 
 ; (zone: file scope in dasm)
@@ -26,6 +40,9 @@ ZSM_ERR_MAGIC   = 1
 ZSM_ERR_VERSION = 2
 ZSM_ERR_RANGE   = 3
 ZSM_ERR_PCM     = 4
+
+    SUBROUTINE
+zsm_code        dc.b 0         ; the last ZSM_ERR_*, for zsm_lasterr
 
 ZSM_FLAG_ACTIVE = %00000001
 ZSM_FLAG_LOOP   = %00000010
@@ -125,23 +142,28 @@ zsm_init
     sta zsm_flags
     stz zsm_delay
     lda #ZSM_ERR_NONE
+    sta zsm_code
     clc
     rts
 .magic
     lda #ZSM_ERR_MAGIC
+    sta zsm_code
     sec
     rts
 .version
     lda #ZSM_ERR_VERSION
+    sta zsm_code
     sec
     rts
 .range
     lda #ZSM_ERR_RANGE
+    sta zsm_code
     sec
     rts
     IFCONST X16_USE_ZSM_PCM
 .pcm_error
     lda #ZSM_ERR_PCM
+    sta zsm_code
     sec
     rts
     ENDIF

@@ -7,12 +7,13 @@
 ; Locate a character (forward or backward), find the first line ending,
 ; test membership, or match a wildcard pattern. The string is passed in
 ; A (low) / X (high); the character to look for is in Y. The find
-; routines return the carry set and the index in A when they hit, or the
-; carry clear and A = 255 when they miss.
+; routines answer in A -- the index when they hit, 255 when they miss --
+; and set the carry to say the same thing, so a caller can read whichever
+; suits it.
 ;
 ;       lda #<path : ldx #>path
 ;       ldy #'/'
-;       jsr str_rfind                 ; index of the last '/', carry set
+;       jsr str_rfind                 ; A = index of the last '/', or 255
 ; =====================================================================
 
 ; (zone: file scope in ca65)
@@ -20,7 +21,8 @@
 ; ---------------------------------------------------------------------
 ; str_find -- first index of a character, scanning left to right.
 ;   in:  A = low, X = high, Y = character
-;   out: carry set + A = index if found; carry clear + A = 255 if not
+;   out: A = the index, or 255 when the character is not there
+;        (the carry says the same thing: set when found)
 ; ---------------------------------------------------------------------
 str_find
     sta X16_T0
@@ -53,7 +55,8 @@ str_contains
 ; ---------------------------------------------------------------------
 ; str_find_eol -- first index of a CR (13) or LF (10).
 ;   in:  A = low, X = high
-;   out: carry set + A = index if found; carry clear + A = 255 if not
+;   out: A = the index, or 255 when the character is not there
+;        (the carry says the same thing: set when found)
 ; ---------------------------------------------------------------------
 str_find_eol
     sta X16_T0
@@ -80,7 +83,8 @@ str_find_eol
 ; ---------------------------------------------------------------------
 ; str_rfind -- first index of a character, scanning right to left.
 ;   in:  A = low, X = high, Y = character
-;   out: carry set + A = index if found; carry clear + A = 255 if not
+;   out: A = the index, or 255 when the character is not there
+;        (the carry says the same thing: set when found)
 ; ---------------------------------------------------------------------
 str_rfind
     sty X16_T2

@@ -43,10 +43,24 @@ bmx_palstart byte 0
 bmx_palcount word 256          ; 1-256 entries
 bmx_border   byte 0
 bmx_stride   word 320          ; VRAM bytes between row starts
+bmx_code     byte 0            ; the last BMX_ERR_*, for bmx_lasterr
 
 BMX_ERR_IO     = 1              ; open/read/write failed
 BMX_ERR_FORMAT = 2              ; not a BMX, or not version 1
 BMX_ERR_PACKED = 3              ; compressed data is not supported
+
+; ---------------------------------------------------------------------
+; bmx_lasterr -- why the last bmx_* call failed
+;   out: A = BMX_ERR_IO / _FORMAT / _PACKED, or 0 after a call that worked
+;
+; These routines answer twice -- the carry says whether, A says why -- and
+; a caller that can only see one of them (a generated binding will not
+; guess a type for a routine documenting both) would otherwise be left
+; unable to tell a missing file from a loaded one.
+; ---------------------------------------------------------------------
+bmx_lasterr
+    lda bmx_code
+    rts
 
 ; ---------------------------------------------------------------------
 ; bmx_load -- load a BMX file: palette into the VERA palette, pixels
@@ -58,9 +72,11 @@ BMX_ERR_PACKED = 3              ; compressed data is not supported
 ;        bmx_width/height/bpp/palstart/palcount/border reflect the file
 ; ---------------------------------------------------------------------
 bmx_load
+    stz bmx_code
     jsr bmx_open_read
     bcc .hdr
     lda #BMX_ERR_IO
+    sta bmx_code
     rts
 .hdr
     ldx #0                      ; pull in the 16-byte header
@@ -83,6 +99,7 @@ bmx_load
     jsr READST
     beq .validate
     lda #BMX_ERR_IO
+    sta bmx_code
     bra .close_err
 
 .validate
@@ -101,9 +118,11 @@ bmx_load
     lda bmx_hdr+14
     beq .fmt_ok
     lda #BMX_ERR_PACKED
+    sta bmx_code
     bra .close_err
 .bad_fmt
     lda #BMX_ERR_FORMAT
+    sta bmx_code
 .close_err
     pha
     jsr bmx_close_read
@@ -260,6 +279,7 @@ bmx_load
 
 .io_short
     lda #BMX_ERR_IO
+    sta bmx_code
     jmp .close_err
 
 .done
@@ -277,9 +297,11 @@ bmx_load
 ;   out: carry clear on success, set with A = BMX_ERR_IO on failure
 ; ---------------------------------------------------------------------
 bmx_save
+    stz bmx_code
     jsr bmx_open_write
     bcc .wr_hdr
     lda #BMX_ERR_IO
+    sta bmx_code
     rts
 .wr_hdr
     lda #'B'
@@ -434,9 +456,11 @@ bmx_save
 BMX_HIRES_STRIDE = 640
 
 bmx_load_hires
+    stz bmx_code
     jsr bmx_open_read
     bcc .hdr
     lda #BMX_ERR_IO
+    sta bmx_code
     rts
 .hdr
     ldx #0                      ; pull in the 16-byte header
@@ -450,6 +474,7 @@ bmx_load_hires
     jsr READST                  ; a short/absent header is an I/O error
     beq .validate
     lda #BMX_ERR_IO
+    sta bmx_code
     bra .close_err
 .validate
     lda bmx_hdr
@@ -467,9 +492,11 @@ bmx_load_hires
     lda bmx_hdr+14
     beq .fmt_ok
     lda #BMX_ERR_PACKED
+    sta bmx_code
     bra .close_err
 .bad_fmt
     lda #BMX_ERR_FORMAT
+    sta bmx_code
 .close_err
     pha
     jsr bmx_close_read
@@ -604,6 +631,7 @@ bmx_load_hires
 
 .io_short
     lda #BMX_ERR_IO
+    sta bmx_code
     jmp .close_err
 
 .done

@@ -4615,6 +4615,7 @@ test_prg_entry_bad__gone      dta c'NOFILE.XYZ'
 test_prg_entry_bad__gone_len  = 10
 test_prg_entry_bad__name      dta c'PRG_ENTRY_BAD', $00
 
+
 ; =====================================================================
 ; fs_vload pulls a file straight into VRAM. TESTDATA.BIN was written by
 ; FS_ROUNDTRIP earlier in this run; its 8 payload bytes must appear at
