@@ -868,3 +868,30 @@ assembler's own way (`xm_pal_set(…)` in ACME, `xm_pal_set …` in ca65,
 `xm_pal_set(…)` in KickAssembler, and so on; the converters handle it). Source
 the converted `core/sugar` from your tree after setting the gates, exactly as
 above.
+
+## Reference: routines not covered above
+
+Taken from each routine's own header in the source, so this
+stays true as the module changes.
+
+| Routine | Purpose | In | Out |
+|---|---|---|---|
+| `kbd_keymap` | get or set the active keyboard layout | C clear: X/Y = NUL-terminated layout string C set: query current layout | query: A = layout index, X/Y = current layout string set: carry clear on success, carry set on failure |
+| `zi_delay` | a coarse busy-wait so the ESP32 can keep up. | A = ticks (~40 ms each at 8 MHz; timing is approximate) Self-contained (no jiffy IRQ, no KERNAL), so it works in any context. | -- |
+| `sprite_setptr` | point data port 0 at one byte of a sprite record. | X = sprite number (0-127), A = byte offset within the record Leaves the port on auto-increment, so consecutive fields stream. | -- |
+| `zsm_lasterr` | why the last zsm_init failed | -- | A = ZSM_ERR_* (ZSM_ERR_NONE after one that worked) zsm_init answers with both a carry and a code, and a caller that can only read one of them needs the code: "it would not start" is not much to go on when the answer is that the file is a version too new. |
+| `zsm_next` | read one stream byte and advance zsm_ptr | -- | -- |
+| `zsm_next_done` | -- | -- | -- |
+| `zsm_skip_t1` | skip X16_T1 stream bytes | -- | -- |
+| `zsm_skip_loop` | -- | -- | -- |
+| `zsm_skip_done` | -- | -- | -- |
+| `zsm_ext_pcm` | handle EXTCMD channel 0 command/argument pairs | -- | -- |
+| `zsm_ext_pcm_loop` | -- | -- | -- |
+| `zsm_ext_pcm_ctrl` | -- | -- | -- |
+| `zsm_ext_pcm_rate` | -- | -- | -- |
+| `zsm_ext_pcm_trigger` | -- | -- | -- |
+| `zsm_ext_pcm_next` | -- | -- | -- |
+| `zsm_ext_pcm_done` | -- | -- | -- |
+| `zsm_pcm_init` | parse optional PCM header/table from the ZSM header | r0 = ZSM header pointer | carry set if the PCM header is present but unsupported/invalid |
+| `zsm_psg_write` | write A to PSG register offset X | -- | -- |
+| `zsm_ym_write` | raw YM register write | A = value, X = register | -- |

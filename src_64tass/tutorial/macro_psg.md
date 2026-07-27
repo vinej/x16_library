@@ -217,3 +217,12 @@ main
 
 .include "x16_code.asm"
 ```
+
+## Reference: routines not covered above
+
+Taken from each routine's own header in the source, so this
+stays true as the module changes.
+
+| Routine | Purpose | In | Out |
+|---|---|---|---|
+| `psg_voice_ptr` | point data port 0 at a voice register | X = voice (0-15), A = byte offset within the voice (0-3) | -- |

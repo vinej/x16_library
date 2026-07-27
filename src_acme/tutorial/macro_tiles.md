@@ -235,3 +235,11 @@ accumulator rather than on arguments.
 | Output parameters | Nothing the macro can hand back; see the routine's header. |
 | More info | Available when `X16_USE_TILE` is enabled. |
 
+## Reference: routines not covered above
+
+Taken from each routine's own header in the source, so this
+stays true as the module changes.
+
+| Routine | Purpose | In | Out |
+|---|---|---|---|
+| `layer_index` | turn a layer number into the register offset. | X = layer (0 or 1) | X = 0 or 7 (L1_CONFIG is 7 bytes past L0_CONFIG) Preserves A. |

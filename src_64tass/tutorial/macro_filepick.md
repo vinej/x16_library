@@ -1,5 +1,7 @@
 # File Browser Macros
 
+> Generated 64tass edition from `src_acme/tutorial`. Do not edit this copy by hand.
+
 Detailed reference for the `X16_USE_FILEPICK` macro gate, and its
 editing half `X16_USE_FILEPICK_EDIT`.
 
@@ -7,7 +9,7 @@ Set the gate before sourcing the library:
 
 ```asm
 X16_USE_FILEPICK = 1
-!source "x16.asm"
+.include "x16.asm"
 ```
 
 A directory panel with a mouse and a keyboard: scrolling, descent into
@@ -15,11 +17,11 @@ folders, and one question answered -- *which file?* The caller decides
 what the answer means.
 
 ```asm
-    +xm_fp_filter pattern           ; what to list
-    jsr fp_open                     ; A = FPK_NONE / FPK_PICK / FPK_ALT / FPK_HERE
+    #xm_fp_filter pattern  ; what to list
+    jsr fp_open  ; A = FPK_NONE / FPK_PICK / FPK_ALT / FPK_HERE
     cmp #FPK_PICK
     bne @nothing
-    +xm_fp_copy_path buf, 64        ; A = length
+    #xm_fp_copy_path buf, 64  ; A = length
 @nothing
     jsr fp_close
 ```
@@ -54,59 +56,59 @@ meaning cancel: without it, a caller wanting a place has to read ESC as
 The drive is left standing in the directory the panel was showing, so a
 bare filename written afterwards lands there.
 
-## `+xm_fp_filter pattern` / `+xm_fp_primary pattern`
+## `#xm_fp_filter pattern` / `#xm_fp_primary pattern`
 
 | Field | Details |
 |---|---|
-| Macro | `+xm_fp_filter pattern`, `+xm_fp_primary pattern` |
+| Macro | `#xm_fp_filter pattern`, `#xm_fp_primary pattern` |
 | Purpose | which files to list; which of those the caller can act on |
 | Input parameters | a NUL-terminated `;` list of `*.ext` patterns |
 | More info | Set `primary` alongside a `"*.*"` filter and everything that does not match is marked `[dat]`: a launcher can run a `.prg` but can only hand a `.bmx` to a program that opens it. `fp_is_primary` reports which kind was chosen. |
 
-## `+xm_fp_open` / `+xm_fp_resume` / `+xm_fp_close`
+## `#xm_fp_open` / `#xm_fp_resume` / `#xm_fp_close`
 
 | Field | Details |
 |---|---|
-| Macro | `+xm_fp_open`, `+xm_fp_resume`, `+xm_fp_close` |
+| Macro | `#xm_fp_open`, `#xm_fp_resume`, `#xm_fp_close` |
 | Purpose | put the panel up; put it up again unchanged; take it down |
 | Output parameters | A = `FPK_*` |
 | More info | `fp_resume` returns to the same directory and selection, for a caller that acted on an `FPK_ALT` and wants the browser back. `fp_close` restores the screen under the panel and hides the pointer. |
 
-## `+xm_fp_copy_path dest, size` / `+xm_fp_copy_name` / `+xm_fp_copy_dir`
+## `#xm_fp_copy_path dest, size` / `#xm_fp_copy_name` / `#xm_fp_copy_dir`
 
 | Field | Details |
 |---|---|
-| Macro | `+xm_fp_copy_path dest, size`, `+xm_fp_copy_name dest, size`, `+xm_fp_copy_dir dest, size` |
+| Macro | `#xm_fp_copy_path dest, size`, `#xm_fp_copy_name dest, size`, `#xm_fp_copy_dir dest, size` |
 | Purpose | the absolute path / the bare name / the directory, copied into your memory |
 | Output parameters | A = characters copied, terminator aside |
 | More info | **Use these from a banked filepick.** `fp_path`, `fp_name` and `fp_dir` return pointers instead, and those name storage that travels into the RAM bank with the module -- the wrapper maps the bank out again before the caller reads them. |
 
-## `+xm_fp_cache addr, hibit` / `+xm_fp_saveunder on, addr, hibit`
+## `#xm_fp_cache addr, hibit` / `#xm_fp_saveunder on, addr, hibit`
 
 | Field | Details |
 |---|---|
-| Macro | `+xm_fp_cache addr, hibit`, `+xm_fp_saveunder on, addr, hibit` |
+| Macro | `#xm_fp_cache addr, hibit`, `#xm_fp_saveunder on, addr, hibit` |
 | Purpose | where the listing lives; where the screen under the panel is kept |
 | Input parameters | a VRAM address: low 16 bits, then bit 16 |
 | More info | VRAM rather than a RAM bank, and not by preference: a banked module cannot page a bank into the window it is executing from. The listing is 2,560 bytes (`$12000` by default), the save-under 5,712 at 80 columns (`$14000`). A caller that repaints its own screen does not need the second one. |
 
-## `+xm_fp_style panel, bar, sel` / `+xm_fp_heading text` / `+xm_fp_footing text` / `+xm_fp_charset n` / `+xm_fp_start_dir path`
+## `#xm_fp_style panel, bar, sel` / `#xm_fp_heading text` / `#xm_fp_footing text` / `#xm_fp_charset n` / `#xm_fp_start_dir path`
 
 | Field | Details |
 |---|---|
 | Purpose | colours, the two labels, the charset the panel is drawn in, and where it opens |
 | More info | All optional. `fp_charset` takes 255 to leave whatever the caller had -- there is no way to ask the KERNAL which charset is loaded, so the module cannot put back what it does not know. The name prompt is drawn blue on yellow whatever the style: a field that looks like the rows around it is a field nobody sees. |
 
-## `+xm_fp_match name, pattern`
+## `#xm_fp_match name, pattern`
 
 | Field | Details |
 |---|---|
-| Macro | `+xm_fp_match name, pattern` |
+| Macro | `#xm_fp_match name, pattern` |
 | Purpose | does this name match a `;` list of patterns? |
 | Output parameters | carry set when it matches |
 | More info | The same matcher the panel filters with, exposed because a caller often wants to ask it about a name of its own. |
 
-## `+xm_fp_panel_top` / `_left` / `_width` / `_rows`
+## `#xm_fp_panel_top` / `_left` / `_width` / `_rows`
 
 | Field | Details |
 |---|---|
@@ -117,7 +119,7 @@ bare filename written afterwards lands there.
 ## Managing files: `X16_USE_FILEPICK_EDIT`
 
 ```asm
-X16_USE_FILEPICK_EDIT = 1       ; implies X16_USE_FILEPICK
+X16_USE_FILEPICK_EDIT = 1  ; implies X16_USE_FILEPICK
 ```
 
 No macros of its own -- it adds commands inside `fp_open`:
