@@ -4205,6 +4205,43 @@
     jsr fp_dir
     endm
     endif
+; -> A = characters copied. Use these from a BANKED filepick: a pointer
+; it returns names storage that travels into the bank with it.
+    ifdef X16_USE_FILEPICK
+    macro xm_fp_copy_path
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    jsr fp_copy_path
+    endm
+    endif
+; -> A = characters copied
+    ifdef X16_USE_FILEPICK
+    macro xm_fp_copy_name
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    jsr fp_copy_name
+    endm
+    endif
+; -> A = characters copied
+    ifdef X16_USE_FILEPICK
+    macro xm_fp_copy_dir
+    lda #<(\1)
+    sta X16_P0
+    lda #>(\1)
+    sta X16_P1
+    lda #(\2)
+    sta X16_P2
+    jsr fp_copy_dir
+    endm
+    endif
 ; -> carry SET when the chosen entry matches the primary pattern
     ifdef X16_USE_FILEPICK
     macro xm_fp_is_primary
