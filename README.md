@@ -336,6 +336,22 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 
 | Gate | Provides |
 |---|---|
+| `X16_USE_FILEPICK` | **a file browser on a panel** — mouse and keyboard, scrolling, descent into folders, and an absolute path handed back. `fp_open`/`fp_resume`/`fp_close`, `fp_filter` (a `;` list: `"*.prg"`, `"*.bmx;*.png"`, `"*.*"`), `fp_primary`, `fp_style`, `fp_heading`/`fp_footing`, `fp_charset`, `fp_start_dir`, `fp_cache`, `fp_saveunder`, `fp_match`, the panel geometry (`fp_panel_top`/`left`/`width`/`rows`), and `fp_copy_path`/`fp_copy_name`/`fp_copy_dir`. Around 3 KB and only wanted while the panel is up, so it is the module most worth `-Bank`ing — see the note below. |
+|   `X16_USE_FILEPICK_EDIT` | managing what is listed, not only choosing from it: `n` new folder, `e` rename, `d` delete, `c` copy, `v` paste. Gated on its own, because a program that only asks *which file?* should not carry delete to get it. |
+| `X16_USE_VERA_DC` | `vdc_fullscreen`, `vdc_get_active_raw`, `vdc_get_border`, `vdc_get_scale`, `vdc_get_version`, `vdc_get_video`, `vdc_layer_off`, `vdc_layer_on`, `vdc_set_active`, `vdc_set_active_raw`, `vdc_set_border`, `vdc_set_layers`, `vdc_set_output`, `vdc_set_scale`, `vdc_set_video` |
+| `X16_USE_MOUSE` | `mse_config`, `mse_get`, `mse_get_to`, `mse_hide`, `mse_scan`, `mse_show`, `mse_show_keep` |
+| `X16_USE_KEYBOARD` | `kbd_get_keymap`, `kbd_get_modifiers`, `kbd_peek`, `kbd_put`, `kbd_scan`, `kbd_set_keymap` |
+| `X16_USE_CLOCK` | `clock_get_date_time`, `clock_get_timer`, `clock_set_date_time_raw`, `clock_update` |
+| `X16_USE_FILEIO` | `fio_chkin`, `fio_chkout`, `fio_chrin`, `fio_chrout`, `fio_close`, `fio_close_all`, `fio_close_device`, `fio_close_named`, `fio_clrchn`, `fio_getin`, `fio_open`, `fio_open_named`, `fio_open_read`, `fio_open_write`, `fio_readst`, `fio_set_lfs`, `fio_set_name` |
+| `X16_USE_IEC` | `iec_acptr`, `iec_ciout`, `iec_close_channel`, `iec_data_channel`, `iec_listen`, `iec_macptr`, `iec_mciout`, `iec_open_channel`, `iec_readst`, `iec_second`, … (16 in all) |
+| `X16_USE_I2C` | `i2c_batch_read`, `i2c_batch_read_fixed`, `i2c_batch_write`, `i2c_read_byte`, `i2c_write_byte` |
+| `X16_USE_VERA_SPI` | `spi_autotx_off`, `spi_autotx_on`, `spi_autotx_read`, `spi_deselect`, `spi_fast`, `spi_get_ctrl`, `spi_read`, `spi_read_bytes`, `spi_select`, `spi_set_ctrl`, … (15 in all) |
+| `X16_USE_GRAPH` | `graph_clear`, `graph_draw_image`, `graph_draw_line`, `graph_draw_oval_fill`, `graph_draw_oval_outline`, `graph_draw_rect_fill`, `graph_draw_rect_outline`, `graph_get_char_size`, `graph_init`, `graph_init_default`, … (16 in all) |
+| `X16_USE_CONSOLE` | `con_disable_paging`, `con_get_char`, `con_init`, `con_init_fullscreen`, `con_put_char_word`, `con_put_char_wrap`, `con_put_image`, `con_set_paging_message` |
+| `X16_USE_FB` | `fb_cursor_next_line`, `fb_cursor_position`, `fb_fill_pixels`, `fb_filter_pixels`, `fb_get_info`, `fb_get_pixels`, `fb_init`, `fb_move_pixels`, `fb_set_8_pixels`, `fb_set_8_pixels_opaque`, … (12 in all) |
+| `X16_USE_VERAFX_UTILS` | `fxu_4bit_off`, `fxu_4bit_on`, `fxu_accumulate`, `fxu_addr1_mode`, `fxu_cache_cycle_off`, `fxu_cache_cycle_on`, `fxu_cache_fill0`, `fxu_cache_fill1`, … (32 in all) |
+| `X16_USE_ZSM` | `zsm_get_tickrate`, `zsm_init`, `zsm_init_stream`, `zsm_lasterr`, `zsm_play`, `zsm_rewind`, `zsm_status`, `zsm_stop`, `zsm_tick` |
+| `X16_USE_AUDIO_ROM` | `ar_audio_init`, `ar_fmchordstring`, `ar_fmfreq`, `ar_fmfreq_no_retrigger`, `ar_fmnote`, `ar_fmnote_no_retrigger`, `ar_fmplaystring`, `ar_fmvib`, … (61 in all) |
 | `X16_USE_VERA` | `vera_set_addr0/1`, `vera_fill`, `vera_copy`, `vera_has_fx` — all of the parts below. The umbrella still pulls the whole module, so nothing that exists breaks; a program that wants one routine sets its part and carries only that. |
 |   `X16_USE_VERA_CORE` | `vera_set_addr0/1` + `vera_fill` + `vera_has_fx` (everything but `vera_copy`) |
 |   `X16_USE_VERA_ADDR` | `vera_set_addr0`/`vera_set_addr1` alone |
@@ -408,23 +424,6 @@ java -jar KickAss.jar dist\examples\hello-kickass.asm -o HELLO.PRG
 | `X16_USE_STRING_FIND` | Searching (`string/find.asm`): `str_find`, `str_rfind`, `str_find_eol`, `str_contains` (character in `Y`), and `str_pattern_match` (`?`/`*` wildcards, self-modifying + recursive). |
 | `X16_USE_STRING_SLICE` | Substrings (`string/slice.asm`): `str_left`, `str_right`, `str_slice` (into a target in `X16_P0/P1`), and in-place `str_ltrim`/`str_rtrim`/`str_trim`. |
 | `X16_USE_STRING_SORT` | `str_sort` (`string/strsort.asm`): sort an array of string pointers (`uword`s) ascending by content, via `str_compare` — the strings stay put, only the pointer array is permuted. Self-contained (pulls in only `X16_USE_STRING`). |
-
-| `X16_USE_FILEPICK` | **a file browser on a panel** — mouse and keyboard, scrolling, descent into folders, and an absolute path handed back. `fp_open`/`fp_resume`/`fp_close`, `fp_filter` (a `;` list: `"*.prg"`, `"*.bmx;*.png"`, `"*.*"`), `fp_primary`, `fp_style`, `fp_heading`/`fp_footing`, `fp_charset`, `fp_start_dir`, `fp_cache`, `fp_saveunder`, `fp_match`, the panel geometry (`fp_panel_top`/`left`/`width`/`rows`), and `fp_copy_path`/`fp_copy_name`/`fp_copy_dir`. Around 3 KB and only wanted while the panel is up, so it is the module most worth `-Bank`ing — see the note below. |
-|   `X16_USE_FILEPICK_EDIT` | managing what is listed, not only choosing from it: `n` new folder, `e` rename, `d` delete, `c` copy, `v` paste. Gated on its own, because a program that only asks *which file?* should not carry delete to get it. |
-| `X16_USE_VERA_DC` | `vdc_fullscreen`, `vdc_get_active_raw`, `vdc_get_border`, `vdc_get_scale`, `vdc_get_version`, `vdc_get_video`, `vdc_layer_off`, `vdc_layer_on`, `vdc_set_active`, `vdc_set_active_raw`, `vdc_set_border`, `vdc_set_layers`, `vdc_set_output`, `vdc_set_scale`, `vdc_set_video` |
-| `X16_USE_MOUSE` | `mse_config`, `mse_get`, `mse_get_to`, `mse_hide`, `mse_scan`, `mse_show`, `mse_show_keep` |
-| `X16_USE_KEYBOARD` | `kbd_get_keymap`, `kbd_get_modifiers`, `kbd_peek`, `kbd_put`, `kbd_scan`, `kbd_set_keymap` |
-| `X16_USE_CLOCK` | `clock_get_date_time`, `clock_get_timer`, `clock_set_date_time_raw`, `clock_update` |
-| `X16_USE_FILEIO` | `fio_chkin`, `fio_chkout`, `fio_chrin`, `fio_chrout`, `fio_close`, `fio_close_all`, `fio_close_device`, `fio_close_named`, `fio_clrchn`, `fio_getin`, `fio_open`, `fio_open_named`, `fio_open_read`, `fio_open_write`, `fio_readst`, `fio_set_lfs`, `fio_set_name` |
-| `X16_USE_IEC` | `iec_acptr`, `iec_ciout`, `iec_close_channel`, `iec_data_channel`, `iec_listen`, `iec_macptr`, `iec_mciout`, `iec_open_channel`, `iec_readst`, `iec_second`, … (16 in all) |
-| `X16_USE_I2C` | `i2c_batch_read`, `i2c_batch_read_fixed`, `i2c_batch_write`, `i2c_read_byte`, `i2c_write_byte` |
-| `X16_USE_VERA_SPI` | `spi_autotx_off`, `spi_autotx_on`, `spi_autotx_read`, `spi_deselect`, `spi_fast`, `spi_get_ctrl`, `spi_read`, `spi_read_bytes`, `spi_select`, `spi_set_ctrl`, … (15 in all) |
-| `X16_USE_GRAPH` | `graph_clear`, `graph_draw_image`, `graph_draw_line`, `graph_draw_oval_fill`, `graph_draw_oval_outline`, `graph_draw_rect_fill`, `graph_draw_rect_outline`, `graph_get_char_size`, `graph_init`, `graph_init_default`, … (16 in all) |
-| `X16_USE_CONSOLE` | `con_disable_paging`, `con_get_char`, `con_init`, `con_init_fullscreen`, `con_put_char_word`, `con_put_char_wrap`, `con_put_image`, `con_set_paging_message` |
-| `X16_USE_FB` | `fb_cursor_next_line`, `fb_cursor_position`, `fb_fill_pixels`, `fb_filter_pixels`, `fb_get_info`, `fb_get_pixels`, `fb_init`, `fb_move_pixels`, `fb_set_8_pixels`, `fb_set_8_pixels_opaque`, … (12 in all) |
-| `X16_USE_VERAFX_UTILS` | `fxu_4bit_off`, `fxu_4bit_on`, `fxu_accumulate`, `fxu_addr1_mode`, `fxu_cache_cycle_off`, `fxu_cache_cycle_on`, `fxu_cache_fill0`, `fxu_cache_fill1`, … (32 in all) |
-| `X16_USE_ZSM` | `zsm_get_tickrate`, `zsm_init`, `zsm_init_stream`, `zsm_lasterr`, `zsm_play`, `zsm_rewind`, `zsm_status`, `zsm_stop`, `zsm_tick` |
-| `X16_USE_AUDIO_ROM` | `ar_audio_init`, `ar_fmchordstring`, `ar_fmfreq`, `ar_fmfreq_no_retrigger`, `ar_fmnote`, `ar_fmnote_no_retrigger`, `ar_fmplaystring`, `ar_fmvib`, … (61 in all) |
 
 ### Advanced build gates
 
