@@ -68,6 +68,8 @@ FPK_MAXENT = 64
 FPK_NOBANK = 255                 ; fp_saveunder: keep nothing
 FPK_PTOP   = 3                   ; the panel's first row
 FPK_DBLCLK = 30                  ; jiffies: half a second
+FPK_ACURSOR = $67                ; yellow on blue: the caret, inverse of
+                                 ; the field it sits in
 FPK_AEDIT  = $76                 ; blue on yellow: the one place the panel
                                  ; is asking rather than showing, and it
                                  ; has to be unmistakable. Deliberately
@@ -1922,13 +1924,13 @@ fp_elen     !byte 0             ; length of the text being edited
     ldx #FPK_AEDIT
     jsr screen_blit
 .ep_cursor
-    lda #<.s_cursor
-    sta X16_P0
-    lda #>.s_cursor
-    sta X16_P1
+    ; A solid block in the opposite colours, not an underscore in the
+    ; same ones: the caret has to be findable at a glance, and a thin
+    ; character on a coloured field is not.
     lda #1
-    ldx #FPK_AEDIT
-    jsr screen_blit
+    ldx #FPK_ACURSOR
+    ldy #' '
+    jsr screen_blitfill
     jsr key_wait
     cmp #$0D
     beq .ep_enter
@@ -1968,7 +1970,6 @@ fp_elen     !byte 0             ; length of the text being edited
     clc
     rts
 
-.s_cursor   !text "_", 0
 
 ; X16_P0/P1 = question -> carry set on y
 .ed_confirm
