@@ -6,7 +6,7 @@ without re-deriving the machine's hardware surface every time.
 | Topic | Detail |
 |---|---|
 | Target | Commander X16 programs written directly in 6502 assembly. |
-| Implementation | Fresh assembly implementation with an assembly-shaped API. No Forth code is reused. |
+| Implementation | Fresh assembly implementation with an assembly-shaped API.|
 | ACME tutorial | `src_acme/tutorial/` |
 | ca65 tutorial | `src_ca65/tutorial/` |
 | 64tass tutorial | `src_64tass/tutorial/` |
