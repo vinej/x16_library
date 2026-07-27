@@ -59,6 +59,7 @@
 .label FPK_NONE = 0                   // cancelled: ESC, Run/Stop, or the x box
 .label FPK_PICK = 1                   // a file was chosen: fp_path has it
 .label FPK_ALT = 2                   // the second gesture: right click, or 'a'
+.label FPK_HERE = 3                   // 'h': this DIRECTORY, not a file in it
 
 .label FPK_ESIZE = 40                  // one cache entry: type, then the name
 .label FPK_ETYPE = 0
@@ -1516,8 +1517,15 @@ filepick_ru_cell:
 
 // ---------------------------------------------------------------------
 // fp_open -- put the panel up on the starting directory
-//   out: A = FPK_NONE (cancelled), FPK_PICK (a file), FPK_ALT (the second
-//        gesture on a file: right click, or 'a')
+//   out: A = FPK_NONE (cancelled), FPK_PICK (a file), FPK_ALT (the
+//        second gesture on a file: right click, or 'a'), FPK_HERE ('h':
+//        the directory being shown, for "save into...")
+//
+// FPK_HERE is for a caller that wants a PLACE rather than a file. The
+// drive is left standing in that directory whatever the answer, so a
+// bare filename written afterwards lands there and fp_copy_dir names it.
+// Without it ESC has to double as "use this one", and then there is no
+// way left to mean "cancel".
 //
 // The chosen path is fp_path either way it ended on a file. Call
 // fp_close when done with it -- that is what puts back the screen and
@@ -1743,6 +1751,12 @@ filepick_lp_key:
     lda #$0D                    // a double click is Enter
     sta fp_key
 filepick_lp_haskey:
+    lda fp_key
+    cmp #'h'                    // "the folder I am looking at"
+    bne filepick_lp_nothere
+    lda #FPK_HERE
+    rts
+filepick_lp_nothere:
     lda fp_key
     cmp #$1B
     bne filepick_hop12
