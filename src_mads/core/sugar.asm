@@ -4293,6 +4293,13 @@
 .endif
 
 ; =====================================================================
+; ui/filepick -- the editing half (X16_USE_FILEPICK_EDIT)
+;
+; No routines of its own to call: n/e/d/c/v are handled inside fp_open
+; when the gate is defined. The gate is what you set.
+; =====================================================================
+
+; =====================================================================
 ; storage/dos
 ; =====================================================================
 ; -> A = status code

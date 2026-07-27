@@ -93,6 +93,8 @@ X16_USE_STRING_SORT = 0
 X16_USE_SYSTEM = 0
 X16_USE_IRQ = 0
 X16_USE_CLOCK = 0
+X16_USE_FILEPICK_EDIT = 0
+X16_USE_INPUT_KEYWAIT = 0
 X16_USE_SCREEN_EXTRA = 0
 X16_USE_SHP_LINE = 0
 X16_USE_VERAFX_FILL = 0
@@ -114,7 +116,6 @@ X16_USE_IRQ_VSYNC = 0
 X16_USE_IRQ_SPRCOL = 0
 X16_USE_IRQ_SPRCOL_API = 0
 X16_USE_INPUT_CORE = 0
-X16_USE_INPUT_KEYWAIT = 0
 X16_USE_SCREEN_CORE = 0
 X16_BITMAP2L_NO_INIT = 0
 X16_BITMAP4L_MIN = 0
@@ -136,6 +137,7 @@ xuse_storage = X16_USE_STORAGE != 0
 xuse_utilities = X16_USE_UTILITIES != 0
 xuse_strings = X16_USE_STRINGS != 0
 xuse_system = X16_USE_SYSTEM != 0
+xuse_filepick_edit = X16_USE_FILEPICK_EDIT != 0
 xuse_vera_dc = xuse_video || X16_USE_VERA_DC != 0
 xuse_palette = xuse_video || X16_USE_PALETTE != 0
 xuse_tile = xuse_video || X16_USE_TILE != 0
@@ -168,10 +170,10 @@ xuse_bankalloc = xuse_storage || X16_USE_BANKALLOC != 0
 xuse_stack = xuse_storage || X16_USE_STACK != 0
 xuse_ringbuffer = xuse_storage || X16_USE_RINGBUFFER != 0
 xuse_mem = xuse_storage || X16_USE_MEM != 0
-xuse_fileio = xuse_storage || X16_USE_FILEIO != 0
+xuse_fileio = xuse_storage || X16_USE_FILEIO != 0 || xuse_filepick_edit
 xuse_iec = xuse_storage || X16_USE_IEC != 0
 xuse_load = xuse_storage || X16_USE_LOAD != 0
-xuse_filepick = xuse_storage || X16_USE_FILEPICK != 0
+xuse_filepick = xuse_storage || X16_USE_FILEPICK != 0 || xuse_filepick_edit
 xuse_bmx = xuse_storage || X16_USE_BMX != 0
 xuse_clip = xuse_utilities || X16_USE_CLIP != 0
 xuse_buffers = xuse_utilities || X16_USE_BUFFERS != 0
@@ -213,11 +215,11 @@ xuse_verafx_tri = xuse_verafx || X16_USE_VERAFX_TRI != 0
 xuse_pcm = xuse_audio || X16_USE_PCM != 0 || xuse_pcm_stream
 xuse_math = xuse_utilities || X16_USE_MATH != 0 || xuse_shapes_poly || xuse_shapes_arc
 xuse_irq = xuse_system || X16_USE_IRQ != 0 || xuse_pcm_stream
+xuse_input_keywait = xuse_filepick_edit || X16_USE_INPUT_KEYWAIT != 0 || xuse_input
 xuse_screen_extra = xuse_filepick || X16_USE_SCREEN_EXTRA != 0 || xuse_screen
 xuse_shp_line = xuse_shapes_arc || X16_USE_SHP_LINE != 0 || xuse_shapes_bezier
 xuse_verafx_linetri = xuse_verafx_line || X16_USE_VERAFX_LINETRI != 0 || xuse_verafx_tri
 xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
-xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
 xuse_screen_core = xuse_screen || X16_USE_SCREEN_CORE != 0
 xuse_shapes = xuse_graphics || X16_USE_SHAPES != 0 || xuse_shapes_poly || xuse_shapes_pie || xuse_shapes_arc || xuse_shapes_rrect || xuse_shapes_bezier || xuse_shp_line
 xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0

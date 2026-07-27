@@ -498,6 +498,19 @@
 ; drive's directory. Naming all of that in every program that opens a
 ; browser would be a trap, and a BANKED filepick needs its own copies in
 ; the bank image, which is exactly what these gates give it.
+; The editing half needs a blocking key read and file I/O of its own,
+; on top of everything the browser already wants.
+.if .def X16_USE_FILEPICK_EDIT
+    .if !.def X16_USE_FILEPICK
+    X16_USE_FILEPICK = 1
+    .endif
+    .if !.def X16_USE_INPUT_KEYWAIT
+    X16_USE_INPUT_KEYWAIT = 1
+    .endif
+    .if !.def X16_USE_FILEIO
+    X16_USE_FILEIO = 1
+    .endif
+.endif
 .if .def X16_USE_FILEPICK
     .if !.def X16_USE_DIR
     X16_USE_DIR = 1

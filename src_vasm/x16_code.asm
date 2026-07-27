@@ -498,6 +498,19 @@ X16_USE_CLOCK = 1
 ; drive's directory. Naming all of that in every program that opens a
 ; browser would be a trap, and a BANKED filepick needs its own copies in
 ; the bank image, which is exactly what these gates give it.
+; The editing half needs a blocking key read and file I/O of its own,
+; on top of everything the browser already wants.
+    ifdef X16_USE_FILEPICK_EDIT
+    ifndef X16_USE_FILEPICK
+X16_USE_FILEPICK     = 1
+    endif
+    ifndef X16_USE_INPUT_KEYWAIT
+X16_USE_INPUT_KEYWAIT = 1
+    endif
+    ifndef X16_USE_FILEIO
+X16_USE_FILEIO       = 1
+    endif
+    endif
     ifdef X16_USE_FILEPICK
     ifndef X16_USE_DIR
 X16_USE_DIR          = 1

@@ -1739,6 +1739,29 @@ fp_redraw
     lda #FPK_HERE
     rts
 .lp_nothere
+!ifdef X16_USE_FILEPICK_EDIT {
+    lda fp_key
+    cmp #'n'
+    bne .lp_note1
+    jmp .ed_newdir
+.lp_note1
+    cmp #'e'                    ; not 'r': that already runs/picks
+    bne .lp_note2
+    jmp .ed_rename
+.lp_note2
+    cmp #'d'
+    bne .lp_note3
+    jmp .ed_delete
+.lp_note3
+    cmp #'c'
+    bne .lp_note4
+    jmp .ed_copy
+.lp_note4
+    cmp #'v'
+    bne .lp_note5
+    jmp .ed_paste
+.lp_note5
+}
     lda fp_key
     cmp #$1B
     bne .hop12
@@ -1815,6 +1838,397 @@ fp_redraw
 .lp_none
     lda #FPK_NONE
     rts
+
+!ifdef X16_USE_FILEPICK_EDIT {
+; =====================================================================
+; managing what is in the panel, rather than only choosing from it
+;
+;   n  make a folder        c  remember a file  (copy)
+;   e  rename               v  write it here    (paste)
+;   d  delete
+;
+; Gated on its own: a program that only wants to ask "which file?" --
+; imgview does -- should not carry mkdir and delete to get it.
+;
+; Every one of these ends by re-reading the directory, so the panel is
+; never showing something the drive no longer has.
+; =====================================================================
+fp_clip     !fill 64            ; the file 'c' remembered, absolute
+fp_clipok   !byte 0
+fp_buf      !fill 256           ; what a copy moves at a time
+fp_elen     !byte 0             ; length of the text being edited
+
+.s_newdir   !text "new folder: ", 0
+.s_rename   !text "rename to: ", 0
+.s_delete   !text "delete? y/n: ", 0
+.s_swr      !text ",s,w", 0
+
+; Edit fp_nm in place on the panel's first row. X16_P0/P1 = the label.
+;   out: carry set when Enter was pressed with something in the field
+.ed_prompt
+    lda X16_P0
+    sta fp_src
+    lda X16_P1
+    sta fp_src+1
+.ep_draw
+    lda #FPK_PTOP+1
+    ldx fp_abar
+    jsr .prow
+    ldx #FPK_PTOP+1
+    ldy fp_left
+    iny
+    jsr screen_addr
+    lda fp_src
+    sta X16_P0
+    lda fp_src+1
+    sta X16_P1
+    jsr .zlen
+    tya
+    ldx fp_abar
+    jsr screen_blit
+    lda #<fp_nm
+    sta X16_P0
+    lda #>fp_nm
+    sta X16_P1
+    lda fp_elen
+    beq .ep_cursor
+    ldx fp_abar
+    jsr screen_blit
+.ep_cursor
+    lda #<.s_cursor
+    sta X16_P0
+    lda #>.s_cursor
+    sta X16_P1
+    lda #1
+    ldx fp_abar
+    jsr screen_blit
+    jsr key_wait
+    cmp #$0D
+    beq .ep_enter
+    cmp #$1B
+    beq .ep_cancel
+    cmp #$03
+    beq .ep_cancel
+    cmp #$14                    ; backspace
+    bne .ep_char
+    lda fp_elen
+    beq .ep_draw
+    dec fp_elen
+    ldy fp_elen
+    lda #0
+    sta fp_nm,y
+    bra .ep_draw
+.ep_char
+    cmp #' '
+    bcc .ep_draw
+    cmp #$80
+    bcs .ep_draw
+    ldy fp_elen
+    cpy #30
+    bcs .ep_draw
+    sta fp_nm,y
+    inc fp_elen
+    ldy fp_elen
+    lda #0
+    sta fp_nm,y
+    jmp .ep_draw
+.ep_enter
+    lda fp_elen
+    beq .ep_cancel
+    sec
+    rts
+.ep_cancel
+    clc
+    rts
+
+.s_cursor   !text "_", 0
+
+; X16_P0/P1 = question -> carry set on y
+.ed_confirm
+    lda #FPK_PTOP+1
+    ldx fp_abar
+    jsr .prow
+    ldx #FPK_PTOP+1
+    ldy fp_left
+    iny
+    jsr screen_addr
+    jsr .zlen
+    tya
+    ldx fp_abar
+    jsr screen_blit
+    jsr key_wait
+    and #$DF                    ; either case
+    cmp #'Y'
+    beq .ec_yes
+    clc
+    rts
+.ec_yes
+    sec
+    rts
+
+; n -- make a folder here
+.ed_newdir
+    stz fp_nm
+    stz fp_elen
+    lda #<.s_newdir
+    sta X16_P0
+    lda #>.s_newdir
+    sta X16_P1
+    jsr .ed_prompt
+    bcs .far1977
+    jmp .ed_done
+.far1977
+    lda #<fp_nm
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_mkdir
+    jmp .ed_reread
+
+; e -- rename the selected entry
+.ed_rename
+    lda fp_nent
+    bne .far1987
+    jmp .ed_done
+.far1987
+    lda fp_sel
+    jsr .ent_fetch              ; the old name, into fp_nm
+    lda #<fp_nm
+    sta fp_src
+    lda #>fp_nm
+    sta fp_src+1
+    lda #<fp_clip
+    sta fp_dst
+    lda #>fp_clip
+    sta fp_dst+1
+    lda #38
+    jsr .put_str                ; keep it: the prompt edits fp_nm
+    sty fp_clipok               ; ...and its length, borrowed for a moment
+    ldy #0
+.er_len
+    lda fp_nm,y
+    beq .er_gotlen
+    iny
+    bne .er_len
+.er_gotlen
+    sty fp_elen
+    lda #<.s_rename
+    sta X16_P0
+    lda #>.s_rename
+    sta X16_P1
+    jsr .ed_prompt
+    bcc .ed_clipreset
+    lda #<fp_clip               ; old name
+    sta X16_P0
+    lda #>fp_clip
+    sta X16_P1
+    lda fp_clipok
+    sta X16_P2
+    lda #<fp_nm                 ; new name
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_rename
+.ed_clipreset
+    stz fp_clipok               ; it was only borrowed
+    jmp .ed_reread
+
+; d -- delete the selected entry, folder or file
+.ed_delete
+    lda fp_nent
+    beq .ed_done
+    lda fp_sel
+    jsr .ent_type
+    sta fp_kind
+    lda fp_sel
+    jsr .ent_fetch
+    ldy #0
+.dl_len
+    lda fp_nm,y
+    beq .dl_gotlen
+    iny
+    bne .dl_len
+.dl_gotlen
+    sty fp_elen
+    lda #<.s_delete
+    sta X16_P0
+    lda #>.s_delete
+    sta X16_P1
+    jsr .ed_confirm
+    bcc .ed_done
+    lda fp_kind
+    cmp #DIR_TYPE_DIR
+    beq .dl_dir
+    lda #<fp_nm
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_delete
+    jmp .ed_reread
+.dl_dir
+    lda #<fp_nm
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_rmdir
+    jmp .ed_reread
+
+; c -- remember the selected file
+.ed_copy
+    lda fp_nent
+    beq .ed_done
+    lda fp_sel
+    jsr .ent_type
+    cmp #DIR_TYPE_DIR
+    beq .ed_done                ; folders are not copied, only their files
+    jsr .path_of_sel            ; fp_full = the absolute path
+    lda #<fp_full
+    sta fp_src
+    lda #>fp_full
+    sta fp_src+1
+    lda #<fp_clip
+    sta fp_dst
+    lda #>fp_clip
+    sta fp_dst+1
+    lda #62
+    jsr .put_str
+    lda #1
+    sta fp_clipok
+.ed_done
+    jmp .loop
+
+; v -- write the remembered file into the folder on show
+.ed_paste
+    lda fp_clipok
+    beq .ed_done
+    ; the destination name is the source's leaf, plus ",s,w" so the
+    ; drive writes a sequential file rather than looking for a program
+    lda #<fp_clip
+    sta fp_src
+    lda #>fp_clip
+    sta fp_src+1
+    ldy #0
+    ldx #0
+.pa_leaf
+    lda fp_clip,y
+    beq .pa_gotleaf
+    cmp #'/'
+    bne .pa_next
+    iny
+    tya
+    tax                         ; x = where the leaf starts
+    dey
+.pa_next
+    iny
+    bne .pa_leaf
+.pa_gotleaf
+    txa
+    tay
+    ldx #0
+.pa_copy
+    lda fp_clip,y
+    beq .pa_suffix
+    sta fp_nm,x
+    inx
+    iny
+    bne .pa_copy
+.pa_suffix
+    ldy #0
+.pa_swr
+    lda .s_swr,y
+    beq .pa_named
+    sta fp_nm,x
+    inx
+    iny
+    bne .pa_swr
+.pa_named
+    stx fp_elen
+    ; source: the absolute path, read on logical file 4
+    lda #<fp_clip
+    sta X16_P0
+    lda #>fp_clip
+    sta X16_P1
+    ldy #0
+.pa_slen
+    lda fp_clip,y
+    beq .pa_gotslen
+    iny
+    bne .pa_slen
+.pa_gotslen
+    sty X16_P2
+    lda #4
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    lda #2
+    sta X16_P5
+    jsr fio_open_read
+    bcs .pa_failsrc
+    ; destination on logical file 5, in whatever directory we are in
+    lda #<fp_nm
+    sta X16_P0
+    lda #>fp_nm
+    sta X16_P1
+    lda fp_elen
+    sta X16_P2
+    lda #5
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    lda #2
+    sta X16_P5
+    jsr fio_open_write
+    bcs .pa_faildst
+.pa_block
+    ldx #4                      ; read a block
+    jsr CHKIN
+    ldy #0
+.pa_read
+    jsr CHRIN
+    sta fp_buf,y
+    iny
+    beq .pa_full                ; 256 bytes
+    jsr READST
+    beq .pa_read
+    sty fp_cnt                  ; short block: the last one
+    lda #1
+    sta fp_tmp
+    bra .pa_write
+.pa_full
+    sty fp_cnt                  ; 0 means 256
+    stz fp_tmp
+.pa_write
+    ldx #5
+    jsr CHKOUT
+    ldy #0
+.pa_out
+    lda fp_buf,y
+    jsr CHROUT
+    iny
+    cpy fp_cnt
+    bne .pa_out
+    lda fp_tmp
+    beq .pa_block
+    ; done
+    jsr CLRCHN
+    lda #5
+    jsr CLOSE
+    lda #4
+    jsr CLOSE
+    bra .ed_reread
+.pa_faildst
+    jsr CLRCHN
+    lda #4
+    jsr CLOSE
+    jmp .loop
+.pa_failsrc
+    jsr CLRCHN
+    lda #4
+    jsr CLOSE
+    jmp .loop
+
+.ed_reread
+    jsr .read
+    stz fp_sel
+    stz fp_top
+    jmp .loop
+}
 
 ; the selected entry's name -> fp_full, as an absolute path
 .path_of_sel

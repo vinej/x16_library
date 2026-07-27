@@ -1968,6 +1968,34 @@ filepick_lp_haskey
     rts
     SUBROUTINE
 filepick_lp_nothere
+    IFCONST X16_USE_FILEPICK_EDIT
+    lda fp_key
+    cmp #'n
+    bne filepick_lp_note1
+    jmp filepick_ed_newdir
+    SUBROUTINE
+filepick_lp_note1
+    cmp #'e                    ; not 'r: that already runs/picks
+    bne filepick_lp_note2
+    jmp filepick_ed_rename
+    SUBROUTINE
+filepick_lp_note2
+    cmp #'d
+    bne filepick_lp_note3
+    jmp filepick_ed_delete
+    SUBROUTINE
+filepick_lp_note3
+    cmp #'c
+    bne filepick_lp_note4
+    jmp filepick_ed_copy
+    SUBROUTINE
+filepick_lp_note4
+    cmp #'v
+    bne filepick_lp_note5
+    jmp filepick_ed_paste
+    SUBROUTINE
+filepick_lp_note5
+    ENDIF
     lda fp_key
     cmp #$1B
     bne filepick_hop12
@@ -2055,6 +2083,450 @@ filepick_lp_move
 filepick_lp_none
     lda #FPK_NONE
     rts
+
+    IFCONST X16_USE_FILEPICK_EDIT
+; =====================================================================
+; managing what is in the panel, rather than only choosing from it
+;
+;   n  make a folder        c  remember a file  (copy)
+;   e  rename               v  write it here    (paste)
+;   d  delete
+;
+; Gated on its own: a program that only wants to ask "which file?" --
+; imgview does -- should not carry mkdir and delete to get it.
+;
+; Every one of these ends by re-reading the directory, so the panel is
+; never showing something the drive no longer has.
+; =====================================================================
+    SUBROUTINE
+fp_clip     ds 64            ; the file 'c remembered, absolute
+    SUBROUTINE
+fp_clipok   dc.b 0
+    SUBROUTINE
+fp_buf      ds 256           ; what a copy moves at a time
+    SUBROUTINE
+fp_elen     dc.b 0             ; length of the text being edited
+
+    SUBROUTINE
+filepick_s_newdir
+    dc.b "new folder: ", 0
+    SUBROUTINE
+filepick_s_rename
+    dc.b "rename to: ", 0
+    SUBROUTINE
+filepick_s_delete
+    dc.b "delete? y/n: ", 0
+    SUBROUTINE
+filepick_s_swr
+    dc.b ",s,w", 0
+
+; Edit fp_nm in place on the panel's first row. X16_P0/P1 = the label.
+;   out: carry set when Enter was pressed with something in the field
+    SUBROUTINE
+filepick_ed_prompt
+    lda X16_P0
+    sta fp_src
+    lda X16_P1
+    sta fp_src+1
+    SUBROUTINE
+filepick_ep_draw
+    lda #FPK_PTOP+1
+    ldx fp_abar
+    jsr filepick_prow
+    ldx #FPK_PTOP+1
+    ldy fp_left
+    iny
+    jsr screen_addr
+    lda fp_src
+    sta X16_P0
+    lda fp_src+1
+    sta X16_P1
+    jsr filepick_zlen
+    tya
+    ldx fp_abar
+    jsr screen_blit
+    lda #<fp_nm
+    sta X16_P0
+    lda #>fp_nm
+    sta X16_P1
+    lda fp_elen
+    beq filepick_ep_cursor
+    ldx fp_abar
+    jsr screen_blit
+    SUBROUTINE
+filepick_ep_cursor
+    lda #<filepick_s_cursor
+    sta X16_P0
+    lda #>filepick_s_cursor
+    sta X16_P1
+    lda #1
+    ldx fp_abar
+    jsr screen_blit
+    jsr key_wait
+    cmp #$0D
+    beq filepick_ep_enter
+    cmp #$1B
+    beq filepick_ep_cancel
+    cmp #$03
+    beq filepick_ep_cancel
+    cmp #$14                    ; backspace
+    bne filepick_ep_char
+    lda fp_elen
+    beq filepick_ep_draw
+    dec fp_elen
+    ldy fp_elen
+    lda #0
+    sta fp_nm,y
+    bra filepick_ep_draw
+    SUBROUTINE
+filepick_ep_char
+    cmp #' 
+    bcc filepick_ep_draw
+    cmp #$80
+    bcs filepick_ep_draw
+    ldy fp_elen
+    cpy #30
+    bcs filepick_ep_draw
+    sta fp_nm,y
+    inc fp_elen
+    ldy fp_elen
+    lda #0
+    sta fp_nm,y
+    jmp filepick_ep_draw
+    SUBROUTINE
+filepick_ep_enter
+    lda fp_elen
+    beq filepick_ep_cancel
+    sec
+    rts
+    SUBROUTINE
+filepick_ep_cancel
+    clc
+    rts
+
+    SUBROUTINE
+filepick_s_cursor
+    dc.b "_", 0
+
+; X16_P0/P1 = question -> carry set on y
+    SUBROUTINE
+filepick_ed_confirm
+    lda #FPK_PTOP+1
+    ldx fp_abar
+    jsr filepick_prow
+    ldx #FPK_PTOP+1
+    ldy fp_left
+    iny
+    jsr screen_addr
+    jsr filepick_zlen
+    tya
+    ldx fp_abar
+    jsr screen_blit
+    jsr key_wait
+    and #$DF                    ; either case
+    cmp #'Y
+    beq filepick_ec_yes
+    clc
+    rts
+    SUBROUTINE
+filepick_ec_yes
+    sec
+    rts
+
+; n -- make a folder here
+    SUBROUTINE
+filepick_ed_newdir
+    stz fp_nm
+    stz fp_elen
+    lda #<filepick_s_newdir
+    sta X16_P0
+    lda #>filepick_s_newdir
+    sta X16_P1
+    jsr filepick_ed_prompt
+    bcs filepick_far1977
+    jmp filepick_ed_done
+    SUBROUTINE
+filepick_far1977
+    lda #<fp_nm
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_mkdir
+    jmp filepick_ed_reread
+
+; e -- rename the selected entry
+    SUBROUTINE
+filepick_ed_rename
+    lda fp_nent
+    bne filepick_far1987
+    jmp filepick_ed_done
+    SUBROUTINE
+filepick_far1987
+    lda fp_sel
+    jsr filepick_ent_fetch              ; the old name, into fp_nm
+    lda #<fp_nm
+    sta fp_src
+    lda #>fp_nm
+    sta fp_src+1
+    lda #<fp_clip
+    sta fp_dst
+    lda #>fp_clip
+    sta fp_dst+1
+    lda #38
+    jsr filepick_put_str                ; keep it: the prompt edits fp_nm
+    sty fp_clipok               ; ...and its length, borrowed for a moment
+    ldy #0
+    SUBROUTINE
+filepick_er_len
+    lda fp_nm,y
+    beq filepick_er_gotlen
+    iny
+    bne filepick_er_len
+    SUBROUTINE
+filepick_er_gotlen
+    sty fp_elen
+    lda #<filepick_s_rename
+    sta X16_P0
+    lda #>filepick_s_rename
+    sta X16_P1
+    jsr filepick_ed_prompt
+    bcc filepick_ed_clipreset
+    lda #<fp_clip               ; old name
+    sta X16_P0
+    lda #>fp_clip
+    sta X16_P1
+    lda fp_clipok
+    sta X16_P2
+    lda #<fp_nm                 ; new name
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_rename
+    SUBROUTINE
+filepick_ed_clipreset
+    stz fp_clipok               ; it was only borrowed
+    jmp filepick_ed_reread
+
+; d -- delete the selected entry, folder or file
+    SUBROUTINE
+filepick_ed_delete
+    lda fp_nent
+    beq filepick_ed_done
+    lda fp_sel
+    jsr filepick_ent_type
+    sta fp_kind
+    lda fp_sel
+    jsr filepick_ent_fetch
+    ldy #0
+    SUBROUTINE
+filepick_dl_len
+    lda fp_nm,y
+    beq filepick_dl_gotlen
+    iny
+    bne filepick_dl_len
+    SUBROUTINE
+filepick_dl_gotlen
+    sty fp_elen
+    lda #<filepick_s_delete
+    sta X16_P0
+    lda #>filepick_s_delete
+    sta X16_P1
+    jsr filepick_ed_confirm
+    bcc filepick_ed_done
+    lda fp_kind
+    cmp #DIR_TYPE_DIR
+    beq filepick_dl_dir
+    lda #<fp_nm
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_delete
+    jmp filepick_ed_reread
+    SUBROUTINE
+filepick_dl_dir
+    lda #<fp_nm
+    ldx #>fp_nm
+    ldy fp_elen
+    jsr dos_rmdir
+    jmp filepick_ed_reread
+
+; c -- remember the selected file
+    SUBROUTINE
+filepick_ed_copy
+    lda fp_nent
+    beq filepick_ed_done
+    lda fp_sel
+    jsr filepick_ent_type
+    cmp #DIR_TYPE_DIR
+    beq filepick_ed_done                ; folders are not copied, only their files
+    jsr filepick_path_of_sel            ; fp_full = the absolute path
+    lda #<fp_full
+    sta fp_src
+    lda #>fp_full
+    sta fp_src+1
+    lda #<fp_clip
+    sta fp_dst
+    lda #>fp_clip
+    sta fp_dst+1
+    lda #62
+    jsr filepick_put_str
+    lda #1
+    sta fp_clipok
+    SUBROUTINE
+filepick_ed_done
+    jmp filepick_loop
+
+; v -- write the remembered file into the folder on show
+    SUBROUTINE
+filepick_ed_paste
+    lda fp_clipok
+    beq filepick_ed_done
+    ; the destination name is the source's leaf, plus ",s,w" so the
+    ; drive writes a sequential file rather than looking for a program
+    lda #<fp_clip
+    sta fp_src
+    lda #>fp_clip
+    sta fp_src+1
+    ldy #0
+    ldx #0
+    SUBROUTINE
+filepick_pa_leaf
+    lda fp_clip,y
+    beq filepick_pa_gotleaf
+    cmp #'/
+    bne filepick_pa_next
+    iny
+    tya
+    tax                         ; x = where the leaf starts
+    dey
+    SUBROUTINE
+filepick_pa_next
+    iny
+    bne filepick_pa_leaf
+    SUBROUTINE
+filepick_pa_gotleaf
+    txa
+    tay
+    ldx #0
+    SUBROUTINE
+filepick_pa_copy
+    lda fp_clip,y
+    beq filepick_pa_suffix
+    sta fp_nm,x
+    inx
+    iny
+    bne filepick_pa_copy
+    SUBROUTINE
+filepick_pa_suffix
+    ldy #0
+    SUBROUTINE
+filepick_pa_swr
+    lda filepick_s_swr,y
+    beq filepick_pa_named
+    sta fp_nm,x
+    inx
+    iny
+    bne filepick_pa_swr
+    SUBROUTINE
+filepick_pa_named
+    stx fp_elen
+    ; source: the absolute path, read on logical file 4
+    lda #<fp_clip
+    sta X16_P0
+    lda #>fp_clip
+    sta X16_P1
+    ldy #0
+    SUBROUTINE
+filepick_pa_slen
+    lda fp_clip,y
+    beq filepick_pa_gotslen
+    iny
+    bne filepick_pa_slen
+    SUBROUTINE
+filepick_pa_gotslen
+    sty X16_P2
+    lda #4
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    lda #2
+    sta X16_P5
+    jsr fio_open_read
+    bcs filepick_pa_failsrc
+    ; destination on logical file 5, in whatever directory we are in
+    lda #<fp_nm
+    sta X16_P0
+    lda #>fp_nm
+    sta X16_P1
+    lda fp_elen
+    sta X16_P2
+    lda #5
+    sta X16_P3
+    lda #8
+    sta X16_P4
+    lda #2
+    sta X16_P5
+    jsr fio_open_write
+    bcs filepick_pa_faildst
+    SUBROUTINE
+filepick_pa_block
+    ldx #4                      ; read a block
+    jsr CHKIN
+    ldy #0
+    SUBROUTINE
+filepick_pa_read
+    jsr CHRIN
+    sta fp_buf,y
+    iny
+    beq filepick_pa_full                ; 256 bytes
+    jsr READST
+    beq filepick_pa_read
+    sty fp_cnt                  ; short block: the last one
+    lda #1
+    sta fp_tmp
+    bra filepick_pa_write
+    SUBROUTINE
+filepick_pa_full
+    sty fp_cnt                  ; 0 means 256
+    stz fp_tmp
+    SUBROUTINE
+filepick_pa_write
+    ldx #5
+    jsr CHKOUT
+    ldy #0
+    SUBROUTINE
+filepick_pa_out
+    lda fp_buf,y
+    jsr CHROUT
+    iny
+    cpy fp_cnt
+    bne filepick_pa_out
+    lda fp_tmp
+    beq filepick_pa_block
+    ; done
+    jsr CLRCHN
+    lda #5
+    jsr CLOSE
+    lda #4
+    jsr CLOSE
+    bra filepick_ed_reread
+    SUBROUTINE
+filepick_pa_faildst
+    jsr CLRCHN
+    lda #4
+    jsr CLOSE
+    jmp filepick_loop
+    SUBROUTINE
+filepick_pa_failsrc
+    jsr CLRCHN
+    lda #4
+    jsr CLOSE
+    jmp filepick_loop
+
+    SUBROUTINE
+filepick_ed_reread
+    jsr filepick_read
+    stz fp_sel
+    stz fp_top
+    jmp filepick_loop
+    ENDIF
 
 ; the selected entry's name -> fp_full, as an absolute path
     SUBROUTINE
