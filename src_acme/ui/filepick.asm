@@ -1879,6 +1879,10 @@ fp_elen     !byte 0             ; length of the text being edited
 
 ; Edit fp_nm in place on the panel's first row. X16_P0/P1 = the label.
 ;   out: carry set when Enter was pressed with something in the field
+;
+; Drawn in the SELECTED row's colours rather than the header's: a field
+; you are typing into that looks exactly like the rows you are not is a
+; field nobody can see. Inverted, it reads as somewhere to type.
 .ed_prompt
     lda X16_P0
     sta fp_src
@@ -1886,7 +1890,7 @@ fp_elen     !byte 0             ; length of the text being edited
     sta fp_src+1
 .ep_draw
     lda #FPK_PTOP+1
-    ldx fp_abar
+    ldx fp_asel
     jsr .prow
     ldx #FPK_PTOP+1
     ldy fp_left
@@ -1898,7 +1902,7 @@ fp_elen     !byte 0             ; length of the text being edited
     sta X16_P1
     jsr .zlen
     tya
-    ldx fp_abar
+    ldx fp_asel
     jsr screen_blit
     lda #<fp_nm
     sta X16_P0
@@ -1906,7 +1910,7 @@ fp_elen     !byte 0             ; length of the text being edited
     sta X16_P1
     lda fp_elen
     beq .ep_cursor
-    ldx fp_abar
+    ldx fp_asel
     jsr screen_blit
 .ep_cursor
     lda #<.s_cursor
@@ -1914,7 +1918,7 @@ fp_elen     !byte 0             ; length of the text being edited
     lda #>.s_cursor
     sta X16_P1
     lda #1
-    ldx fp_abar
+    ldx fp_asel
     jsr screen_blit
     jsr key_wait
     cmp #$0D
@@ -1960,7 +1964,7 @@ fp_elen     !byte 0             ; length of the text being edited
 ; X16_P0/P1 = question -> carry set on y
 .ed_confirm
     lda #FPK_PTOP+1
-    ldx fp_abar
+    ldx fp_asel
     jsr .prow
     ldx #FPK_PTOP+1
     ldy fp_left
@@ -1968,7 +1972,7 @@ fp_elen     !byte 0             ; length of the text being edited
     jsr screen_addr
     jsr .zlen
     tya
-    ldx fp_abar
+    ldx fp_asel
     jsr screen_blit
     jsr key_wait
     and #$DF                    ; either case
