@@ -68,6 +68,12 @@ FPK_MAXENT = 64
 FPK_NOBANK = 255                 ; fp_saveunder: keep nothing
 FPK_PTOP   = 3                   ; the panel's first row
 FPK_DBLCLK = 30                  ; jiffies: half a second
+FPK_AEDIT  = $76                 ; blue on yellow: the one place the panel
+                                 ; is asking rather than showing, and it
+                                 ; has to be unmistakable. Deliberately
+                                 ; not the caller's palette -- a prompt
+                                 ; that blends in is a prompt nobody
+                                 ; answers.
 
 ; ---- configuration ---------------------------------------------------
     SUBROUTINE
@@ -2139,9 +2145,9 @@ filepick_s_swr
 ; Edit fp_nm in place on the panel's first row. X16_P0/P1 = the label.
 ;   out: carry set when Enter was pressed with something in the field
 ;
-; Drawn in the SELECTED row's colours rather than the header's: a field
-; you are typing into that looks exactly like the rows you are not is a
-; field nobody can see. Inverted, it reads as somewhere to type.
+; Drawn blue on yellow, which nothing else in the panel uses: a field
+; you type into that looks like the rows you do not is a field nobody
+; sees. Inverting it was not enough -- the selected row is inverted too.
     SUBROUTINE
 filepick_ed_prompt
     lda X16_P0
@@ -2151,7 +2157,7 @@ filepick_ed_prompt
     SUBROUTINE
 filepick_ep_draw
     lda #FPK_PTOP+1
-    ldx fp_asel
+    ldx #FPK_AEDIT
     jsr filepick_prow
     ldx #FPK_PTOP+1
     ldy fp_left
@@ -2163,7 +2169,7 @@ filepick_ep_draw
     sta X16_P1
     jsr filepick_zlen
     tya
-    ldx fp_asel
+    ldx #FPK_AEDIT
     jsr screen_blit
     lda #<fp_nm
     sta X16_P0
@@ -2171,7 +2177,7 @@ filepick_ep_draw
     sta X16_P1
     lda fp_elen
     beq filepick_ep_cursor
-    ldx fp_asel
+    ldx #FPK_AEDIT
     jsr screen_blit
     SUBROUTINE
 filepick_ep_cursor
@@ -2180,7 +2186,7 @@ filepick_ep_cursor
     lda #>filepick_s_cursor
     sta X16_P1
     lda #1
-    ldx fp_asel
+    ldx #FPK_AEDIT
     jsr screen_blit
     jsr key_wait
     cmp #$0D
@@ -2232,7 +2238,7 @@ filepick_s_cursor
     SUBROUTINE
 filepick_ed_confirm
     lda #FPK_PTOP+1
-    ldx fp_asel
+    ldx #FPK_AEDIT
     jsr filepick_prow
     ldx #FPK_PTOP+1
     ldy fp_left
@@ -2240,7 +2246,7 @@ filepick_ed_confirm
     jsr screen_addr
     jsr filepick_zlen
     tya
-    ldx fp_asel
+    ldx #FPK_AEDIT
     jsr screen_blit
     jsr key_wait
     and #$DF                    ; either case
