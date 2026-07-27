@@ -2139,8 +2139,13 @@ filepick_s_rename
 filepick_s_delete
     dc.b "delete? y/n: ", 0
     SUBROUTINE
+filepick_s_copyfail
+    dc.b "copy failed -- press a key", 0
+    SUBROUTINE
 filepick_s_swr
-    dc.b ",s,w", 0
+    dc.b ",S,W", 0     ; PETSCII: ACME would read ",s,w" as ASCII
+                                ; $73/$77, which is not what a drive reads
+                                ; as "sequential, write"
 
 ; Edit fp_nm in place on the panel's first row. X16_P0/P1 = the label.
 ;   out: carry set when Enter was pressed with something in the field
@@ -2536,14 +2541,25 @@ filepick_pa_out
     SUBROUTINE
 filepick_pa_faildst
     jsr CLRCHN
+    lda #5
+    jsr CLOSE
     lda #4
     jsr CLOSE
-    jmp filepick_loop
+    bra filepick_pa_report
     SUBROUTINE
 filepick_pa_failsrc
     jsr CLRCHN
     lda #4
     jsr CLOSE
+    SUBROUTINE
+filepick_pa_report
+    ; Say so. A silent failure here looks exactly like a key that does
+    ; nothing, which is how this one hid.
+    lda #<filepick_s_copyfail
+    sta X16_P0
+    lda #>filepick_s_copyfail
+    sta X16_P1
+    jsr filepick_ed_confirm             ; draws it and waits for a key
     jmp filepick_loop
 
     SUBROUTINE

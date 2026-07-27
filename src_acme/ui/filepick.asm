@@ -1881,7 +1881,10 @@ fp_elen     !byte 0             ; length of the text being edited
 .s_newdir   !text "new folder: ", 0
 .s_rename   !text "rename to: ", 0
 .s_delete   !text "delete? y/n: ", 0
-.s_swr      !text ",s,w", 0
+.s_copyfail !text "copy failed -- press a key", 0
+.s_swr      !text ",S,W", 0     ; PETSCII: ACME would read ",s,w" as ASCII
+                                ; $73/$77, which is not what a drive reads
+                                ; as "sequential, write"
 
 ; Edit fp_nm in place on the panel's first row. X16_P0/P1 = the label.
 ;   out: carry set when Enter was pressed with something in the field
@@ -2238,13 +2241,23 @@ fp_elen     !byte 0             ; length of the text being edited
     bra .ed_reread
 .pa_faildst
     jsr CLRCHN
+    lda #5
+    jsr CLOSE
     lda #4
     jsr CLOSE
-    jmp .loop
+    bra .pa_report
 .pa_failsrc
     jsr CLRCHN
     lda #4
     jsr CLOSE
+.pa_report
+    ; Say so. A silent failure here looks exactly like a key that does
+    ; nothing, which is how this one hid.
+    lda #<.s_copyfail
+    sta X16_P0
+    lda #>.s_copyfail
+    sta X16_P1
+    jsr .ed_confirm             ; draws it and waits for a key
     jmp .loop
 
 .ed_reread
