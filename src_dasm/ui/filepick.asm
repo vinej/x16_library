@@ -10,8 +10,8 @@
 ; the point: one set of keys, one look, one copy.
 ;
 ;       +xm_fp_filter pattern          ; what to list
-;       jsr fp_open                    ; A = FP_NONE / FP_PICK / FP_ALT
-;       cmp #FP_PICK
+;       jsr fp_open                    ; A = FPK_NONE / FPK_PICK / FPK_ALT
+;       cmp #FPK_PICK
 ;       bne .nothing
 ;       jsr fp_path                    ; X/Y = the absolute path
 ;       ...
@@ -51,17 +51,17 @@
 
 ; (zone: file scope in dasm)
 
-FP_NONE   = 0                   ; cancelled: ESC, Run/Stop, or the x box
-FP_PICK   = 1                   ; a file was chosen: fp_path has it
-FP_ALT    = 2                   ; the second gesture: right click, or 'a
+FPK_NONE   = 0                   ; cancelled: ESC, Run/Stop, or the x box
+FPK_PICK   = 1                   ; a file was chosen: fp_path has it
+FPK_ALT    = 2                   ; the second gesture: right click, or 'a
 
-FP_ESIZE  = 40                  ; one cache entry: type, then the name
-FP_ETYPE  = 0
-FP_ENAME  = 1
-FP_MAXENT = 64
-FP_NOBANK = 255                 ; fp_saveunder: keep nothing
-FP_PTOP   = 3                   ; the panel's first row
-FP_DBLCLK = 30                  ; jiffies: half a second
+FPK_ESIZE  = 40                  ; one cache entry: type, then the name
+FPK_ETYPE  = 0
+FPK_ENAME  = 1
+FPK_MAXENT = 64
+FPK_NOBANK = 255                 ; fp_saveunder: keep nothing
+FPK_PTOP   = 3                   ; the panel's first row
+FPK_DBLCLK = 30                  ; jiffies: half a second
 
 ; ---- configuration ---------------------------------------------------
     SUBROUTINE
@@ -399,7 +399,7 @@ fp_is_primary
 ; ---------------------------------------------------------------------
     SUBROUTINE
 fp_panel_top
-    lda #FP_PTOP
+    lda #FPK_PTOP
     rts
 
     SUBROUTINE
@@ -793,7 +793,7 @@ filepick_ent_name
     jsr filepick_ent
     clc
     lda fp_ptr
-    adc #FP_ENAME
+    adc #FPK_ENAME
     sta fp_ptr
     lda fp_ptr+1
     adc #0
@@ -819,7 +819,7 @@ filepick_ef_loop
     sta fp_nm,y
     beq filepick_ef_done
     iny
-    cpy #FP_ESIZE-2
+    cpy #FPK_ESIZE-2
     bne filepick_ef_loop
     lda #0
     sta fp_nm,y
@@ -874,7 +874,7 @@ filepick_hop6
     cmp #DIR_TYPE_HOST
     beq filepick_rd_next
     lda fp_nent
-    cmp #FP_MAXENT
+    cmp #FPK_MAXENT
     bcs filepick_rd_next                ; the cache is full
     ; which pass wants this one?
     lda fp_tmp
@@ -913,20 +913,31 @@ filepick_rd_file
     sta X16_P2
     stx X16_P3
     jsr fp_match
-    ; carry set = primary, which is pass 1; clear = data, pass 2
+    ; The carry says primary -- and the cmp below would destroy it, so
+    ; put it somewhere that survives asking which pass this is. Without
+    ; this the pass test read its own comparison's carry, every file
+    ; came out primary, and nothing was ever marked [dat].
+    lda #0
+    rol                         ; 1 = primary, 0 = data
+    sta fp_cnt
     lda fp_pass
     cmp #1
     bne filepick_rd_datapass
-    bcc filepick_rd_next                ; pass 1, not primary
+    lda fp_cnt                  ; pass 1 keeps the primaries
+    bne filepick_rd_isprim
+    jmp filepick_rd_next
+    SUBROUTINE
+filepick_rd_isprim
     lda #DIR_TYPE_PRG
     sta fp_kind
     bra filepick_rd_store
     SUBROUTINE
 filepick_rd_datapass
-    bcc filepick_hop7   ; pass 2, but it is primary
+    lda fp_cnt                  ; pass 2 keeps everything else
+    beq filepick_rd_isdata
     jmp filepick_rd_next
     SUBROUTINE
-filepick_hop7
+filepick_rd_isdata
     lda #DIR_TYPE_SEQ
     sta fp_kind
     SUBROUTINE
@@ -942,7 +953,7 @@ filepick_rd_name
     sta VERA_DATA0
     beq filepick_rd_named
     iny
-    cpy #FP_ESIZE-2
+    cpy #FPK_ESIZE-2
     bne filepick_rd_name
     lda #0
     sta VERA_DATA0
@@ -1200,7 +1211,7 @@ filepick_bz_done
     SUBROUTINE
 filepick_draw
     ; ---- the header row ------------------------------------------
-    lda #FP_PTOP
+    lda #FPK_PTOP
     ldx fp_abar
     jsr filepick_prow
     lda fp_head
@@ -1219,7 +1230,7 @@ filepick_dw_head
     sta X16_P1
     SUBROUTINE
 filepick_dw_headgo
-    ldx #FP_PTOP
+    ldx #FPK_PTOP
     ldy fp_left
     iny
     jsr screen_addr
@@ -1253,7 +1264,7 @@ filepick_dw_pathlen
     jsr screen_blit
     SUBROUTINE
 filepick_dw_close
-    ldx #FP_PTOP
+    ldx #FPK_PTOP
     lda fp_left
     clc
     adc fp_wide
@@ -1291,7 +1302,7 @@ filepick_dw_attr
     stx fp_attr
     lda fp_row
     clc
-    adc #FP_PTOP+1
+    adc #FPK_PTOP+1
     ldx fp_attr
     jsr filepick_prow
     lda fp_idx
@@ -1308,7 +1319,7 @@ filepick_dw_attr
     jsr filepick_ent_fetch              ; the name, into fp_nm
     lda fp_row
     clc
-    adc #FP_PTOP+1
+    adc #FPK_PTOP+1
     tax
     lda fp_left
     clc
@@ -1369,7 +1380,7 @@ filepick_dw_next
 filepick_dw_foot
     lda fp_rows
     clc
-    adc #FP_PTOP+1
+    adc #FPK_PTOP+1
     ldx fp_abar
     jsr filepick_prow
     lda fp_foot
@@ -1390,7 +1401,7 @@ filepick_dw_footset
 filepick_dw_footgo
     lda fp_rows
     clc
-    adc #FP_PTOP+1
+    adc #FPK_PTOP+1
     tax
     lda fp_left
     clc
@@ -1551,7 +1562,7 @@ filepick_su_row
 filepick_su_go
     lda fp_row
     clc
-    adc #FP_PTOP
+    adc #FPK_PTOP
     tax
     ldy fp_left
     jsr screen_addr             ; port 0 at the screen row
@@ -1598,7 +1609,7 @@ filepick_ru_row
 filepick_ru_go
     lda fp_row
     clc
-    adc #FP_PTOP
+    adc #FPK_PTOP
     tax
     ldy fp_left
     jsr screen_addr
@@ -1622,7 +1633,7 @@ filepick_ru_cell
 
 ; ---------------------------------------------------------------------
 ; fp_open -- put the panel up on the starting directory
-;   out: A = FP_NONE (cancelled), FP_PICK (a file), FP_ALT (the second
+;   out: A = FPK_NONE (cancelled), FPK_PICK (a file), FPK_ALT (the second
 ;        gesture on a file: right click, or 'a)
 ;
 ; The chosen path is fp_path either way it ended on a file. Call
@@ -1690,7 +1701,7 @@ filepick_op_nochar
 ; fp_resume -- the same panel again, same directory, same selection
 ;   out: A = as fp_open
 ;
-; For a caller that acted on an FP_ALT and wants the browser back.
+; For a caller that acted on an FPK_ALT and wants the browser back.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 fp_resume
@@ -1766,7 +1777,7 @@ filepick_lp_press
     sta fp_tmp2                 ; the text column
     ; the x box on the header row closes, like ESC
     lda fp_row
-    cmp #FP_PTOP
+    cmp #FPK_PTOP
     bne filepick_lp_rows
     lda fp_left
     clc
@@ -1781,10 +1792,10 @@ filepick_lp_press
     SUBROUTINE
 filepick_lp_rows
     lda fp_row
-    cmp #FP_PTOP+1
+    cmp #FPK_PTOP+1
     bcc filepick_lp_poll
     sec
-    sbc #FP_PTOP+1
+    sbc #FPK_PTOP+1
     sta fp_row                  ; the line within the list
     cmp fp_rows
     bcs filepick_lp_poll
@@ -1819,7 +1830,7 @@ filepick_lp_left
     sbc fp_lastck+1
     bne filepick_lp_single              ; more than 255 jiffies ago
     lda fp_cnt
-    cmp #FP_DBLCLK
+    cmp #FPK_DBLCLK
     bcs filepick_lp_single
     lda #1                      ; double click
     sta fp_act
@@ -1852,7 +1863,7 @@ filepick_hop11
     cmp #DIR_TYPE_DIR
     beq filepick_lp_again
     jsr filepick_path_of_sel
-    lda #FP_ALT
+    lda #FPK_ALT
     rts
     SUBROUTINE
 filepick_lp_again
@@ -1938,12 +1949,12 @@ filepick_lp_file
     SUBROUTINE
 filepick_hop18
     jsr filepick_path_of_sel
-    lda #FP_ALT
+    lda #FPK_ALT
     rts
     SUBROUTINE
 filepick_lp_pick
     jsr filepick_path_of_sel
-    lda #FP_PICK
+    lda #FPK_PICK
     rts
     SUBROUTINE
 filepick_lp_move
@@ -1952,7 +1963,7 @@ filepick_lp_move
     jmp filepick_loop
     SUBROUTINE
 filepick_lp_none
-    lda #FP_NONE
+    lda #FPK_NONE
     rts
 
 ; the selected entry's name -> fp_full, as an absolute path

@@ -4170,7 +4170,7 @@ xm_fp_start_dir .macro path
     jsr fp_start_dir
     .endm
 .endif
-; -> A = FP_NONE (cancelled), FP_PICK (a file), FP_ALT (the second gesture)
+; -> A = FPK_NONE (cancelled), FPK_PICK (a file), FPK_ALT (the second gesture)
 .if xuse_filepick
 xm_fp_open .macro
     jsr fp_open
