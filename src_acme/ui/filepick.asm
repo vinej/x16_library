@@ -1607,6 +1607,18 @@ fp_redraw
     jsr key_get
     sta fp_key
     beq .hop10
+    ; The KERNAL answers in PETSCII, where an unshifted letter is $41-$5A
+    ; -- the codes ASCII uses for CAPITALS -- and a shifted one is
+    ; $C1-$DA. ACME's 'n' is $6E, which the keyboard never sends, so
+    ; every letter command in here was dead until this fold.
+    cmp #$C1
+    bcc .kf_done
+    cmp #$DB
+    bcs .kf_done
+    sec
+    sbc #$80
+    sta fp_key
+.kf_done
     jmp .lp_act
 .hop10
     jsr mse_get
@@ -1663,7 +1675,9 @@ fp_redraw
     clc
     adc fp_top
     cmp fp_nent
-    bcs .lp_poll
+    bcc .fk1677
+    jmp .lp_poll
+.fk1677
     sta fp_idx
     sta fp_sel
     lda fp_tmp
@@ -1734,30 +1748,30 @@ fp_redraw
     sta fp_key
 .lp_haskey
     lda fp_key
-    cmp #'h'                    ; "the folder I am looking at"
+    cmp #'H'                    ; "the folder I am looking at"
     bne .lp_nothere
     lda #FPK_HERE
     rts
 .lp_nothere
 !ifdef X16_USE_FILEPICK_EDIT {
     lda fp_key
-    cmp #'n'
+    cmp #'N'
     bne .lp_note1
     jmp .ed_newdir
 .lp_note1
-    cmp #'e'                    ; not 'r': that already runs/picks
+    cmp #'E'                    ; not 'r': that already runs/picks
     bne .lp_note2
     jmp .ed_rename
 .lp_note2
-    cmp #'d'
+    cmp #'D'
     bne .lp_note3
     jmp .ed_delete
 .lp_note3
-    cmp #'c'
+    cmp #'C'
     bne .lp_note4
     jmp .ed_copy
 .lp_note4
-    cmp #'v'
+    cmp #'V'
     bne .lp_note5
     jmp .ed_paste
 .lp_note5
@@ -1818,9 +1832,9 @@ fp_redraw
     lda fp_key
     cmp #$0D
     beq .lp_pick
-    cmp #'r'
+    cmp #'R'
     beq .lp_pick
-    cmp #'a'
+    cmp #'A'
     beq .hop18
     jmp .lp_input
 .hop18
