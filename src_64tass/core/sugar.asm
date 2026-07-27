@@ -4086,6 +4086,176 @@ xm_dir_close .macro
 .endif
 
 ; =====================================================================
+; ui/filepick
+; =====================================================================
+.if xuse_filepick
+xm_fp_cache .macro addr, hibit
+    lda #<(\addr)
+    sta X16_P0
+    lda #>(\addr)
+    sta X16_P1
+    lda #\hibit
+    sta X16_P2
+    jsr fp_cache
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_filter .macro pattern
+    lda #<(\pattern)
+    sta X16_P0
+    lda #>(\pattern)
+    sta X16_P1
+    jsr fp_filter
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_primary .macro pattern
+    lda #<(\pattern)
+    sta X16_P0
+    lda #>(\pattern)
+    sta X16_P1
+    jsr fp_primary
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_style .macro panel, bar, sel
+    lda #\panel
+    ldx #\bar
+    ldy #\sel
+    jsr fp_style
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_heading .macro text
+    lda #<(\text)
+    sta X16_P0
+    lda #>(\text)
+    sta X16_P1
+    jsr fp_heading
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_footing .macro text
+    lda #<(\text)
+    sta X16_P0
+    lda #>(\text)
+    sta X16_P1
+    jsr fp_footing
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_saveunder .macro on, addr, hibit
+    lda #<(\addr)
+    sta X16_P0
+    lda #>(\addr)
+    sta X16_P1
+    lda #\hibit
+    sta X16_P2
+    lda #\on
+    jsr fp_saveunder
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_charset .macro n
+    lda #\n
+    jsr fp_charset
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_start_dir .macro path
+    lda #<(\path)
+    sta X16_P0
+    lda #>(\path)
+    sta X16_P1
+    jsr fp_start_dir
+    .endm
+.endif
+; -> A = FP_NONE (cancelled), FP_PICK (a file), FP_ALT (the second gesture)
+.if xuse_filepick
+xm_fp_open .macro
+    jsr fp_open
+    .endm
+.endif
+; -> A = as fp_open
+.if xuse_filepick
+xm_fp_resume .macro
+    jsr fp_resume
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_close .macro
+    jsr fp_close
+    .endm
+.endif
+; -> X/Y = the absolute path of the chosen entry
+.if xuse_filepick
+xm_fp_path .macro
+    jsr fp_path
+    .endm
+.endif
+; -> X/Y = the chosen entry's name, without the directory
+.if xuse_filepick
+xm_fp_name .macro
+    jsr fp_name
+    .endm
+.endif
+; -> X/Y = the directory being browsed
+.if xuse_filepick
+xm_fp_dir .macro
+    jsr fp_dir
+    .endm
+.endif
+; -> carry SET when the chosen entry matches the primary pattern
+.if xuse_filepick
+xm_fp_is_primary .macro
+    jsr fp_is_primary
+    .endm
+.endif
+; -> carry SET when the name matches the pattern list
+.if xuse_filepick
+xm_fp_match .macro name, pattern
+    lda #<(\name)
+    sta X16_P0
+    lda #>(\name)
+    sta X16_P1
+    lda #<(\pattern)
+    sta X16_P2
+    lda #>(\pattern)
+    sta X16_P3
+    jsr fp_match
+    .endm
+.endif
+; -> A = the panel's first row
+.if xuse_filepick
+xm_fp_panel_top .macro
+    jsr fp_panel_top
+    .endm
+.endif
+; -> A = the panel's left column
+.if xuse_filepick
+xm_fp_panel_left .macro
+    jsr fp_panel_left
+    .endm
+.endif
+; -> A = the panel's width in cells
+.if xuse_filepick
+xm_fp_panel_width .macro
+    jsr fp_panel_width
+    .endm
+.endif
+; -> A = how many entry rows the panel has
+.if xuse_filepick
+xm_fp_panel_rows .macro
+    jsr fp_panel_rows
+    .endm
+.endif
+.if xuse_filepick
+xm_fp_redraw .macro
+    jsr fp_redraw
+    .endm
+.endif
+
+; =====================================================================
 ; storage/dos
 ; =====================================================================
 ; -> A = status code

@@ -183,6 +183,10 @@
 //   X16_USE_LOAD      fs_setname, fs_load, fs_save, fs_vload
 //   X16_USE_DOS       dos_cmd, dos_status, dos_lasterr, dos_delete,
 //                     dos_rename, dos_mkdir, dos_rmdir, dos_chdir
+//   X16_USE_FILEPICK  fp_open/resume/close, fp_filter, fp_primary,
+//                     fp_path/name/dir, fp_match -- a file browser
+//                     on a panel (needs DIR, SCREEN, MOUSE, CLOCK,
+//                     DOS and BANK; worth -Bank, it is ~3 KB)
 //   X16_USE_DIR       dir_open, dir_next, dir_type, dir_blocks,
 //                     dir_close (walks a drive's directory listing)
 //   X16_USE_BMX       bmx_load, bmx_save (the X16's native bitmap
@@ -396,6 +400,9 @@
     #if !X16_USE_DIR
     #define X16_USE_DIR
     #endif
+    #if !X16_USE_FILEPICK
+    #define X16_USE_FILEPICK
+    #endif
     #if !X16_USE_BMX
     #define X16_USE_BMX
     #endif
@@ -486,6 +493,37 @@
 // sprite_init_all, psg_init, gfx8l_clear and gfx8l_hline all call vera_fill.
 // gfx8l_init calls screen_set_mode. The PCM streamer's AFLOW service runs
 // inside irq_handler, so it needs the IRQ module (and PCM itself).
+// The file browser drives half the machine: it lists a directory, draws
+// a panel, follows the mouse, times a double click and changes the
+// drive's directory. Naming all of that in every program that opens a
+// browser would be a trap, and a BANKED filepick needs its own copies in
+// the bank image, which is exactly what these gates give it.
+#if X16_USE_FILEPICK
+    #if !X16_USE_DIR
+    #define X16_USE_DIR
+    #endif
+    #if !X16_USE_SCREEN
+    #define X16_USE_SCREEN
+    #endif
+    #if !X16_USE_SCREEN_EXTRA
+    #define X16_USE_SCREEN_EXTRA
+    #endif
+    #if !X16_USE_MOUSE
+    #define X16_USE_MOUSE
+    #endif
+    #if !X16_USE_INPUT
+    #define X16_USE_INPUT
+    #endif
+    #if !X16_USE_CLOCK
+    #define X16_USE_CLOCK
+    #endif
+    #if !X16_USE_DOS
+    #define X16_USE_DOS
+    #endif
+    #if !X16_USE_BANK
+    #define X16_USE_BANK
+    #endif
+#endif
 #if X16_USE_SPRITE
 #if !X16_USE_VERA
 #define X16_USE_VERA
@@ -1046,6 +1084,9 @@
 #endif
 #if X16_USE_DIR
 #import "storage/dir.asm"
+#endif
+#if X16_USE_FILEPICK
+#import "ui/filepick.asm"
 #endif
 #if X16_USE_BMX
 #import "storage/bmx.asm"

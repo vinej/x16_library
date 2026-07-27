@@ -65,6 +65,7 @@ X16_USE_IEC = 0
 X16_USE_LOAD = 0
 X16_USE_DOS = 0
 X16_USE_DIR = 0
+X16_USE_FILEPICK = 0
 X16_USE_BMX = 0
 X16_USE_UTILITIES = 0
 X16_USE_MATH = 0
@@ -92,6 +93,7 @@ X16_USE_STRING_SORT = 0
 X16_USE_SYSTEM = 0
 X16_USE_IRQ = 0
 X16_USE_CLOCK = 0
+X16_USE_SCREEN_EXTRA = 0
 X16_USE_SHP_LINE = 0
 X16_USE_VERAFX_FILL = 0
 X16_USE_VERAFX_MULT = 0
@@ -114,7 +116,6 @@ X16_USE_IRQ_SPRCOL_API = 0
 X16_USE_INPUT_CORE = 0
 X16_USE_INPUT_KEYWAIT = 0
 X16_USE_SCREEN_CORE = 0
-X16_USE_SCREEN_EXTRA = 0
 X16_BITMAP2L_NO_INIT = 0
 X16_BITMAP4L_MIN = 0
 X16_BITMAP4L_NO_INIT = 0
@@ -159,13 +160,10 @@ xuse_audio_rom = xuse_audio || X16_USE_AUDIO_ROM != 0
 xuse_zsm_pcm = xuse_audio || X16_USE_ZSM_PCM != 0
 xuse_adpcm = xuse_audio || X16_USE_ADPCM != 0
 xuse_wav = xuse_audio || X16_USE_WAV != 0
-xuse_input = xuse_input_devices || X16_USE_INPUT != 0
 xuse_keyboard = xuse_input_devices || X16_USE_KEYBOARD != 0
-xuse_mouse = xuse_input_devices || X16_USE_MOUSE != 0
 xuse_i2c = xuse_communications || X16_USE_I2C != 0
 xuse_vera_spi = xuse_communications || X16_USE_VERA_SPI != 0
 xuse_serial_zimodem = xuse_communications || X16_USE_SERIAL_ZIMODEM != 0
-xuse_bank = xuse_storage || X16_USE_BANK != 0
 xuse_bankalloc = xuse_storage || X16_USE_BANKALLOC != 0
 xuse_stack = xuse_storage || X16_USE_STACK != 0
 xuse_ringbuffer = xuse_storage || X16_USE_RINGBUFFER != 0
@@ -173,8 +171,7 @@ xuse_mem = xuse_storage || X16_USE_MEM != 0
 xuse_fileio = xuse_storage || X16_USE_FILEIO != 0
 xuse_iec = xuse_storage || X16_USE_IEC != 0
 xuse_load = xuse_storage || X16_USE_LOAD != 0
-xuse_dos = xuse_storage || X16_USE_DOS != 0
-xuse_dir = xuse_storage || X16_USE_DIR != 0
+xuse_filepick = xuse_storage || X16_USE_FILEPICK != 0
 xuse_bmx = xuse_storage || X16_USE_BMX != 0
 xuse_clip = xuse_utilities || X16_USE_CLIP != 0
 xuse_buffers = xuse_utilities || X16_USE_BUFFERS != 0
@@ -194,35 +191,40 @@ xuse_string_case = xuse_strings || X16_USE_STRING_CASE != 0
 xuse_string_find = xuse_strings || X16_USE_STRING_FIND != 0
 xuse_string_slice = xuse_strings || X16_USE_STRING_SLICE != 0
 xuse_string_sort = xuse_strings || X16_USE_STRING_SORT != 0
-xuse_clock = xuse_system || X16_USE_CLOCK != 0
-xuse_screen = xuse_video || X16_USE_SCREEN != 0 || xuse_bitmap8l
+xuse_screen = xuse_video || X16_USE_SCREEN != 0 || xuse_filepick || xuse_bitmap8l
 xuse_shapes_arc = xuse_graphics || X16_USE_SHAPES_ARC != 0 || xuse_shapes_pie
 xuse_zsm = xuse_audio || X16_USE_ZSM != 0 || xuse_zsm_pcm
 xuse_pcm_stream = xuse_audio || X16_USE_PCM_STREAM != 0 || xuse_zsm_pcm
+xuse_input = xuse_input_devices || X16_USE_INPUT != 0 || xuse_filepick
+xuse_mouse = xuse_input_devices || X16_USE_MOUSE != 0 || xuse_filepick
 xuse_serial = xuse_communications || X16_USE_SERIAL != 0 || xuse_serial_zimodem
+xuse_bank = xuse_storage || X16_USE_BANK != 0 || xuse_filepick
+xuse_dos = xuse_storage || X16_USE_DOS != 0 || xuse_filepick
+xuse_dir = xuse_storage || X16_USE_DIR != 0 || xuse_filepick
 xuse_number = xuse_utilities || X16_USE_NUMBER != 0 || xuse_int16
 xuse_string = xuse_strings || X16_USE_STRING != 0 || xuse_string_sort
+xuse_clock = xuse_system || X16_USE_CLOCK != 0 || xuse_filepick
 xuse_verafx_mult = xuse_verafx || X16_USE_VERAFX_MULT != 0
 xuse_verafx_copy = xuse_verafx || X16_USE_VERAFX_COPY != 0
 xuse_verafx_transp = xuse_verafx || X16_USE_VERAFX_TRANSP != 0
 xuse_verafx_affine = xuse_verafx || X16_USE_VERAFX_AFFINE != 0
 xuse_verafx_line = xuse_verafx || X16_USE_VERAFX_LINE != 0
 xuse_verafx_tri = xuse_verafx || X16_USE_VERAFX_TRI != 0
-xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
-xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
 xuse_pcm = xuse_audio || X16_USE_PCM != 0 || xuse_pcm_stream
 xuse_math = xuse_utilities || X16_USE_MATH != 0 || xuse_shapes_poly || xuse_shapes_arc
 xuse_irq = xuse_system || X16_USE_IRQ != 0 || xuse_pcm_stream
+xuse_screen_extra = xuse_filepick || X16_USE_SCREEN_EXTRA != 0 || xuse_screen
 xuse_shp_line = xuse_shapes_arc || X16_USE_SHP_LINE != 0 || xuse_shapes_bezier
 xuse_verafx_linetri = xuse_verafx_line || X16_USE_VERAFX_LINETRI != 0 || xuse_verafx_tri
-xuse_input_any = xuse_input_core || xuse_input_keywait
+xuse_input_core = xuse_input || X16_USE_INPUT_CORE != 0
+xuse_input_keywait = xuse_input || X16_USE_INPUT_KEYWAIT != 0
 xuse_screen_core = xuse_screen || X16_USE_SCREEN_CORE != 0
-xuse_screen_extra = xuse_screen || X16_USE_SCREEN_EXTRA != 0
 xuse_shapes = xuse_graphics || X16_USE_SHAPES != 0 || xuse_shapes_poly || xuse_shapes_pie || xuse_shapes_arc || xuse_shapes_rrect || xuse_shapes_bezier || xuse_shp_line
 xuse_irq_core = xuse_irq || X16_USE_IRQ_CORE != 0
 xuse_irq_remove = xuse_irq || X16_USE_IRQ_REMOVE != 0
 xuse_irq_vsync = xuse_irq || X16_USE_IRQ_VSYNC != 0
 xuse_irq_sprcol_api = xuse_irq || X16_USE_IRQ_SPRCOL_API != 0
+xuse_input_any = xuse_input_core || xuse_input_keywait
 xuse_screen_any = xuse_screen_core || xuse_screen_extra
 xuse_bitmap2h = xuse_graphics || X16_USE_BITMAP2H != 0 || xuse_shapes
 xuse_irq_sprcol = xuse_irq || X16_USE_IRQ_SPRCOL != 0 || xuse_irq_sprcol_api
@@ -363,6 +365,9 @@ xuse_vera_any = xuse_vera_addr || xuse_vera_fill || xuse_vera_fxprobe || xuse_ve
 .endif
 .if xuse_dir
 .include "storage/dir.asm"
+.endif
+.if xuse_filepick
+.include "ui/filepick.asm"
 .endif
 .if xuse_bmx
 .include "storage/bmx.asm"
