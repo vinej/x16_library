@@ -46,9 +46,9 @@ GFX2L_STRIDE = 80
     SUBROUTINE
 gfx2l_init
     vera_dcsel 0
-    lda #$80                    ; 1:1 scale -> 1:1 scale
-    sta VERA_DC_HSCALE
-    sta VERA_DC_VSCALE
+    lda #$40                    ; 64 = two output pixels per input pixel,
+    sta VERA_DC_HSCALE          ; so this 320x240 bitmap fills the 640x480
+    sta VERA_DC_VSCALE          ; display (128 would show 640 of its 320)
     stz VERA_DC_BORDER
 
     lda #(VERA_LAYER_BITMAP | VERA_LAYER_BPP_2)

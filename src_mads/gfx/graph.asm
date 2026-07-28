@@ -11,9 +11,15 @@
 
 
 ; --- character style bits used by graph_get_char_size ----------------
-GRAPH_STYLE_UNDERLINE = %00000001
-GRAPH_STYLE_BOLD      = %00000010
-GRAPH_STYLE_ITALIC    = %00000100
+; These are the ROM's own currentMode bits (x16-rom graphics/fonts/
+; fonts.inc SET_*), inherited from GEOS -- high bits, not 1/2/4. Bit 0
+; is GEOS's OPAQUE flag and is not exposed here.
+GRAPH_STYLE_UNDERLINE = %10000000
+GRAPH_STYLE_BOLD      = %01000000
+GRAPH_STYLE_REVERSE   = %00100000
+GRAPH_STYLE_ITALIC    = %00010000
+GRAPH_STYLE_OUTLINE   = %00001000
+GRAPH_STYLE_PLAIN     = %00000000
 
 ; ---------------------------------------------------------------------
 ; graph_init -- initialize GRAPH and active framebuffer driver
@@ -61,6 +67,10 @@ graph_draw_rect
 ; ---------------------------------------------------------------------
 ; graph_move_rect -- move rectangle
 ;   in: r0 = sx, r1 = sy, r2 = tx, r3 = ty, r4 = width, r5 = height
+;
+; A ROM asymmetry worth knowing: moving DOWN copies height+1 rows,
+; moving up (or level) copies exactly height. Leave a row of slack
+; below a downward move, or it will clobber one row past the target.
 ; ---------------------------------------------------------------------
 graph_move_rect
     jmp GRAPH_MOVE_RECT

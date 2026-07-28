@@ -165,9 +165,11 @@ stack_isempty
 ; ---------------------------------------------------------------------
 stack_isfull
     lda stack_sp+1
+    beq .lowbyte                ; sp < 256: the low byte decides
     cmp #$20                    ; sp >= $2000: wrapped past the bottom
     bcs .full
-    bne .notfull
+    bcc .notfull                ; $0100-$1FFF: at least 256 bytes free
+.lowbyte
     lda stack_sp
     cmp #2                      ; 0 or 1 byte free is full for pushw
     bcc .full

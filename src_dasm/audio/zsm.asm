@@ -16,21 +16,7 @@
 ; 16-bit address space and uses the existing AFLOW PCM streamer.
 ;
 ; Call zsm_tick at the ZSM header's tick rate. Use zsm_get_tickrate after
-; ; ---------------------------------------------------------------------
-; zsm_lasterr -- why the last zsm_init failed
-;   out: A = ZSM_ERR_* (ZSM_ERR_NONE after one that worked)
-;
-; zsm_init answers with both a carry and a code, and a caller that can
-; only read one of them needs the code: "it would not start" is not much
-; to go on when the answer is that the file is a version too new.
-; ---------------------------------------------------------------------
-    SUBROUTINE
-zsm_lasterr
-    lda zsm_code
-    rts
-
-    SUBROUTINE
-zsm_init if you need to configure your scheduler.
+; zsm_init if you need to configure your scheduler.
 ; =====================================================================
 
 ; (zone: file scope in dasm)
@@ -254,6 +240,19 @@ zsm_status
     lda zsm_flags
     lsr
     lda zsm_flags
+    rts
+
+; ---------------------------------------------------------------------
+; zsm_lasterr -- why the last zsm_init failed
+;   out: A = ZSM_ERR_* (ZSM_ERR_NONE after one that worked)
+;
+; zsm_init answers with both a carry and a code, and a caller that can
+; only read one of them needs the code: "it would not start" is not much
+; to go on when the answer is that the file is a version too new.
+; ---------------------------------------------------------------------
+    SUBROUTINE
+zsm_lasterr
+    lda zsm_code
     rts
 
 ; ---------------------------------------------------------------------
