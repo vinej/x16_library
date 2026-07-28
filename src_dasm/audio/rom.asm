@@ -10,6 +10,27 @@
 ; whose existing local helpers remain unchanged.
 ;
 ; Prefix convention: ar_* = audio ROM.
+;
+; KERNAL DEFECTS these wrappers pass straight through, confirmed against
+; x16-rom r49 while testing the C port of this module. They are the
+; ROM's, not this library's, so nothing here works around them -- but
+; the wrapper is where you will meet them:
+;
+;   notecon_midi2bas (ar_note_midi2bas) indexes the bas2midi table
+;   instead of midi2bas, so it answers the wrong note entirely: MIDI 60
+;   gives 59, not 65. bas2midi (ar_note_bas2midi) is correct.
+;   -- audio/noteconvert.s, `lda bas2midi,x` inside rom_proc notecon_midi2bas
+;
+;   psg_getatten (ar_psg_getatten) loads the attenuation into rom_A, then
+;   RESTORE_BANK overwrites rom_A with the saved RAM bank, and only then
+;   copies to rom_X -- so it returns the RAM bank that was current before
+;   the call. psg_getpan does its `tax` BEFORE the restore and is fine.
+;   -- audio/psg.s, rom_proc psg_getatten
+;
+; And the encoding that trips everyone: a BASIC oct/note byte is
+; octave*16 + note + 1 -- twelve notes then FOUR unused codes per
+; octave -- so middle C (MIDI 60) is 65, and the codes in the gaps
+; convert to 0. An obvious-looking 48 is in a gap and tests nothing.
 ; =====================================================================
 
 ; (zone: file scope in dasm)
