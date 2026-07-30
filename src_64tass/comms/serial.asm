@@ -95,19 +95,17 @@ SER_SCAN_STEP  = 8              ; UARTs sit on 8-byte boundaries
 ; are held off across the probe so an IRQ handler never sees the UART
 ; mid-fingerprint.
 ;
-; IT WRITES TO EVERY CANDIDATE SLOT, not only to the ones that answer:
-; offsets 1, 4 and 7 of all 32 bases from $9F60 to $9FF8 are written
-; before anything is known about what lives there. Whatever else is
-; plugged into that window sees those stores.
+; IT WRITES TO EVERY CANDIDATE SLOT it examines, not only to the ones
+; that answer: offsets 1, 4 and 7 are written before anything is known
+; about what lives there. Whatever else is plugged into that window sees
+; those stores.
 ;
-; That matters inside this library: the VERA_2 hi-res card the bitmap8h
-; and bitmap4h engines drive has its registers at $9F60-$9F6B, so a
-; ser_detect on such a machine walks its ID, address-high and palette
-; registers. The two cards want the same addresses and cannot both be
-; fitted, so this is a warning rather than something the probe can avoid
-; -- but do not call ser_detect from a program that also drives VERA_2,
-; and if you know where your UART is, call ser_init with the base
-; instead of scanning for it.
+; One such card is known about and skipped: the VERA_2 hi-res layer that
+; the bitmap8h and bitmap4h engines drive occupies $9F60-$9F6F, and if
+; its signature is present the scan starts above it instead of walking
+; its address and palette registers. Any OTHER card in $9F60-$9FF8 is
+; still written to blind, so if you know where your UART is, call
+; ser_init with that base rather than scanning for it.
 ; ---------------------------------------------------------------------
 ser_detect
     stz ser_u0
@@ -118,6 +116,20 @@ ser_detect
     sta X16_T2
     lda #>SER_SCAN_FIRST
     sta X16_T3
+    ; The VERA_2 hi-res card lives at $9F60-$9F6F, which is the first TWO
+    ; candidate slots, and serial_probe writes to a slot before it knows what
+    ; is in it -- it was walking that card's ID, address and palette
+    ; registers. Reading its signature costs nothing and cannot be
+    ; mistaken for a UART: offset 1 of a 16C550 is IER, whose top nibble
+    ; always reads back 0, so it can never hold $B5. Start above it.
+    lda VERA2_ID
+    cmp #VERA2_ID_MAGIC
+    bne _noconflict
+    lda #<(VERA2_BLIT_CTRL + 1)
+    sta X16_T2
+    lda #>(VERA2_BLIT_CTRL + 1)
+    sta X16_T3
+_noconflict
     php
     sei
 _scan

@@ -2293,6 +2293,20 @@ fp_elen     !byte 0             ; length of the text being edited
 .pa_full
     sty fp_cnt                  ; 0 means 256
     stz fp_tmp
+    ; The 256th byte skipped the status check above by branching here, so
+    ; ask now: a file whose length is an exact multiple of 256 ends on a
+    ; full block, and without this the loop went back for another one,
+    ; stored the $0D that CHRIN answers past the end, and gave the copy a
+    ; trailing byte the original never had.
+    jsr READST
+    tax
+    and #$BF                    ; any bit but EOF is a fault
+    bne .pa_faildst
+    txa
+    and #$40
+    beq .pa_write
+    lda #1                      ; EOF came with the last byte of the block
+    sta fp_tmp
 .pa_write
     ldx #5
     jsr CHKOUT

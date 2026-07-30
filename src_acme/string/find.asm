@@ -123,14 +123,24 @@ str_rfind
 ;
 ; In the pattern, '?' matches any single character and '*' matches any
 ; run of characters including none. Case-sensitive. Both string and
-; pattern are NUL-terminated and at most 255 long. Each '*' costs 4 bytes
-; of CPU stack. Algorithm from 6502.org/source/strings/patmatch.htm.
+; pattern are NUL-terminated and at most 255 long.
 ;
-; The whole matcher is written with zone-local labels (no @cheap) because
-; it self-modifies (the pattern address is patched into two loads) and
-; recurses -- an SMC target mid-routine would otherwise split a cheap
-; scope under some assemblers.
+; This used to recurse once per '*', costing 4 bytes of CPU stack each --
+; a legal 255-character pattern with 64 of them overflowed the stack --
+; and it re-tried the tail from scratch after every failed position, so a
+; pattern like "a*a*a*a*b" against a long run of 'a's took exponential
+; time. The walk below keeps only the last '*' and the point it had
+; swallowed up to, which is all the backtracking a single-wildcard
+; grammar needs: no recursion, no stack growth, and a bounded number of
+; retries per character.
+;
+; Zone-local labels throughout (no @cheap) because the pattern address is
+; self-modified into the loads, and an SMC target mid-routine would split
+; a cheap scope under some assemblers.
 ; ---------------------------------------------------------------------
+.pm_star  !byte 0               ; pattern index of the live '*', $FF none
+.pm_mark  !byte 0               ; how much of the string it has swallowed
+
 str_pattern_match
     sta X16_T0                  ; strptr = the string
     stx X16_T1
@@ -140,55 +150,54 @@ str_pattern_match
     lda X16_P1
     sta .pm_pat1+2
     sta .pm_pat2+2
-    jsr .pm_match               ; carry = the match result
-    lda #0
-    bcc @done                   ; keep the carry; set A = 1 on a match
-    lda #1
-@done
-    rts
-
-.pm_match
+    lda #$ff
+    sta .pm_star                ; no '*' met yet
+    stz .pm_mark
     ldx #0                      ; X indexes the pattern
-    ldy #$ff                    ; Y indexes the string (iny brings it to 0)
+    ldy #0                      ; Y indexes the string
 .pm_next
+    lda (X16_T0),y
+    beq .pm_tail                ; string spent: only '*' may remain
 .pm_pat1
     lda $ffff,x                 ; pattern[X]  (address patched above)
     cmp #'*'
-    beq .pm_star
-    iny
+    beq .pm_seen
     cmp #'?'
-    bne .pm_reg
-    lda (X16_T0),y              ; '?' matches anything but the terminator
-    beq .pm_fail
-.pm_reg
-    cmp (X16_T0),y
-    bne .pm_fail
+    beq .pm_step                ; '?' takes any character but the NUL,
+    cmp (X16_T0),y              ; and the NUL was ruled out above
+    bne .pm_back
+.pm_step
     inx
-    cmp #0                      ; matched the NUL: end of both
-    bne .pm_next
-    rts                         ; carry set = match
-.pm_star
-    inx
-.pm_pat2
-    cmp $ffff,x                 ; a run of '*' is the same as one
-    beq .pm_star
-.pm_stloop
-    txa
-    pha
-    tya
-    pha
-    jsr .pm_next                ; try to match the rest here
-    pla
-    tay
-    pla
-    tax
-    bcs .pm_done                ; it matched: keep the carry set
     iny
-    lda (X16_T0),y              ; grow what '*' swallows, unless at the end
-    bne .pm_stloop
-.pm_fail
+    bra .pm_next
+.pm_seen
+    stx .pm_star                ; remember where to resume the pattern...
+    inx
+    sty .pm_mark                ; ...and what the '*' has taken so far
+    bra .pm_next
+.pm_back
+    ldx .pm_star
+    cpx #$ff
+    beq .pm_no                  ; no '*' to give ground: it cannot match
+    inx                         ; resume just past that '*'...
+    inc .pm_mark                ; ...letting it swallow one more character
+    ldy .pm_mark
+    bra .pm_next
+.pm_tail
+.pm_pat2
+    lda $ffff,x
+    beq .pm_yes
+    cmp #'*'
+    bne .pm_no
+    inx
+    bra .pm_tail
+.pm_no
+    lda #0
     clc
-.pm_done
+    rts
+.pm_yes
+    lda #1
+    sec
     rts
 
 }   ; !zone x16_find

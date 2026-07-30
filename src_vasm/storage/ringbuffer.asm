@@ -107,9 +107,18 @@ ring_get
     rts
 
 ; ---------------------------------------------------------------------
-; ring_getw -- dequeue one word.  out: A = low, X = high
+; ring_getw -- dequeue one word.  out: A = low, X = high, carry clear.
+; Carry SET means fewer than two bytes were queued and nothing was
+; dequeued: ring_isempty cannot express that, since one byte left is not
+; empty but is not a word either.
 ; ---------------------------------------------------------------------
 ring_getw
+    lda ring_fill+1             ; two bytes have to BE there. ring_isempty
+    bne .have                   ; only answers for a single ring_get, so a
+    lda ring_fill               ; caller guarding a getw with it walked the
+    cmp #2                      ; tail past the head on an odd last byte
+    bcc .under                  ; and left the ring corrupt for good
+.have
     jsr ringbuffer_filldec
     jsr ringbuffer_filldec
     lda RAM_BANK
@@ -128,6 +137,10 @@ ring_getw
     sta RAM_BANK
     lda X16_T2
     ldx X16_T4
+    clc
+    rts
+.under
+    sec                         ; nothing dequeued, nothing moved
     rts
 
 ; ---------------------------------------------------------------------

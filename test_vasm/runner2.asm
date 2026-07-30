@@ -132,6 +132,8 @@ main
     jsr test_ring_full_edge
     jsr test_shape_r0
     jsr test_sprite_pos_signed
+    jsr test_str_pat_edge
+    jsr test_word_underflow
 
     jsr t_summary
     rts
@@ -3268,5 +3270,118 @@ test_sprite_pos_signed
     ldy #>.name
     jmp t_result
 .name byte "SPRITE_POS_SIGNED", 0
+
+; =====================================================================
+; The wildcard shapes the old recursive matcher could not survive: a
+; pattern with more '*' than its 4-bytes-of-stack-each could afford, and
+; the "a*a*a*a*b" shape that made it retry the tail from scratch after
+; every failed position.
+; =====================================================================
+test_str_pat_edge
+    lda #<.stars
+    sta X16_P0
+    lda #>.stars
+    sta X16_P1
+    lda #<.aaa
+    ldx #>.aaa
+    jsr str_pattern_match
+    bcc .fail
+    lda #<.evil                 ; no 'b' anywhere: the answer is no, and
+    sta X16_P0                  ; it has to arrive this decade
+    lda #>.evil
+    sta X16_P1
+    lda #<.aaa
+    ldx #>.aaa
+    jsr str_pattern_match
+    bcs .fail
+    lda #<.star1                ; '*' may swallow nothing at all
+    sta X16_P0
+    lda #>.star1
+    sta X16_P1
+    lda #<.empty
+    ldx #>.empty
+    jsr str_pattern_match
+    bcc .fail
+    lda #<.empty                ; an empty pattern matches only the
+    sta X16_P0                  ; empty string
+    lda #>.empty
+    sta X16_P1
+    lda #<.aaa
+    ldx #>.aaa
+    jsr str_pattern_match
+    bcs .fail
+    lda #<.lead                 ; a '*' that has to give ground twice
+    sta X16_P0
+    lda #>.lead
+    sta X16_P1
+    lda #<.hello
+    ldx #>.hello
+    jsr str_pattern_match
+    bcc .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.stars  byte "*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*", 0
+.evil   byte "a*a*a*a*b", 0
+.aaa    byte "aaaaaaaaaaaaaaaaaaaaaaaa", 0
+.star1  byte "*", 0
+.empty  byte 0
+.lead   byte "*llo", 0
+.hello  byte "hello", 0
+.name   byte "STR_PAT_EDGE", 0
+
+; =====================================================================
+; One byte stored is not empty, but it is not a word either: the word
+; readers used to sail past the documented isempty guard and leave the
+; pointer above the data for the rest of the run.
+; =====================================================================
+test_word_underflow
+    lda #6
+    jsr stack_init
+    lda #$5A
+    jsr stack_push              ; exactly one byte
+    jsr stack_isempty
+    bcs .fail                   ; ...so isempty says there IS something
+    jsr stack_popw
+    bcc .fail                   ; but a word must be refused
+    jsr stack_size
+    cmp #1                      ; and nothing may have moved
+    bne .fail
+    cpx #0
+    bne .fail
+    jsr stack_pop               ; the byte itself still comes back
+    cmp #$5A
+    bne .fail
+
+    lda #7
+    jsr ring_init
+    lda #$A5
+    jsr ring_put
+    jsr ring_isempty
+    bcs .fail
+    jsr ring_getw
+    bcc .fail
+    jsr ring_size
+    cmp #1
+    bne .fail
+    cpx #0
+    bne .fail
+    jsr ring_get
+    cmp #$A5
+    bne .fail
+    lda #0
+    bra .report
+.fail
+    lda #1
+.report
+    ldx #<.name
+    ldy #>.name
+    jmp t_result
+.name byte "WORD_UNDERFLOW", 0
 
     include "x16_code.asm"

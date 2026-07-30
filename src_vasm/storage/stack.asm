@@ -99,10 +99,19 @@ stack_pop
     rts
 
 ; ---------------------------------------------------------------------
-; stack_popw -- pop one word.  out: A = low, X = high
+; stack_popw -- pop one word.  out: A = low, X = high, carry clear.
 ; The high byte was pushed last, so it comes off first.
+; Carry SET means fewer than two bytes were stored and nothing was
+; popped: stack_isempty cannot express that, since one byte left is not
+; empty but is not a word either.
 ; ---------------------------------------------------------------------
 stack_popw
+    jsr stack_size              ; two bytes have to BE there. stack_isempty
+    cpx #0                      ; only answers for a single stack_pop, so a
+    bne .have                   ; caller guarding a popw with it read past
+    cmp #2                      ; the top of the stack and left the pointer
+    bcc .under                  ; above it, corrupt for the rest of the run
+.have
     lda RAM_BANK
     sta X16_T3
     lda stack_bank
@@ -119,6 +128,10 @@ stack_popw
     sta RAM_BANK
     lda X16_T2
     ldx X16_T4
+    clc
+    rts
+.under
+    sec                         ; nothing popped, the pointer stays put
     rts
 
 ; ---------------------------------------------------------------------

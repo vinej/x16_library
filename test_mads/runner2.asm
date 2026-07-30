@@ -131,6 +131,8 @@ main
     jsr test_ring_full_edge
     jsr test_shape_r0
     jsr test_sprite_pos_signed
+    jsr test_str_pat_edge
+    jsr test_word_underflow
 
     jsr t_summary
     rts
@@ -3271,5 +3273,118 @@ test_sprite_pos_signed__report
     ldy #>test_sprite_pos_signed__name
     jmp t_result
 test_sprite_pos_signed__name dta c'SPRITE_POS_SIGNED', 0
+
+; =====================================================================
+; The wildcard shapes the old recursive matcher could not survive: a
+; pattern with more '*' than its 4-bytes-of-stack-each could afford, and
+; the "a*a*a*a*b" shape that made it retry the tail from scratch after
+; every failed position.
+; =====================================================================
+test_str_pat_edge
+    lda #<test_str_pat_edge__stars
+    sta X16_P0
+    lda #>test_str_pat_edge__stars
+    sta X16_P1
+    lda #<test_str_pat_edge__aaa
+    ldx #>test_str_pat_edge__aaa
+    jsr str_pattern_match
+    bcc test_str_pat_edge__fail
+    lda #<test_str_pat_edge__evil                 ; no 'b' anywhere: the answer is no, and
+    sta X16_P0                  ; it has to arrive this decade
+    lda #>test_str_pat_edge__evil
+    sta X16_P1
+    lda #<test_str_pat_edge__aaa
+    ldx #>test_str_pat_edge__aaa
+    jsr str_pattern_match
+    bcs test_str_pat_edge__fail
+    lda #<test_str_pat_edge__star1                ; '*' may swallow nothing at all
+    sta X16_P0
+    lda #>test_str_pat_edge__star1
+    sta X16_P1
+    lda #<test_str_pat_edge__empty
+    ldx #>test_str_pat_edge__empty
+    jsr str_pattern_match
+    bcc test_str_pat_edge__fail
+    lda #<test_str_pat_edge__empty                ; an empty pattern matches only the
+    sta X16_P0                  ; empty string
+    lda #>test_str_pat_edge__empty
+    sta X16_P1
+    lda #<test_str_pat_edge__aaa
+    ldx #>test_str_pat_edge__aaa
+    jsr str_pattern_match
+    bcs test_str_pat_edge__fail
+    lda #<test_str_pat_edge__lead                 ; a '*' that has to give ground twice
+    sta X16_P0
+    lda #>test_str_pat_edge__lead
+    sta X16_P1
+    lda #<test_str_pat_edge__hello
+    ldx #>test_str_pat_edge__hello
+    jsr str_pattern_match
+    bcc test_str_pat_edge__fail
+    lda #0
+    bra test_str_pat_edge__report
+test_str_pat_edge__fail
+    lda #1
+test_str_pat_edge__report
+    ldx #<test_str_pat_edge__name
+    ldy #>test_str_pat_edge__name
+    jmp t_result
+test_str_pat_edge__stars  dta c'*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*', 0
+test_str_pat_edge__evil   dta c'a*a*a*a*b', 0
+test_str_pat_edge__aaa    dta c'aaaaaaaaaaaaaaaaaaaaaaaa', 0
+test_str_pat_edge__star1  dta c'*', 0
+test_str_pat_edge__empty  .byte 0
+test_str_pat_edge__lead   dta c'*llo', 0
+test_str_pat_edge__hello  dta c'hello', 0
+test_str_pat_edge__name   dta c'STR_PAT_EDGE', 0
+
+; =====================================================================
+; One byte stored is not empty, but it is not a word either: the word
+; readers used to sail past the documented isempty guard and leave the
+; pointer above the data for the rest of the run.
+; =====================================================================
+test_word_underflow
+    lda #6
+    jsr stack_init
+    lda #$5A
+    jsr stack_push              ; exactly one byte
+    jsr stack_isempty
+    bcs test_word_underflow__fail                   ; ...so isempty says there IS something
+    jsr stack_popw
+    bcc test_word_underflow__fail                   ; but a word must be refused
+    jsr stack_size
+    cmp #1                      ; and nothing may have moved
+    bne test_word_underflow__fail
+    cpx #0
+    bne test_word_underflow__fail
+    jsr stack_pop               ; the byte itself still comes back
+    cmp #$5A
+    bne test_word_underflow__fail
+
+    lda #7
+    jsr ring_init
+    lda #$A5
+    jsr ring_put
+    jsr ring_isempty
+    bcs test_word_underflow__fail
+    jsr ring_getw
+    bcc test_word_underflow__fail
+    jsr ring_size
+    cmp #1
+    bne test_word_underflow__fail
+    cpx #0
+    bne test_word_underflow__fail
+    jsr ring_get
+    cmp #$A5
+    bne test_word_underflow__fail
+    lda #0
+    bra test_word_underflow__report
+test_word_underflow__fail
+    lda #1
+test_word_underflow__report
+    ldx #<test_word_underflow__name
+    ldy #>test_word_underflow__name
+    jmp t_result
+test_word_underflow__name dta c'WORD_UNDERFLOW', 0
 
     icl "x16_code.asm"
