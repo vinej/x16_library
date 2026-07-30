@@ -20,13 +20,24 @@
 ; str_lowerchar / str_lowerchar_iso -- fold one character to lower case
 ; str_upperchar / str_upperchar_iso -- ...to upper case.  in/out: A
 ; ---------------------------------------------------------------------
+; PETSCII upper case lives in TWO ranges, 97-122 and 193-218, and both
+; fold down to 65-90. This used to begin with an unconditional `and #$7f`,
+; which folded $80 to $00: str_lower then wrote a terminator into the
+; middle of the string, and every code $80-$FF (colour controls,
+; shift-space) was silently rewritten.
 str_lowerchar
-    and #$7f
     cmp #97
+    bcc str_lowerchar__done                   ; below 97: already lower, or not a letter
+    cmp #122+1
+    bcs str_lowerchar__high
+    and #%11011111              ; 97-122 -> 65-90
+    rts
+str_lowerchar__high
+    cmp #193
     bcc str_lowerchar__done
-    cmp #123
+    cmp #218+1
     bcs str_lowerchar__done
-    and #%11011111
+    and #$7f                    ; 193-218 -> 65-90
 str_lowerchar__done
     rts
 
@@ -34,7 +45,16 @@ str_lowerchar_iso
     cmp #65
     bcc str_lowerchar_iso__done
     cmp #91
+    bcs str_lowerchar_iso__high
+    ora #$20                    ; 'A'-'Z' -> 'a'-'z'
+    rts
+str_lowerchar_iso__high
+    cmp #$C0                    ; the ISO-8859-15 accented capitals,
+    bcc str_lowerchar_iso__done                   ; $C0-$DE -> $E0-$FE ...
+    cmp #$DE+1
     bcs str_lowerchar_iso__done
+    cmp #$D7                    ; ...except multiplication sign, no letter
+    beq str_lowerchar_iso__done
     ora #$20
 str_lowerchar_iso__done
     rts
@@ -52,7 +72,16 @@ str_upperchar_iso
     cmp #97
     bcc str_upperchar_iso__done
     cmp #123
+    bcs str_upperchar_iso__high
+    and #%11011111              ; 'a'-'z' -> 'A'-'Z'
+    rts
+str_upperchar_iso__high
+    cmp #$E0                    ; the accented smalls, $E0-$FE -> $C0-$DE...
+    bcc str_upperchar_iso__done
+    cmp #$FE+1
     bcs str_upperchar_iso__done
+    cmp #$F7                    ; ...except division sign, no letter
+    beq str_upperchar_iso__done
     and #%11011111
 str_upperchar_iso__done
     rts

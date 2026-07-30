@@ -101,8 +101,16 @@ fx_mult
 ; ---------------------------------------------------------------------
 ; fx_fill -- fill VRAM through the 32-bit write cache (~4x a byte loop)
 ;   in:  A = byte value
-;        X16_P0/P1/P2 = destination VRAM address (17-bit)
+;        X16_P0/P1/P2 = destination VRAM address (17-bit, MUST be a
+;                       multiple of 4 -- see below)
 ;        X16_P3/P4    = byte count
+;
+; The cache writes a 4-byte ALIGNED quad: VERA ignores the low two
+; address bits for a cached write. A destination that is not a multiple
+; of 4 therefore overwrites the bytes below it and leaves the same number
+; at the top of the span untouched. fx_copy documents the same rule; both
+; of this library's callers (gfx2l_clear, gfx2h_clear) are aligned by
+; construction. Use vera_fill for an unaligned span.
 ;
 ; With Cache Write Enable set, one store to DATA0 writes all four cache
 ; bytes. Stepping the port by 4 covers the region a quad at a time; any
@@ -1227,6 +1235,10 @@ fxd_den .word 0
 fxd_rem .word 0
 
 ; fxd_num(24) / fxd_den(16) -> quotient in fxd_num, remainder fxd_rem
+; The running remainder is kept in 16 bits, so a divisor above $8000
+; loses the carry out of the shift and returns a wrong quotient. Every
+; caller here divides by a screen span (at most 319), which is why this
+; has never mattered; a new caller must stay under $8001.
 verafx_udiv24
     stz fxd_rem
     stz fxd_rem+1

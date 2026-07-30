@@ -9,7 +9,9 @@
 ; MSB-first (the leftmost pixel is bits 7:6), rows of 80 bytes,
 ; 19,200 bytes in all. A pixel byte is at y*80 + (x>>2); its position
 ; within the byte is x & 3. VERA renders it as layer-0 bitmap, 2bpp,
-; 320 wide, HSCALE = VSCALE = $80 -- gfx2l_init programs exactly that
+; 320 wide, HSCALE = VSCALE = $40 -- gfx2l_init programs exactly that
+; ($40 doubles each pixel so the 320-wide bitmap fills the 640-wide
+; display; $80 would show only its left half)
 ; (there is no KERNAL screen mode for it).
 ;
 ; Colours are 0-3 out of the first four palette entries. gfx2l_init
@@ -792,6 +794,13 @@ gfx2l_pattern_rect
 ; from .g2l_optab (ora/and/eor (zp),y) -- the 8bpp module's gfx8l_blit
 ; does the same.
 gfx2l_blit
+    ldx X16_P4                  ; a zero width or height draws nothing:
+    beq .g2l_blit_none          ; dec/bne and cpy would otherwise run 256
+    ldx X16_P5                  ; times, walking past the framebuffer
+    bne .g2l_blit_sized
+.g2l_blit_none
+    rts
+.g2l_blit_sized
     and #3
     sta g2l_op                   ; copy (op 0) needs no opcode patch
     beq +
@@ -850,6 +859,13 @@ gfx2l_blit
 ; see the CXRF project). No clipping.
 ; ---------------------------------------------------------------------
 gfx2l_blitm
+    ldx X16_P4                  ; zero height or width: nothing to draw
+    beq .g2l_blitm_none
+    ldx X16_P5
+    bne .g2l_blitm_sized
+.g2l_blitm_none
+    rts
+.g2l_blitm_sized
     jsr .addr_calc
     lda X16_P5
     sta g2l_w

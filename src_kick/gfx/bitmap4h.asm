@@ -79,19 +79,32 @@ gfx4h_pal_set:
     sta VERA2_PAL_HI
     rts
 
+// Two source bytes per entry, so a count above 128 overruns an 8-bit Y:
+// walk the pointer one entry at a time instead. Before this, entries 128+
+// re-read the start of the source.
 gfx4h_pal_load:
     cpx #0
     beq gfx4h_pal_load__done
     sta VERA2_PAL_IDX
     stx g4h_n
-    ldy #0
+    lda X16_PTR0                // walk a private copy, so the caller's
+    sta X16_TPTR0               // X16_PTR0 still points at its palette
+    lda X16_PTR0+1
+    sta X16_TPTR0+1
 gfx4h_pal_load__loop:
-    lda (X16_PTR0),y
+    ldy #0
+    lda (X16_TPTR0),y
     sta VERA2_PAL_LO
     iny
-    lda (X16_PTR0),y
+    lda (X16_TPTR0),y
     sta VERA2_PAL_HI
-    iny
+    clc
+    lda X16_TPTR0
+    adc #2
+    sta X16_TPTR0
+    bcc gfx4h_pal_load__nohi
+    inc X16_TPTR0+1
+gfx4h_pal_load__nohi:
     dec g4h_n
     bne gfx4h_pal_load__loop
 gfx4h_pal_load__done:
@@ -764,11 +777,10 @@ bitmap4h_blit_common:
     sta g4h_src
     lda X16_P7
     sta g4h_src+1
-    lda X16_P4
-    clc
-    adc #1
-    lsr
-    sta g4h_rowbytes
+    lda X16_P4                  // rowbytes = ceil(w/2). `adc #1 : lsr` threw
+    lsr                         // the carry away, so the documented maximum
+    adc #0                      // width 255 gave 0 and every row re-read the
+    sta g4h_rowbytes            // first source row.
 gfx4h_blitm__row:
     lda X16_P5
     bne bitmap4h_k15

@@ -65,6 +65,13 @@ FPK_ESIZE  = 40                  ; one cache entry: type, then the name
 FPK_ETYPE  = 0
 FPK_ENAME  = 1
 FPK_MAXENT = 64
+FPK_NMSIZE = 40                  ; fp_nm: one name, or one being typed
+FPK_DIRMAX = 63                  ; the longest path fp_curdir will keep
+FPK_FULLSZ = FPK_DIRMAX+1+FPK_ESIZE-2+1
+                                 ; ...so fp_full has to hold that, a
+                                 ; slash, the longest name a cache entry
+                                 ; can hold, and the terminator. At 64 a
+                                 ; deep directory silently lost its tail.
 FPK_NOBANK = 255                 ; fp_saveunder: keep nothing
 FPK_PTOP   = 3                   ; the panel's first row
 FPK_DBLCLK = 30                  ; jiffies: half a second
@@ -94,9 +101,9 @@ fp_chset    !byte 3             ; PET upper/lower; 255 leaves it alone
 fp_startat  !word 0             ; 0 means "/"
 
 ; ---- state -----------------------------------------------------------
-fp_curdir   !fill 64
-fp_full     !fill 64
-fp_nm       !fill 40
+fp_curdir   !fill FPK_DIRMAX+1
+fp_full     !fill FPK_FULLSZ
+fp_nm       !fill FPK_NMSIZE
 fp_nent     !byte 0
 fp_sel      !byte 0
 fp_top      !byte 0
@@ -794,7 +801,7 @@ fp_match
     stz X16_P0                  ; dir_open with no name: "$"
     stz X16_P1
     stz X16_P2
-    lda #8
+    lda dos_device              ; the same drive the dos_* calls act on
     sta X16_P3
     jsr dir_open
     bcc .hop5
@@ -913,6 +920,11 @@ fp_match
     rts
 
 ; fp_curdir + "/" + the name at X16_P0/P1 -> fp_full
+;
+; The directory half is copied whole. Both .descend and fp_open let
+; fp_curdir grow to 63 characters, so a 40-character bound here quietly
+; cut deep paths in two and handed the caller the name of a file that
+; was never on the drive.
 .make_path
     lda X16_P0
     sta fp_src
@@ -924,7 +936,7 @@ fp_match
     beq .mp_slash
     sta fp_full,y
     iny
-    cpy #40
+    cpy #FPK_DIRMAX
     bne .mp_dir
 .mp_slash
     cpy #0
@@ -953,7 +965,7 @@ fp_match
     sta fp_full,y
     inc fp_tmp
     lda fp_tmp
-    cmp #63
+    cmp #FPK_FULLSZ-1           ; the terminator's own place, always kept
     bcs .mp_end
     inx
     bne .mp_copy
@@ -1061,32 +1073,43 @@ fp_match
 ; =====================================================================
 ; the panel
 ; =====================================================================
+; The panel is measured against the SCREEN, asked for its real size.
+; The mode number was the wrong question: $00 is 80x60 but $01 is 80x30
+; and $04 is 40x15, and reading "anything but $00" as 40x30 drew a
+; half-width panel down the left of an 80x30 screen -- with the pointer
+; penned into that half -- and 22 rows of listing onto a screen with 15.
 .layout
-    jsr screen_get_mode
-    cmp #0
-    bne .ly_small
-    lda #80
-    sta fp_scrw
-    lda #60
-    sta fp_scrh
-    lda #40
-    sta fp_rows
-    lda #6
-    sta fp_left
-    lda #68
-    sta fp_wide
-    rts
-.ly_small
-    lda #40
-    sta fp_scrw
-    lda #30
-    sta fp_scrh
-    lda #22
-    sta fp_rows
+    jsr screen_get_size         ; X = columns, Y = rows
+    stx fp_scrw
+    sty fp_scrh
+    ; 80 columns can afford a margin either side; 40 cannot
     lda #1
+    cpx #64
+    bcc .ly_margin
+    lda #6
+.ly_margin
     sta fp_left
-    lda #38
+    lda fp_scrw
+    sec
+    sbc fp_left
+    sbc fp_left
     sta fp_wide
+    ; the rows: the top margin mirrored at the bottom, less the header
+    ; and the footer, and never more than the 40 the save-under is
+    ; budgeted for
+    lda fp_scrh
+    sec
+    sbc #FPK_PTOP+FPK_PTOP+2
+    bcc .ly_tiny
+    bne .ly_cap
+.ly_tiny
+    lda #1                      ; a screen too short to hold a margin
+.ly_cap
+    cmp #41
+    bcc .ly_rows
+    lda #40
+.ly_rows
+    sta fp_rows
     rts
 
 ; A = row, X = colour: fill one row of the panel
@@ -1546,7 +1569,7 @@ fp_open
     sta fp_dst
     lda #>fp_curdir
     sta fp_dst+1
-    lda #63
+    lda #FPK_DIRMAX
     jsr .put_str
     lda fp_src                  ; and take the drive there
     sta X16_P0
@@ -1556,6 +1579,20 @@ fp_open
     lda X16_P0                  ; dos_chdir wants A/X = name, Y = length
     ldx X16_P1
     jsr dos_chdir
+    bcc .op_dirok
+    ; The drive would not go, and fp_curdir has already been written --
+    ; so the heading would name a directory the drive is not standing
+    ; in, and every path handed back would name a file nobody has. Fall
+    ; back on the root, which is where a caller that named no start
+    ; would have begun anyway.
+    lda #<.root
+    ldx #>.root
+    ldy #1
+    jsr dos_chdir
+    lda #'/'
+    sta fp_curdir
+    stz fp_curdir+1
+.op_dirok
     stz fp_sel
     stz fp_top
     lda #255
@@ -1827,6 +1864,13 @@ fp_redraw
     lda #<fp_nm                 ; A/X = name, Y = length
     ldx #>fp_nm
     jsr dos_chdir
+    bcc .hop17ok
+    ; The drive refused it and is still where it was, so .descend must
+    ; not move our idea of where that is: it updates fp_curdir whatever
+    ; happened, and the panel then listed one directory while its
+    ; heading and every path it handed back named another.
+    jmp .lp_input
+.hop17ok
     lda #<fp_nm
     sta X16_P0
     lda #>fp_nm
@@ -1875,7 +1919,10 @@ fp_redraw
 ; Every one of these ends by re-reading the directory, so the panel is
 ; never showing something the drive no longer has.
 ; =====================================================================
-fp_clip     !fill 64            ; the file 'c' remembered, absolute
+fp_clip     !fill FPK_FULLSZ    ; the file 'c' remembered, absolute -- so
+                                ; it has to be as long as fp_full, or a
+                                ; deep path is remembered short and the
+                                ; paste reads from somewhere else
 fp_clipok   !byte 0
 fp_buf      !fill 256           ; what a copy moves at a time
 fp_elen     !byte 0             ; length of the text being edited
@@ -2114,7 +2161,7 @@ fp_elen     !byte 0             ; length of the text being edited
     sta fp_dst
     lda #>fp_clip
     sta fp_dst+1
-    lda #62
+    lda #FPK_FULLSZ-1
     jsr .put_str
     lda #1
     sta fp_clipok
@@ -2149,9 +2196,20 @@ fp_elen     !byte 0             ; length of the text being edited
     txa
     tay
     ldx #0
+    bra .pa_copy
+    ; A cached name runs to 38 characters and fp_nm holds 40, so the
+    ; ",S,W" the drive needs was written straight through the end of it
+    ; into fp_nent and fp_sel -- and a paste that then failed left the
+    ; panel counting rows that were not there. A name that cannot take
+    ; the suffix is refused instead: truncating it would aim the write
+    ; at some other file entirely.
+.pa_toolong
+    jmp .pa_report
 .pa_copy
     lda fp_clip,y
     beq .pa_suffix
+    cpx #FPK_NMSIZE-5           ; ",S,W" and the terminator still to come
+    bcs .pa_toolong
     sta fp_nm,x
     inx
     iny
@@ -2161,11 +2219,15 @@ fp_elen     !byte 0             ; length of the text being edited
 .pa_swr
     lda .s_swr,y
     beq .pa_named
+    cpx #FPK_NMSIZE-1           ; the terminator's own place
+    bcs .pa_toolong
     sta fp_nm,x
     inx
     iny
     bne .pa_swr
 .pa_named
+    lda #0                      ; the rest of the panel reads fp_nm as a
+    sta fp_nm,x                 ; string, not as name-plus-length
     stx fp_elen
     ; source: the absolute path, read on logical file 4
     lda #<fp_clip
@@ -2182,12 +2244,14 @@ fp_elen     !byte 0             ; length of the text being edited
     sty X16_P2
     lda #4
     sta X16_P3
-    lda #8
+    lda dos_device
     sta X16_P4
-    lda #2
+    lda #2                      ; source reads on drive channel 2
     sta X16_P5
     jsr fio_open_read
-    bcs .pa_failsrc
+    bcc .pa_srcok
+    jmp .pa_failsrc
+.pa_srcok
     ; destination on logical file 5, in whatever directory we are in
     lda #<fp_nm
     sta X16_P0
@@ -2197,10 +2261,12 @@ fp_elen     !byte 0             ; length of the text being edited
     sta X16_P2
     lda #5
     sta X16_P3
-    lda #8
+    lda dos_device
     sta X16_P4
-    lda #2
-    sta X16_P5
+    lda #3                      ; ...the destination MUST use a different
+    sta X16_P5                  ; one: IEC demultiplexes by (device, SA),
+                                ; so opening both on 2 made the second
+                                ; OPEN steal the channel being read
     jsr fio_open_write
     bcs .pa_faildst
 .pa_block
@@ -2214,6 +2280,12 @@ fp_elen     !byte 0             ; length of the text being edited
     beq .pa_full                ; 256 bytes
     jsr READST
     beq .pa_read
+    ; ST is not a yes/no. Bit 6 is the end of the file and every other
+    ; bit is a fault -- a read error or a drive that stopped answering
+    ; came back here as "that was the last block", and the copy wrote a
+    ; half a file and said it had worked.
+    and #$BF
+    bne .pa_faildst
     sty fp_cnt                  ; short block: the last one
     lda #1
     sta fp_tmp
@@ -2231,6 +2303,11 @@ fp_elen     !byte 0             ; length of the text being edited
     iny
     cpy fp_cnt
     bne .pa_out
+    jsr READST                  ; the write side answers too, and nobody
+    and #$BF                    ; was asking: a full card took every byte
+    bne .pa_faildst             ; and kept none of them. Bit 6 is masked
+                                ; because it is the READ side's end of
+                                ; file, which is not an error here.
     lda fp_tmp
     beq .pa_block
     ; done

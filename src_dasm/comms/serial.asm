@@ -94,6 +94,20 @@ SER_SCAN_STEP  = 8              ; UARTs sit on 8-byte boundaries
 ; make a floating bus very unlikely to answer by accident. Interrupts
 ; are held off across the probe so an IRQ handler never sees the UART
 ; mid-fingerprint.
+;
+; IT WRITES TO EVERY CANDIDATE SLOT, not only to the ones that answer:
+; offsets 1, 4 and 7 of all 32 bases from $9F60 to $9FF8 are written
+; before anything is known about what lives there. Whatever else is
+; plugged into that window sees those stores.
+;
+; That matters inside this library: the VERA_2 hi-res card the bitmap8h
+; and bitmap4h engines drive has its registers at $9F60-$9F6B, so a
+; ser_detect on such a machine walks its ID, address-high and palette
+; registers. The two cards want the same addresses and cannot both be
+; fitted, so this is a warning rather than something the probe can avoid
+; -- but do not call ser_detect from a program that also drives VERA_2,
+; and if you know where your UART is, call ser_init with the base
+; instead of scanning for it.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 ser_detect
@@ -231,8 +245,10 @@ ser_init
     ldy #SER_FCR                ; FIFO enable + reset both, RX trigger 8
     lda #$87
     sta (X16_T0),y
-    ldy #SER_MCR                ; DTR+RTS, auto-flow, OUT2 (ZiModem stream)
-    lda #$27
+    ldy #SER_MCR                ; DTR + RTS + OUT1 + auto-flow. The bits
+    lda #$27                    ; are DTR 0, RTS 1, OUT1 2, OUT2 3, LOOP 4,
+                                ; AFE 5 -- so this asserts OUT1, not OUT2
+                                ; as an earlier comment here claimed.
     sta (X16_T0),y
     ldy #SER_IER                ; no interrupts: this module polls
     lda #$00
@@ -400,10 +416,27 @@ ser_read_until
     beq .done
     bra .loop
 .reset
-    lda X16_T4                  ; mismatch: rewind the needle cursor
+    ; The byte that broke the match may START a fresh one -- "OOK\r\n"
+    ; against the needle "OK\r\n". It is already stored, so retest it
+    ; against needle[0] instead of reading past it; dropping it missed
+    ; every terminator preceded by its own prefix, and the caller could
+    ; not tell the unmatched buffer from a matched one.
+    pha
+    lda X16_P6                  ; already at needle[0]? then this byte
+    cmp X16_T4                  ; really cannot start a match
+    bne .rewind
+    lda X16_P7
+    cmp X16_T5
+    beq .drop
+.rewind
+    lda X16_T4
     sta X16_P6
     lda X16_T5
     sta X16_P7
+    pla
+    bra .cmp
+.drop
+    pla
     bra .loop
 .done
     rts
@@ -423,6 +456,7 @@ ser_discard_until
     sta X16_P7
 .loop
     jsr ser_get_wait
+.test                           ; re-entered with the byte still in A
     cmp (X16_P6)
     bne .reset
     inc X16_P6
@@ -433,10 +467,26 @@ ser_discard_until
     beq .done                   ; hit the NUL: whole needle matched
     bra .loop
 .reset
+    ; The byte that broke the match may START a fresh one -- "OOK\r\n"
+    ; against the needle "OK\r\n". Dropping it and reading the next byte
+    ; missed every terminator preceded by its own prefix, and with no
+    ; byte limit this routine then blocked forever.
+    pha
+    lda X16_P6                  ; already at needle[0]? then this byte
+    cmp X16_T4                  ; really cannot start a match
+    bne .rewind
+    lda X16_P7
+    cmp X16_T5
+    beq .drop
+.rewind
     lda X16_T4
     sta X16_P6
     lda X16_T5
     sta X16_P7
+    pla
+    bra .test
+.drop
+    pla
     bra .loop
 .done
     rts

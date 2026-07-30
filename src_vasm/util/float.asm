@@ -31,6 +31,26 @@
 ; --- cost ------------------------------------------------------------
 ; Every call crosses a ROM bank via jsrfar, which is not free. For hot
 ; per-frame maths prefer util/fixed.asm (8.8) or util/int32.asm.
+;
+; --- DOMAIN ERRORS DO NOT RETURN -------------------------------------
+; These are bindings to BASIC's FP package, and BASIC reports arithmetic
+; errors by jumping to its error handler, which resets the stack and warm
+; starts BASIC -- your program ends with a READY prompt. The jsrfar frame
+; is abandoned, so there is no carry to test and nothing to catch: the
+; call simply never comes back. Verified in the shipped ROM (fdivt's
+; zero-divisor path and ayint's range check both reach BASIC's ERROR).
+;
+; Screen the operand yourself before calling:
+;   f_div, f_rdiv     divisor of 0            -> ?DIVISION BY ZERO
+;   f_to_s16          |FAC| > 32767           -> ?ILLEGAL QUANTITY
+;   f_ln              FAC <= 0                -> ?ILLEGAL QUANTITY
+;   f_sqrt            FAC < 0                 -> ?ILLEGAL QUANTITY
+;   f_pow             negative base, and 0^0  -> ?ILLEGAL QUANTITY
+;   f_add/f_sub/f_mul/f_div/f_exp/f_pow  a result past ~1.7e38
+;                                             -> ?OVERFLOW
+; f_cmp, f_sgn, f_abs, f_int, f_neg and the conversions from integers
+; cannot fail. util/double.asm is the alternative when a wrong answer is
+; better than a dead program: it returns inf/NaN instead of ending the run.
 ; =====================================================================
 
 ; (zone: locals promoted to globals in vasm)
@@ -77,7 +97,10 @@ f_sgn
 ; ---------------------------------------------------------------------
 ; f_from_u8  -- in: A = 0..255.            FAC = A
 ; f_from_s16 -- in: A = low, X = high.     FAC = the signed value
-; f_to_s16   -- out: A = low, X = high.    Rounds toward zero.
+; f_to_s16   -- out: A = low, X = high.    FLOORS: the ROM's qint
+;               two's-complements a negative FAC and then shifts right,
+;               so -2.5 comes back as -3, not -2. |FAC| > 32767 does not
+;               return at all -- see the header.
 ;
 ; fp_givayf wants the high byte in A and the low byte in Y, the reverse
 ; of this library's usual A = low convention, so swap on the way in.

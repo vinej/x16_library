@@ -242,10 +242,12 @@ psg_env_tick
 
 @sustain
     lda env_sus,x
-    cmp #255
-    beq @next                   ; 255: hold until psg_env_release
-    dec env_sus,x
+    beq @sus_over               ; 0 = release immediately, as documented.
+    cmp #255                    ; Decrementing first wrapped it to 255 --
+    beq @next                   ; which IS the hold-forever sentinel, so
+    dec env_sus,x               ; the note never released.
     bne @next
+@sus_over
     lda #3                      ; sustain over: release
     sta env_stage,x
     bra @next                   ; volume unchanged this tick

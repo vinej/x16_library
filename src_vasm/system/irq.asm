@@ -95,6 +95,20 @@ irq_handler
 .no_aflow
     endif
 
+    ; VSYNC may have asserted while a LINE or SPRCOL callback was running.
+    ; The snapshot above predates it, and the KERNAL we chain to acks it
+    ; without telling us -- so with a line handler near the bottom of the
+    ; frame the counter stopped advancing and vsync_wait hung. Re-read the
+    ; live ISR, and count it only if this pass has not counted one already
+    ; (a VSYNC seen at entry is still asserted here: we do not ack it).
+    lda irq_isr
+    and #VERA_IRQ_VSYNC
+    bne .counted
+    lda VERA_ISR
+    and #VERA_IRQ_VSYNC
+    beq .counted
+    inc irq_frame_count
+.counted
     jmp (irq_old_vector)
 
 irq_call_line

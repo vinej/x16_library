@@ -14,6 +14,11 @@
 ;   - bitmap8l (8bpp): predefine SHP_PSET / SHP_HLINE to small shims that
 ;     move the colour from A into X16_P3 (where gfx8l_pset wants it), then
 ;     jmp gfx8l_pset / gfx8l_hline; SHP_READ = gfx8l_read; SHP_W/H = 320/240.
+;     That shim CANNOT clip on its own: shapes pass a 16-bit y in P2/P3
+;     while gfx8l_pset reads y from P2 alone, so a shape crossing the top
+;     or bottom edge arrives with the low byte of a y that is out of
+;     range and plots on the wrong row. A shim for this engine must
+;     reject P3 != 0 (and y >= 240) itself before jumping.
 ;   - CXRF points them at its graphics port and gets every mode at once.
 ;
 ;   SHP_PSET   pset:  P0/P1 = x, P2/P3 = y, A = colour (must clip)
@@ -22,7 +27,13 @@
 ;   SHP_W/H    the ADDRESS of a little-endian word: canvas w / h
 ;
 ; The P block is reloaded before every call, so the bound routines may
-; clobber it freely; X16_T0..T7 are never touched here.
+; clobber it freely. A bound SHP_HLINE must also accept a length of 0 as
+; "draw nothing": shape_frrect emits one when a corner radius swallows a
+; two-pixel side. Both stock engines already do.
+;
+; This file uses X16_T0/T1 in shape_frrect's span setup, and nothing else
+; from the T block; no T value is ever held across a call to a bound
+; routine.
 ;
 ;   shape_circle  in: P0/P1 = cx, P2/P3 = cy, P4 = r (0-255), A = colour
 ;                 An outline, by the midpoint walk, plotted with
@@ -62,6 +73,12 @@ shape_disc
 	sta .efl
 .cgo
 	jsr .take_cxy               ; cx/cy out of the P block, x=r, y=0
+	lda .x                      ; r = 0 is a single pixel. The walk below
+	bne .cloop                  ; would `dec .x` from 0 to 255 and then
+	sta .a                      ; plot ~180 pairs at cx +/- 255 -- for a
+	sta .b                      ; disc, unclipped spans 511 px wide.
+	jsr .eplot
+	rts
 .cloop
 	lda .y                      ; while y <= x
 	cmp .x
@@ -499,6 +516,14 @@ shape_flood
 	lda #0
 	sta .ovf
 	sta .sp
+	lda X16_P0                  ; take the seed BEFORE the read: the
+	sta .qx                     ; binding contract at the top of this file
+	lda X16_P1                  ; lets SHP_READ clobber the P block, and
+	sta .qx+1                   ; reading the coordinates back afterwards
+	lda X16_P2                  ; would then start the fill somewhere else
+	sta .qy
+	lda X16_P3
+	sta .qy+1
 	jsr SHP_READ                ; the target = the seed's own colour
 	                            ; (read at the CALLER's P block)
 	sta .tgt
@@ -507,14 +532,6 @@ shape_flood
 	clc                         ; (no overflow could have happened yet)
 	rts
 .fseed
-	lda X16_P0                  ; push the seed
-	sta .qx
-	lda X16_P1
-	sta .qx+1
-	lda X16_P2
-	sta .qy
-	lda X16_P3
-	sta .qy+1
 	jsr .push
 .floop
 	lda .sp                     ; stack empty: finished
@@ -701,33 +718,28 @@ shape_flood
 	lda #1                      ; remembered; lsr at exit -> carry
 	sta .ovf
 	rts
-+	asl                         ; sp * 4
-	asl
-	tax
-	lda .qx
-	sta .stk,x
-	lda .qx+1
-	sta .stk+1,x
++	tax                         ; four parallel arrays indexed by sp, NOT
+	lda .qx                     ; one array at sp*4: 96 seeds is 384 bytes,
+	sta .stkxl,x                ; so that byte offset wrapped and slots
+	lda .qx+1                   ; 64-95 aliased onto 0-31, silently
+	sta .stkxh,x                ; overwriting seeds still to be filled
 	lda .qy
-	sta .stk+2,x
+	sta .stkyl,x
 	lda .qy+1
-	sta .stk+3,x
+	sta .stkyh,x
 	inc .sp
 	rts
 
 .pop                            ; the top seed -> (.qx,.qy)
 	dec .sp
-	lda .sp
-	asl
-	asl
-	tax
-	lda .stk,x
+	ldx .sp
+	lda .stkxl,x
 	sta .qx
-	lda .stk+1,x
+	lda .stkxh,x
 	sta .qx+1
-	lda .stk+2,x
+	lda .stkyl,x
 	sta .qy
-	lda .stk+3,x
+	lda .stkyh,x
 	sta .qy+1
 	rts
 
@@ -769,7 +781,10 @@ shape_flood
 .row !word 0
 .tx  !word 0
 .run !byte 0
-.stk !fill FLOOD_MAX * 4, 0
+.stkxl !fill FLOOD_MAX, 0
+.stkxh !fill FLOOD_MAX, 0
+.stkyl !fill FLOOD_MAX, 0
+.stkyh !fill FLOOD_MAX, 0
 
 ; ---------------------------------------------------------------------
 ; shape_polygon / shape_fpolygon -- regular convex polygons (X16_USE_SHAPES_POLY)
@@ -1584,6 +1599,13 @@ poly_prod  !fill 4, 0
 ;
 ;   in: shl_x0/shl_y0 -> shl_x1/shl_y1 (signed words), shl_col = colour
 ;       draws through SHP_PSET, so it clips wherever pset clips.
+;
+; The error term is a signed word carrying dx + |dy|, so the endpoints
+; must satisfy |dx| + |dy| <= 16383. Past that e2 = 2*err wraps, the walk
+; loses its way, and since it only stops on x == x1 AND y == y1 it can
+; run for a very long time. The shapes here stay inside cx +/- 255; a
+; direct caller (or shape_bezier with far-flung control points) must
+; clip its own coordinates first.
 ; ---------------------------------------------------------------------
 !ifdef X16_USE_SHP_LINE {
 
@@ -1924,27 +1946,35 @@ shape_frrect
 	bvc +
 	eor #$80
 +	bmi .rr_hsd
-	lda X16_P2                  ; hold the row (pset reloads P0..P3)
-	sta rr_ry
-	lda X16_P3
-	sta rr_ry+1
+	lda X16_P2                  ; hold the row AND the x cursor: the
+	sta rr_ry                   ; binding contract at the top of this file
+	lda X16_P3                  ; lets SHP_PSET clobber the whole P block,
+	sta rr_ry+1                 ; so reading P0/P1 back after the call --
+	lda X16_P0                  ; and testing it for equality against cxr --
+	sta rr_cur                  ; could loop forever on a binding that
+	lda X16_P1                  ; rewrites them
+	sta rr_cur+1
 .rr_hsl
+	lda rr_cur
+	sta X16_P0
+	lda rr_cur+1
+	sta X16_P1
 	lda rr_ry
 	sta X16_P2
 	lda rr_ry+1
 	sta X16_P3
 	lda rr_col
 	jsr SHP_PSET
-	lda X16_P0                  ; at cxr ?
+	lda rr_cur                  ; at cxr ?
 	cmp rr_cxr
 	bne .rr_hsn
-	lda X16_P1
+	lda rr_cur+1
 	cmp rr_cxr+1
 	beq .rr_hsd
 .rr_hsn
-	inc X16_P0
+	inc rr_cur
 	bne .rr_hsl
-	inc X16_P1
+	inc rr_cur+1
 	bra .rr_hsl
 .rr_hsd
 	rts
@@ -1959,39 +1989,46 @@ shape_frrect
 	bvc +
 	eor #$80
 +	bmi .rr_vsd
-	lda X16_P0
-	sta rr_rx
+	lda X16_P0                  ; hold the column AND the y cursor, for the
+	sta rr_rx                   ; reason .rr_hspan gives above
 	lda X16_P1
 	sta rr_rx+1
 	lda rr_cyt
-	sta X16_P2
+	sta rr_cur
 	lda rr_cyt+1
-	sta X16_P3
+	sta rr_cur+1
 .rr_vsl
 	lda rr_rx
 	sta X16_P0
 	lda rr_rx+1
 	sta X16_P1
+	lda rr_cur
+	sta X16_P2
+	lda rr_cur+1
+	sta X16_P3
 	lda rr_col
 	jsr SHP_PSET
-	lda X16_P2                  ; at cyb ?
+	lda rr_cur                  ; at cyb ?
 	cmp rr_cyb
 	bne .rr_vsn
-	lda X16_P3
+	lda rr_cur+1
 	cmp rr_cyb+1
 	beq .rr_vsd
 .rr_vsn
-	inc X16_P2
+	inc rr_cur
 	bne .rr_vsl
-	inc X16_P3
+	inc rr_cur+1
 	bra .rr_vsl
 .rr_vsd
 	rts
 
 ; walk the quarter circle once; each octant point plots at all 4 corners
 .rr_corners
-	lda rr_r                    ; x = r, y = 0, err = 1 - r
-	sta rr_wx
+	lda rr_r
+	bne .rr_cinit               ; r = 0: no arc to walk. The straight spans
+	rts                         ; already cover the corner pixels, and the
+.rr_cinit                       ; walk would `dec rr_wx` from 0 to 255.
+	sta rr_wx                   ; x = r, y = 0, err = 1 - r
 	stz rr_wy
 	sec
 	lda #1
@@ -2220,8 +2257,9 @@ shape_frrect
 	bne .rr_bz
 	lda rr_r                    ; ext[0] = r
 	sta rr_ext
-	lda rr_r                    ; walk the quarter circle
-	sta rr_wx
+	beq .rr_bwd                 ; r = 0: ext[] stays all zero, and the walk
+	lda rr_r                    ; would `dec rr_wx` from 0 to 255
+	sta rr_wx                   ; walk the quarter circle
 	stz rr_wy
 	sec
 	lda #1
@@ -2270,6 +2308,7 @@ rr_cyb  !word 0
 rr_m    !word 0
 rr_ry   !word 0
 rr_rx   !word 0
+rr_cur  !word 0                 ; span cursor, held across SHP_PSET
 rr_ins  !word 0
 rr_ca   !byte 0
 rr_cb   !byte 0

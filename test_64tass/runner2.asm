@@ -29,6 +29,7 @@ X16_USE_STRING_FIND = 1         ; searching
 X16_USE_STRING_SLICE = 1        ; substrings
 X16_USE_STRING_SORT = 1         ; sort an array of string pointers
 X16_USE_SCREEN_EXTRA = 1        ; screen_addr / screen_scode / screen_blit
+X16_USE_SPRITE = 1              ; sprite_get_pos' signed round trip
 X16_USE_LOAD = 1                ; fs_save, to lay down a file to find
 X16_USE_DOS = 1                 ; mkdir/chdir around the directory tests
 X16_USE_DIR = 1                 ; reading a directory listing
@@ -124,6 +125,12 @@ main
     jsr test_bmx_lasterr
     jsr test_dir_reads
     jsr test_dir_chdir
+    jsr test_str_petscii_class
+    jsr test_str_case_hibyte
+    jsr test_str_append_self
+    jsr test_ring_full_edge
+    jsr test_shape_r0
+    jsr test_sprite_pos_signed
 
     jsr t_summary
     rts
@@ -3011,5 +3018,254 @@ _gone_len  = 10
 _bmx       .text "TESTOUT.BMX"
 _bmx_len   = 11
 _name      .text "BMX_LASTERR", $00
+
+; =====================================================================
+; PETSCII case classification. PETSCII puts lower case at 65-90 and
+; upper at 97-122 / 193-218 -- the folding routines have always agreed,
+; but str_islower tested 97-122, the SAME set as str_isupper, so no
+; lower-case letter answered yes and str_isletter rejected ordinary
+; PETSCII text outright.
+; =====================================================================
+test_str_petscii_class
+    lda #65                     ; 'A' as PETSCII writes lower case
+    jsr str_islower
+    bcc _fail
+    lda #97                     ; 97-122 is upper here, not lower
+    jsr str_islower
+    bcs _fail
+    lda #65
+    jsr str_isletter
+    bcc _fail
+    lda #218                    ; the second upper range
+    jsr str_isletter
+    bcc _fail
+    lda #'a'                    ; ISO keeps 'a'-'z' lower
+    jsr str_islower_iso
+    bcc _fail
+    lda #$C0                    ; and folds the accented capitals
+    jsr str_isupper_iso
+    bcc _fail
+    lda #$D7                    ; ...but the multiplication sign is
+    jsr str_isupper_iso         ; punctuation, not a letter
+    bcs _fail
+    lda #0
+    bra _report
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "STR_PETSCII_CLASS", 0
+
+; =====================================================================
+; str_lowerchar used to start with an unconditional `and #$7f`, which
+; turned $80 into $00: str_lower wrote a terminator into the middle of
+; the string, and str_compare_nocase then walked off the end of the
+; shorter operand comparing whatever followed it.
+; =====================================================================
+test_str_case_hibyte
+    lda #$80
+    jsr str_lowerchar
+    cmp #$80                    ; a control code is not a letter
+    bne _fail
+    lda #$A0                    ; shift-space, likewise untouched
+    jsr str_lowerchar
+    cmp #$A0
+    bne _fail
+    lda #193                    ; but 193-218 really is upper case
+    jsr str_lowerchar
+    cmp #65
+    bne _fail
+
+    lda #<_hi                   ; the string keeps its length and its $80
+    ldx #>_hi
+    jsr str_lower
+    cpy #4
+    bne _fail
+    lda _hi+2
+    cmp #$80
+    bne _fail
+    lda _hi+3                   ; the tail survived the fold
+    cmp #67
+    bne _fail
+
+    lda #<_s1                   ; s1 is longer, so it sorts after s2
+    ldx #>_s1
+    lda #<_s2
+    sta X16_P0
+    lda #>_s2
+    sta X16_P1
+    lda #<_s1
+    ldx #>_s1
+    jsr str_compare_nocase
+    cmp #1
+    bne _fail
+    lda #0
+    bra _report
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_hi   .byte 97, 98, $80, 99, 0
+_s1   .byte 65, 66, $80, 88, 0
+_s2   .byte 65, 66, 0
+_name .text "STR_CASE_HIBYTE", 0
+
+; =====================================================================
+; Appending a string to itself: the copy overwrites the suffix's own
+; terminator with its first byte, so a copy-until-NUL loop never saw the
+; end and sprayed 256 bytes past the buffer.
+; =====================================================================
+test_str_append_self
+    lda #<_buf                  ; suffix and target are the same string
+    sta X16_P0
+    lda #>_buf
+    sta X16_P1
+    lda #<_buf
+    ldx #>_buf
+    jsr str_append
+    cmp #6                      ; "abc" + "abc"
+    bne _fail
+    lda _buf+3
+    cmp #'a'
+    bne _fail
+    lda _buf+5
+    cmp #'c'
+    bne _fail
+    lda _buf+6                  ; terminated, and nothing beyond it
+    bne _fail
+    lda _buf+7
+    cmp #$5A
+    bne _fail
+    lda #0
+    bra _report
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_buf   .text "abc", 0
+       .fill 4, $5A             ; a guard the old 256-byte run walked over
+_name  .text "STR_APPEND_SELF", 0
+
+; =====================================================================
+; ring_isfull has to arm while two bytes still fit, or a caller that
+; obeys it can drive ring_putw one word past the end and leave
+; ring_free reporting $FFFF.
+; =====================================================================
+test_ring_full_edge
+    lda #6
+    jsr ring_init
+_fill                           ; exactly the guarded pattern a caller
+    jsr ring_isfull             ; writes: put a word while one still fits
+    bcs _atcap
+    lda #$11
+    ldx #$22
+    jsr ring_putw
+    bra _fill
+_atcap
+    jsr ring_free
+    cpx #0                      ; the count must not have run past the
+    bne _fail                   ; end and underflowed free to $FFFF
+    cmp #2                      ; and at most one odd byte can be left
+    bcs _fail
+    lda #0
+    bra _report
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "RING_FULL_EDGE", 0
+
+; =====================================================================
+; A radius of 0 is documented and degenerate: one pixel. The midpoint
+; walk stepped x from 0 to 255 and sprayed plots (and, for a disc,
+; unclipped 511-pixel spans) right across VRAM.
+; =====================================================================
+test_shape_r0
+    lda #100
+    jsr shp_clear40
+    lda #120
+    sta X16_P0
+    stz X16_P1
+    lda #120
+    sta X16_P2
+    stz X16_P3
+    stz X16_P4                  ; r = 0
+    lda #3
+    jsr shape_circle
+    ldy #1
+    lda #120                    ; the centre is the whole circle
+    ldx #120
+    jsr shp_rd
+    cmp #3
+    bne _report
+    lda #130                    ; and nothing else in the patch moved
+    ldx #120
+    jsr shp_rd
+    bne _report
+    lda #110
+    ldx #125
+    jsr shp_rd
+    bne _report
+    ldy #0
+_report
+    tya
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "SHAPE_R0", 0
+
+; =====================================================================
+; A negative sprite position must survive the round trip: VERA stores
+; the 10-bit coordinate in two's complement, so sprite_get_pos has to
+; sign extend it back to 16 bits instead of reporting -5 as 1019.
+; =====================================================================
+test_sprite_pos_signed
+    jsr sprite_init_all
+    lda #<-5
+    sta X16_P0
+    lda #>-5
+    sta X16_P1
+    lda #<-300
+    sta X16_P2
+    lda #>-300
+    sta X16_P3
+    ldx #4
+    jsr sprite_pos
+
+    stz X16_P0
+    stz X16_P1
+    stz X16_P2
+    stz X16_P3
+    ldx #4
+    jsr sprite_get_pos
+    lda X16_P0
+    cmp #<-5
+    bne _fail
+    lda X16_P1
+    cmp #>-5
+    bne _fail
+    lda X16_P2
+    cmp #<-300
+    bne _fail
+    lda X16_P3
+    cmp #>-300
+    bne _fail
+    lda #0
+    bra _report
+_fail
+    lda #1
+_report
+    ldx #<_name
+    ldy #>_name
+    jmp t_result
+_name .text "SPRITE_POS_SIGNED", 0
 
 .include "x16_code.asm"

@@ -55,13 +55,40 @@ str_isxdigit
     rts
 
 ; ---------------------------------------------------------------------
-; str_islower -- carry set if A is 'a'..'z' (97-122). Same either encoding.
+; str_islower -- PETSCII: the lower-case range, 65-90.
+;
+; PETSCII puts lower case where ASCII puts upper: str_upperchar folds
+; 65-90 UP to 97-122, and str_isupper answers for 97-122 / 193-218. This
+; used to test 97-122 -- the same set as str_isupper, so a character
+; could be both, and no PETSCII lower-case letter answered yes.
 ; ---------------------------------------------------------------------
 str_islower
+    cmp #65
+    bcc .no
+    cmp #90+1
+    bcs .no
+    sec
+    rts
+.no
+    clc
+    rts
+
+; ---------------------------------------------------------------------
+; str_islower_iso -- ISO: 'a'..'z' (97-122) and the accented smalls
+;   ($E0-$FE, less $F7 division sign) -- the set str_upperchar_iso folds
+; ---------------------------------------------------------------------
+str_islower_iso
     cmp #'a'
     bcc .no
     cmp #'z'+1
+    bcc .yes
+    cmp #$E0
+    bcc .no
+    cmp #$FE+1
     bcs .no
+    cmp #$F7
+    beq .no
+.yes
     sec
     rts
 .no
@@ -88,13 +115,21 @@ str_isupper
     rts
 
 ; ---------------------------------------------------------------------
-; str_isupper_iso -- ISO: 'A'..'Z' (65-90)
+; str_isupper_iso -- ISO: 'A'..'Z' (65-90) and the accented capitals
+;   ($C0-$DE, less $D7 multiplication sign)
 ; ---------------------------------------------------------------------
 str_isupper_iso
     cmp #'A'
     bcc .no
     cmp #'Z'+1
+    bcc .yes
+    cmp #$C0
+    bcc .no
+    cmp #$DE+1
     bcs .no
+    cmp #$D7
+    beq .no
+.yes
     sec
     rts
 .no
@@ -103,6 +138,7 @@ str_isupper_iso
 
 ; ---------------------------------------------------------------------
 ; str_isletter -- PETSCII: a lower- or upper-case letter
+;   (65-90 lower, plus 97-122 and 193-218 upper)
 ; ---------------------------------------------------------------------
 str_isletter
     jsr str_islower
@@ -115,7 +151,7 @@ str_isletter
 ; str_isletter_iso -- ISO: a lower- or upper-case letter
 ; ---------------------------------------------------------------------
 str_isletter_iso
-    jsr str_islower
+    jsr str_islower_iso
     bcs .yes
     jmp str_isupper_iso
 .yes

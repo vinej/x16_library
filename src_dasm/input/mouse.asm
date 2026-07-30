@@ -63,7 +63,16 @@ mse_get
     jmp MOUSE_GET
 
 ; ---------------------------------------------------------------------
-; mse_show -- show and select cursor sprite A, keeping current bounds
+; The KERNAL reads X/Y as the mouse field size, and X = Y = 0 means "use
+; the current screen mode's dimensions" -- it does NOT mean "leave the
+; field alone". These three therefore RESET a custom field set with
+; mse_config back to the full screen; there is no KERNAL call that
+; changes visibility while preserving it. A program that restricted the
+; pointer must call mse_config again after showing or hiding it.
+; ---------------------------------------------------------------------
+
+; ---------------------------------------------------------------------
+; mse_show -- show and select cursor sprite A; resets the field (above)
 ; ---------------------------------------------------------------------
     SUBROUTINE
 mse_show
@@ -72,7 +81,8 @@ mse_show
     jmp MOUSE_CONFIG
 
 ; ---------------------------------------------------------------------
-; mse_show_keep -- show mouse without changing cursor sprite or bounds
+; mse_show_keep -- show mouse without changing the cursor sprite;
+;                  resets the field (above)
 ; ---------------------------------------------------------------------
     SUBROUTINE
 mse_show_keep
@@ -82,7 +92,7 @@ mse_show_keep
     jmp MOUSE_CONFIG
 
 ; ---------------------------------------------------------------------
-; mse_hide -- hide mouse, keeping current bounds
+; mse_hide -- hide mouse; resets the field (above)
 ; ---------------------------------------------------------------------
     SUBROUTINE
 mse_hide

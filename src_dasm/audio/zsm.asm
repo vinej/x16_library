@@ -55,6 +55,9 @@ ZSM_PCM_STEREO     = %00010000
 ; ---------------------------------------------------------------------
     SUBROUTINE
 zsm_init
+    lda #ZSM_FLAG_ACTIVE        ; stop first: an IRQ-driven zsm_tick must
+    trb zsm_flags               ; not run while these pointers are half
+                                ; written. zsm_play resumes, .state arms.
     lda r0L
     sta zsm_baseL
     lda r0H
@@ -63,11 +66,14 @@ zsm_init
     ldy #0
     lda (r0),y
     cmp #'z
-    bne .magic
+    bne .badmagic
     iny
     lda (r0),y
     cmp #'m
-    bne .magic
+    beq .goodmagic
+.badmagic                       ; trampoline: the error tail sits just past
+    bra .magic                  ; branch range from the first test
+.goodmagic
 
     ldy #2
     lda (r0),y
@@ -118,6 +124,7 @@ zsm_init
     lda zsm_baseH
     adc X16_T1
     sta zsm_loopH
+    bcs .range                  ; base + loop offset left the address space
     lda #(ZSM_FLAG_ACTIVE | ZSM_FLAG_LOOP)
     bra .state
 .noloop
@@ -160,6 +167,8 @@ zsm_init
 ; ---------------------------------------------------------------------
     SUBROUTINE
 zsm_init_stream
+    lda #ZSM_FLAG_ACTIVE        ; as zsm_init: stop before the pointers move
+    trb zsm_flags
     lda r0L
     sta zsm_baseL
     sta zsm_ptrL
@@ -209,10 +218,16 @@ zsm_stop
     jsr pcm_stream_stop
     stz VERA_AUDIO_RATE
     ENDIF
+    ; Silence what the stream left sounding. A PSG voice is a free-running
+    ; oscillator and a keyed-on YM channel sustains, so stopping mid-note
+    ; without this leaves 24 channels audible forever.
+    jsr zsm_silence
     rts
 
     SUBROUTINE
 zsm_rewind
+    php                         ; the pointer is two bytes; an IRQ-driven
+    sei                         ; tick must not read it half rewound
     lda zsm_startL
     sta zsm_ptrL
     lda zsm_startH
@@ -220,6 +235,38 @@ zsm_rewind
     stz zsm_delay
     lda #ZSM_FLAG_EOF
     trb zsm_flags
+    plp
+    rts
+
+; ---------------------------------------------------------------------
+; zsm_silence -- key off all 8 YM channels and mute all 16 PSG voices.
+;   Clobbers A, X, Y, X16_T0/T1, and VERA's ADDRSEL + data port 0
+;   address (through zsm_psg_write).
+; ---------------------------------------------------------------------
+    SUBROUTINE
+zsm_silence
+    stz zsm_tmp                 ; YM $08 = key on/off: slots 6:3 clear
+.ym                             ; releases all four operators of channel A
+    lda zsm_tmp
+    ldx #$08
+    jsr zsm_ym_write
+    inc zsm_tmp
+    lda zsm_tmp
+    cmp #8
+    bne .ym
+
+    lda #2                      ; PSG volume byte of voice v is v*4 + 2
+    sta zsm_tmp
+.psg
+    ldx zsm_tmp
+    lda #0
+    jsr zsm_psg_write
+    lda zsm_tmp
+    clc
+    adc #4
+    sta zsm_tmp
+    cmp #(16*4 + 2)             ; past the last voice
+    bne .psg
     rts
 
 ; ---------------------------------------------------------------------
@@ -258,6 +305,12 @@ zsm_lasterr
 ; ---------------------------------------------------------------------
 ; zsm_tick -- advance playback by one player tick
 ;   out: A = ZSM_FLAG_* bits, carry set if still active
+;
+; Clobbers A, X, Y, X16_T0/T1, VERA's ADDRSEL and the data port 0
+; address (it writes PSG registers through VRAM), and with X16_USE_ZSM_PCM
+; also X16_P0-P3 and VERA_AUDIO_CTRL/AUDIO_RATE. Driving this from an IRQ
+; means saving whatever VERA state the interrupted code was using -- see
+; system/irq.asm's callback rules.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 zsm_tick
@@ -266,8 +319,8 @@ zsm_tick
     beq .inactive
     lda zsm_delay
     beq .commands
-    dec zsm_delay
-    bra zsm_status
+    dec zsm_delay               ; the tick that reaches 0 runs the commands:
+    bne zsm_status              ; a delay of n must wait n ticks, not n+1
 .commands
     jsr zsm_next
     cmp #$40
@@ -304,16 +357,16 @@ zsm_tick
 
 .ext
     jsr zsm_next
-    sta X16_T0                  ; ccnnnnnn
+    pha                         ; ccnnnnnn: channel 7:6, payload length 5:0
     and #$3f
-    sta X16_T1                  ; remaining payload length
-    lda X16_T0
+    sta zsm_extlen              ; NOT X16_T1 -- zsm_next stores the stream
+    pla                         ; pointer through X16_TPTR0, which IS T0/T1
     and #%11000000
     bne .skip_ext
     jsr zsm_ext_pcm
     bra .commands
 .skip_ext
-    jsr zsm_skip_t1
+    jsr zsm_skip_ext
     bra .commands
 
 .eof
@@ -352,16 +405,16 @@ zsm_next_done
     rts
 
 ; ---------------------------------------------------------------------
-; zsm_skip_t1 -- skip X16_T1 stream bytes
+; zsm_skip_ext -- skip zsm_extlen stream bytes
 ; ---------------------------------------------------------------------
     SUBROUTINE
-zsm_skip_t1
-    lda X16_T1
+zsm_skip_ext
+    lda zsm_extlen
     beq zsm_skip_done
     SUBROUTINE
 zsm_skip_loop
     jsr zsm_next
-    dec X16_T1
+    dec zsm_extlen
     bne zsm_skip_loop
     SUBROUTINE
 zsm_skip_done
@@ -369,21 +422,21 @@ zsm_skip_done
 
 ; ---------------------------------------------------------------------
 ; zsm_ext_pcm -- handle EXTCMD channel 0 command/argument pairs
-;   X16_T1 = payload length. Unknown/truncated commands are consumed.
+;   zsm_extlen = payload length. Unknown/truncated commands are consumed.
 ; ---------------------------------------------------------------------
     SUBROUTINE
 zsm_ext_pcm
-    lda X16_T1
+    lda zsm_extlen
     beq zsm_ext_pcm_done
     SUBROUTINE
 zsm_ext_pcm_loop
     jsr zsm_next
     tax                         ; command
-    dec X16_T1
+    dec zsm_extlen
     beq zsm_ext_pcm_done        ; truncated command: consumed
     jsr zsm_next
     tay                         ; argument
-    dec X16_T1
+    dec zsm_extlen
     txa
     beq zsm_ext_pcm_ctrl
     cmp #1
@@ -414,7 +467,7 @@ zsm_ext_pcm_trigger
     ENDIF
     SUBROUTINE
 zsm_ext_pcm_next
-    lda X16_T1
+    lda zsm_extlen
     bne zsm_ext_pcm_loop
     SUBROUTINE
 zsm_ext_pcm_done
@@ -554,18 +607,20 @@ zsm_pcm_trigger
     beq .index_ok
     rts
 .index_ok
-    ; instrument pointer = header + 4 + index*16
+    ; instrument pointer = header + 4 + index*16.  The offset cannot live
+    ; in X16_T1/T2: X16_TPTR0 IS X16_T0/T1, so building the pointer below
+    ; would overwrite it a instruction before it is added.
     lda X16_T0
-    sta X16_T1
-    stz X16_T2
-    asl X16_T1
-    rol X16_T2
-    asl X16_T1
-    rol X16_T2
-    asl X16_T1
-    rol X16_T2
-    asl X16_T1
-    rol X16_T2
+    sta zsm_ofsL
+    stz zsm_ofsH
+    asl zsm_ofsL
+    rol zsm_ofsH
+    asl zsm_ofsL
+    rol zsm_ofsH
+    asl zsm_ofsL
+    rol zsm_ofsH
+    asl zsm_ofsL
+    rol zsm_ofsH
     clc
     lda zsm_pcm_hdrL
     adc #4
@@ -575,10 +630,10 @@ zsm_pcm_trigger
     sta X16_TPTR0+1
     clc
     lda X16_TPTR0
-    adc X16_T1
+    adc zsm_ofsL
     sta X16_TPTR0
     lda X16_TPTR0+1
-    adc X16_T2
+    adc zsm_ofsH
     sta X16_TPTR0+1
 
     ldy #1
@@ -711,6 +766,10 @@ zsm_tickH  dc.b 0
 zsm_delay  dc.b 0
     SUBROUTINE
 zsm_flags  dc.b 0
+    SUBROUTINE
+zsm_extlen dc.b 0              ; EXTCMD payload bytes still to consume
+    SUBROUTINE
+zsm_tmp    dc.b 0              ; zsm_silence's channel/voice walker
     IFCONST X16_USE_ZSM_PCM
     SUBROUTINE
 zsm_pcm_hdrL  dc.b 0
@@ -726,6 +785,10 @@ zsm_pcm_last  dc.b 0
 zsm_pcm_rate  dc.b 0
     SUBROUTINE
 zsm_pcm_flags dc.b 0
+    SUBROUTINE
+zsm_ofsL      dc.b 0           ; instrument index * 16
+    SUBROUTINE
+zsm_ofsH      dc.b 0
     ENDIF
 
 ; (end zone)

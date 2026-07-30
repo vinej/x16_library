@@ -790,6 +790,13 @@ gfx2h_pattern_rect
 ; from .g2h_optab (ora/and/eor (zp),y) -- the 8bpp module's gfx8l_blit
 ; does the same.
 gfx2h_blit
+    ldx X16_P4                  ; a zero width or height draws nothing:
+    beq .g2h_blit_none          ; dec/bne and cpy would otherwise run 256
+    ldx X16_P5                  ; times, walking past the framebuffer
+    bne .g2h_blit_sized
+.g2h_blit_none
+    rts
+.g2h_blit_sized
     and #3
     sta g2h_op                   ; copy (op 0) needs no opcode patch
     beq +
@@ -848,6 +855,13 @@ gfx2h_blit
 ; see the CXRF project). No clipping.
 ; ---------------------------------------------------------------------
 gfx2h_blitm
+    ldx X16_P4                  ; zero height or width: nothing to draw
+    beq .g2h_blitm_none
+    ldx X16_P5
+    bne .g2h_blitm_sized
+.g2h_blitm_none
+    rts
+.g2h_blitm_sized
     jsr .addr_calc
     lda X16_P5
     sta g2h_w

@@ -9,7 +9,9 @@
 ; MSB-first (the leftmost pixel is bits 7:6), rows of 80 bytes,
 ; 19,200 bytes in all. A pixel byte is at y*80 + (x>>2); its position
 ; within the byte is x & 3. VERA renders it as layer-0 bitmap, 2bpp,
-; 320 wide, HSCALE = VSCALE = $80 -- gfx2l_init programs exactly that
+; 320 wide, HSCALE = VSCALE = $40 -- gfx2l_init programs exactly that
+; ($40 doubles each pixel so the 320-wide bitmap fills the 640-wide
+; display; $80 would show only its left half)
 ; (there is no KERNAL screen mode for it).
 ;
 ; Colours are 0-3 out of the first four palette entries. gfx2l_init
@@ -813,6 +815,15 @@ bitmap2l_p_row
 ; does the same.
     SUBROUTINE
 gfx2l_blit
+    ldx X16_P4                  ; a zero width or height draws nothing:
+    beq bitmap2l_g2l_blit_none          ; dec/bne and cpy would otherwise run 256
+    ldx X16_P5                  ; times, walking past the framebuffer
+    bne bitmap2l_g2l_blit_sized
+    SUBROUTINE
+bitmap2l_g2l_blit_none
+    rts
+    SUBROUTINE
+bitmap2l_g2l_blit_sized
     and #3
     sta g2l_op                   ; copy (op 0) needs no opcode patch
     beq bitmap2l_k1
@@ -881,6 +892,15 @@ bitmap2l_k2
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx2l_blitm
+    ldx X16_P4                  ; zero height or width: nothing to draw
+    beq bitmap2l_g2l_blitm_none
+    ldx X16_P5
+    bne bitmap2l_g2l_blitm_sized
+    SUBROUTINE
+bitmap2l_g2l_blitm_none
+    rts
+    SUBROUTINE
+bitmap2l_g2l_blitm_sized
     jsr bitmap2l_addr_calc
     lda X16_P5
     sta g2l_w

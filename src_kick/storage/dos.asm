@@ -242,8 +242,9 @@ dos_too_long:
     stz dos_msg
     ldy #0
     lda #$FF
-    sec
-    rts
+    sta dos_code                // the rejection has to reach dos_lasterr as
+    sec                         // well, or it keeps answering for whichever
+    rts                         // command ran before this one
 
 .label DOS_MSG_MAX = 64
 .label DOS_CMD_MAX = 80

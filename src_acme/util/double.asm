@@ -154,7 +154,8 @@ d_from_s32
 ;
 ; value = dac_m * 2^dac_e with dac_m normalised (bit 63 = 1). The
 ; integer part is dac_m >> (-dac_e). For an s32-range value dac_e lies
-; in -63..-33; dac_e >= -32 overflows, dac_e <= -64 truncates to 0.
+; in -63..-33; dac_e >= -32 overflows, dac_e <= -64 truncates to 0. The
+; single exception is -2147483648, which is exact and reports no overflow.
 ; ---------------------------------------------------------------------
 d_to_s32
     lda #<d_ac
@@ -249,6 +250,22 @@ d_to_s32
     stz X16_P1
     stz X16_P2
     lda #$80 : sta X16_P3
+    ; -2^31 is the one value that lands here and IS representable: it is
+    ; dac_m = 2^63 with shift exactly 32, so it must not be flagged.
+    lda d_cnt+1
+    bne .dto_onov
+    lda d_cnt
+    cmp #32
+    bne .dto_onov
+    lda dac_m   : ora dac_m+1 : ora dac_m+2 : ora dac_m+3
+    ora dac_m+4 : ora dac_m+5 : ora dac_m+6
+    bne .dto_onov
+    lda dac_m+7
+    cmp #$80
+    bne .dto_onov
+    clc
+    rts
+.dto_onov
     sec
     rts
 
@@ -411,7 +428,14 @@ d_add
     cmp #D_INF
     beq .dad_retbf               ; finite + inf -> dbf
     lda dac_c
-    beq .dad_retbf               ; 0 + x -> x
+    bne .dad_afin2
+    lda dbf_c
+    bne .dad_retbf               ; 0 + x -> x
+    lda dac_s                    ; 0 + 0: round-to-nearest gives -0 only when
+    and dbf_s                    ; BOTH are -0 -- taking the operand's sign
+    sta dac_s                    ; alone made (+0)+(-0) and (+0)-(+0) come
+    jmp .d_pack                  ; out negative
+.dad_afin2
     lda dbf_c
     bne .dad_align
     jmp .d_pack                  ; x + 0 -> x
@@ -941,7 +965,8 @@ d_div
 ; A "magic constant" bit-hack picks a guess within ~3% (sqrt(4) and other
 ; powers of four come out exact), then Newton's iteration
 ; x' = (x + v/x)/2 refines it -- six passes reach full binary64. NaN for
-; a negative operand; 0/inf/NaN pass through.
+; a negative operand; inf/NaN pass through; zero -- and a subnormal, which
+; unpacks as one -- gives +/-0.
 ; ---------------------------------------------------------------------
 d_sqrt
     lda #<d_ac
@@ -950,9 +975,11 @@ d_sqrt
     sta d_ptr+1
     jsr .d_unpack
     lda dac_c
+    cmp #D_ZERO                  ; a subnormal also unpacks as zero, and
+    bne .dsq_ckn                 ; returning without writing d_ac would hand
+    jmp .d_zero_signed           ; back the operand as its own square root
+.dsq_ckn
     cmp #D_NAN
-    beq .dsq_ret
-    cmp #D_ZERO
     beq .dsq_ret
     lda dac_s
     bmi .dsq_neg
@@ -1016,6 +1043,9 @@ d_sqrt
 ; Range-reduce x = n*ln2 + r (n = trunc(x/ln2), |r| < ln2), sum the
 ; Taylor series e^r = 1 + r + r^2/2! + ..., then scale by 2^n (add n to
 ; the binary exponent). 0->1, +inf->+inf, -inf->+0, NaN->NaN.
+; x > 710 answers +inf and x < -746 answers +0 without reducing: those are
+; the true results (the exact thresholds are 709.783 and -745.134) and n
+; is only a 16-bit count, which such an x would overflow.
 ; ---------------------------------------------------------------------
 d_exp
     lda #<d_ac
@@ -1042,9 +1072,28 @@ d_exp
     sta dac_c
     stz dac_s
     jmp .d_pack
+.dex_inf
+    lda #D_INF
+    sta dac_c
+    stz dac_s
+    jmp .d_pack
 .dex_ret
     rts
 .dex_norm
+    ; Settle the out-of-range arguments first: n below is only 16 bits, so
+    ; past |x| ~ 22713 it wraps and the 2^n scaling answers the OPPOSITE
+    ; end of the range (e^23000 came out +0), and past ~1.49e9 d_to_s32
+    ; clamps and the series returns finite garbage.
+    lda #<d_exphi                ; x > 710 -> +inf
+    ldy #>d_exphi
+    jsr d_cmp
+    cmp #1
+    beq .dex_inf
+    lda #<d_explo                ; x < -746 -> +0
+    ldy #>d_explo
+    jsr d_cmp
+    cmp #$FF
+    beq .dex_zero
     lda #<d_tv                   ; save x
     ldy #>d_tv
     jsr d_store
@@ -1375,7 +1424,9 @@ d_pow
 ;
 ; Reduce x = n*(pi/2) + r with |r| <= pi/4 (a single subtraction, so a
 ; huge x loses precision), Taylor sin(r)/cos(r), select by n mod 4.
-; NaN/inf -> NaN; sin(0)=0, cos(0)=1.
+; NaN/inf -> NaN; sin(0)=0, cos(0)=1. |x| >= about 3.37e9 is NaN too: the
+; quadrant count overflows an s32 there, so the argument no longer says
+; where in the cycle it lies. d_tan inherits that through sin and cos.
 ; ---------------------------------------------------------------------
 d_sin
     lda #<d_ac
@@ -1395,6 +1446,7 @@ d_sin
     rts
 .dsn_go
     jsr .d_trig_reduce
+    bcs .dsn_ret                 ; unreducible: d_ac is already NaN
     lda d_scq
     beq .dsn_q0
     cmp #1
@@ -1431,6 +1483,7 @@ d_cos
     jmp .d_pack
 .dcs_go
     jsr .d_trig_reduce
+    bcs .dcs_ret                 ; unreducible: d_ac is already NaN
     lda d_scq
     beq .dcs_q0
     cmp #1
@@ -1438,6 +1491,8 @@ d_cos
     cmp #2
     beq .dcs_q2
     jmp .d_sinr                  ; q3: sin(r)
+.dcs_ret
+    rts
 .dcs_q0
     jmp .d_cosr
 .dcs_q1
@@ -1757,7 +1812,12 @@ d_tanh
     ldy #>d_hypb
     jmp d_store                  ; e^-x
 
-; x (d_ac) -> d_tr = r in [-pi/4, pi/4], d_scq = n mod 4
+; x (d_ac) -> d_tr = r in [-pi/4, pi/4], d_scq = n mod 4, carry clear.
+; Beyond 2^31 quadrants (|x| >= about 3.37e9) the quadrant count no longer
+; fits an s32: d_to_s32 would clamp it, r would come back in the billions
+; and the sin/cos series would answer ~1e169 for a function bounded by 1.
+; Such an x carries no usable phase at all, so d_ac is set to NaN and the
+; carry comes back set for the caller to pass straight on.
 .d_trig_reduce
     lda #<d_tv
     ldy #>d_tv
@@ -1777,6 +1837,7 @@ d_tanh
     jsr d_sub
 .dtr_trunc
     jsr d_to_s32                 ; n
+    bcs .dtr_huge                ; no quadrant to be had
     lda X16_P0
     and #3
     sta d_scq
@@ -1795,7 +1856,15 @@ d_tanh
     jsr d_sub                    ; r = x - n*(pi/2)
     lda #<d_tr
     ldy #>d_tr
-    jmp d_store
+    jsr d_store
+    clc
+    rts
+.dtr_huge
+    lda #D_NAN
+    sta dac_c
+    jsr .d_pack
+    sec
+    rts
 
 ; sin(d_tr) via Taylor: sum = r, term *= -r^2/((2k)(2k+1)), sum += term
 .d_sinr
@@ -1939,6 +2008,8 @@ d_tanh
 ; 10^(exponent - fraction_digits) with repeated *10 / /10. Each step
 ; rounds, so a long mantissa can land a unit-in-the-last-place off -- fine
 ; for a calculator; a correctly-rounded parser is a later refinement.
+; The decimal exponent saturates at three digits, which is already well
+; past the +/-308 that binary64 can hold, so "1e65540" is an infinity.
 ; ---------------------------------------------------------------------
 d_from_str
     sta dstr_ptr
@@ -2031,6 +2102,14 @@ d_from_str
     bcs .dstr_edone
     sec
     sbc #'0'
+    ; Stop accumulating at 3 digits: 10^999 is already infinity and 10^-999
+    ; already zero, while a 16-bit exponent that keeps going wraps and turns
+    ; "1e65540" into 1e4. (X, not A -- A holds the digit.)
+    ldx dstr_exp+1
+    bne .dstr_eskip
+    ldx dstr_exp
+    cpx #100
+    bcs .dstr_eskip
     pha
     ; dstr_exp = dstr_exp*10 + digit
     lda dstr_exp
@@ -2064,6 +2143,7 @@ d_from_str
     lda dstr_exp+1
     adc #0
     sta dstr_exp+1
+.dstr_eskip
     jsr .dstr_next
     bra .dstr_edig
 .dstr_edone
@@ -2762,7 +2842,9 @@ d_to_str
     lda d_bias+1
     bmi .dpk_under               ; biased < 0
     bne .dpk_maybe               ; >= 256
-    bra .dpk_asm
+    lda d_bias                   ; biased == 0 encodes a SUBNORMAL, not a
+    beq .dpk_under               ; normal: packing it here would strip the
+    bra .dpk_asm                 ; implicit bit and emit a value ~1/3 low
 .dpk_maybe
     lda d_bias+1
     cmp #>2047
@@ -2879,6 +2961,12 @@ d_sqi    !byte 0
 
 d_ln2    !byte $EF,$39,$FA,$FE,$42,$2E,$E6,$3F   ; ln 2  = 0.6931471805599453
 d_log2e  !byte $FE,$82,$2B,$65,$47,$15,$F7,$3F   ; 1/ln2 = 1.4426950408889634
+d_exphi  !byte $00,$00,$00,$00,$00,$30,$86,$40   ; 710.0  (e^x overflows past
+                                                 ; 709.783, so anything above
+                                                 ; this is +inf)
+d_explo  !byte $00,$00,$00,$00,$00,$50,$87,$C0   ; -746.0 (e^x underflows below
+                                                 ; -745.134, so anything under
+                                                 ; this is +0)
 d_1p5    !byte $00,$00,$00,$00,$00,$00,$F8,$3F   ; 1.5
 d_pihalf !byte $18,$2D,$44,$54,$FB,$21,$F9,$3F   ; pi/2 = 1.5707963267948966
 d_pi6    !byte $66,$73,$2D,$38,$52,$C1,$E0,$3F   ; pi/6 = 0.5235987755982988

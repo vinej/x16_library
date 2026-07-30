@@ -346,7 +346,7 @@ it, so read it from the registers/flags/P-block afterwards. Angles are the
 |---|---|
 | `xm_fx_off()` | disable FX (leaves DCSEL/ADDRSEL = 0) |
 | `xm_fx_mult(a, b)` | signed 16×16 (→ P4..P7 = product) |
-| `xm_fx_fill(val, count)` | fast fill from the current address |
+| `xm_fx_fill(val, addr, count)` | fast fill of VRAM at a 4-byte-aligned address |
 | `xm_fx_clear(addrlo, addrmid, addrhi, count)` | zero a VRAM region |
 | `xm_fx_transp_on()` / `xm_fx_transp_off()` | transparent VRAM writes |
 | `xm_fx_line(x0, y0, x1, y1, col)` | hardware-assisted line |

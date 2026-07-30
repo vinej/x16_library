@@ -146,6 +146,7 @@ FS_PRG_SKIP = 6                 ; load address, link, line number
 fs_prg_entry
     stz X16_T0                  ; the result, built a digit at a time
     stz X16_T1
+    stz X16_T7                  ; "the last byte has been delivered"
 
     lda X16_P2
     jsr fs_setname
@@ -223,13 +224,24 @@ load_quit
     ldy X16_T1
     rts
 
-; one byte from the open channel; carry set if the file ended first
+; one byte from the open channel; carry set if the file ended first.
+;
+; CBM devices raise the EOF status bit WITH the last valid byte rather
+; than after it, so treating any nonzero status as "no byte" threw that
+; byte away: a stub whose final digit was also the final byte of the file
+; parsed as 207 instead of 2071. The byte is delivered and the end is
+; reported on the following call.
 load_getb
+    lda X16_T7                  ; the EOF byte has already been handed out
+    bne load_getb_end
     jsr CHRIN
     sta X16_T5
     jsr READST
-    cmp #0
-    bne load_getb_end
+    beq load_getb_ok
+    and #$40                    ; EOF alone: T5 still holds a real byte
+    beq load_getb_end               ; anything else is a device error
+    sta X16_T7
+load_getb_ok
     lda X16_T5
     clc
     rts

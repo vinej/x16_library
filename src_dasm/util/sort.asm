@@ -20,7 +20,9 @@
 ;   in:  X16_PTR2 (P4/P5) = address of element A
 ;        X16_PTR3 (P6/P7) = address of element B
 ;   out: carry SET if A must sort AFTER B (A > B), clear otherwise.
-;   May use A/X/Y; must not disturb the srt_* state.
+;   May use A/X/Y and the whole X16_P block -- the engine recomputes the
+;   element addresses after every call -- but must not disturb the srt_*
+;   state, and must not call sort_* itself.
 ; =====================================================================
 
 ; (zone: file scope in dasm)
@@ -150,6 +152,11 @@ sort_inner
     bcc sort_place_jp1
 
     ; arr[j+1] = arr[j]
+    lda srt_j                  ; recompute the SOURCE rather than trusting
+    sta X16_T0                 ; P4/P5 to have survived the comparator: a
+    lda srt_j+1                ; caller's comparator owns the P block
+    sta X16_T1
+    jsr sort_addr2                 ; P4/P5 = &arr[j]
     lda srt_j                  ; T0/T1 = j+1
     clc
     adc #1
@@ -157,7 +164,7 @@ sort_inner
     lda srt_j+1
     adc #0
     sta X16_T1
-    jsr sort_addr3                 ; P6/P7 = &arr[j+1]  (dest; P4/P5 still &arr[j])
+    jsr sort_addr3                 ; P6/P7 = &arr[j+1]  (dest)
     jsr sort_copy_elem
 
     ; if j == 0, key belongs at arr[0]

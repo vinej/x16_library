@@ -84,7 +84,7 @@ dir_setnam
     ldy #0                      ; secondary 0: the directory, not a file
     jsr SETLFS
     jsr OPEN
-    bcs dir_openbad
+    bcs dir_nothing_open           ; the OPEN itself failed: nothing to undo
     ldx #DIR_LFN
     jsr CHKIN
     bcs dir_openbad
@@ -94,8 +94,17 @@ dir_setnam
     bcs dir_openbad
     clc
     rts
+
+; Past the OPEN, DIR_LFN is live and the input channel may be pointing at
+; it. Returning without this cleanup left the logical file claimed and the
+; channel redirected, so every later dir_open answered FILE OPEN.
     SUBROUTINE
 dir_openbad
+    jsr CLRCHN
+    lda #DIR_LFN
+    jsr CLOSE
+    SUBROUTINE
+dir_nothing_open
     sec
     rts
 

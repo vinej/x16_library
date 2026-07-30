@@ -150,7 +150,7 @@ ar_note_freq2psg      ; in: X/Y=Hz, out: X/Y=PSG freq
     rts
 
     SUBROUTINE
-ar_note_midi2bas      ; in: A=MIDI note, out: A=X=BASIC note
+ar_note_midi2bas      ; in: X=MIDI note, out: A=X=BASIC note
     jsrfar rom_notecon_midi2bas, BANK_AUDIO
     rts
 

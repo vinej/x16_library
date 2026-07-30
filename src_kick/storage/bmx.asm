@@ -115,6 +115,16 @@ bmx_load__validate:
     lda bmx_hdr+3
     cmp #1
     bne bmx_load__bad_fmt
+    // The palette below goes to $1FA00 + palstart*2 and runs for palcount*2
+    // bytes, and the sprite attributes begin at $1FC00: a header claiming
+    // 256 entries from index 255 wrote 512 bytes straight through them. A
+    // palette that does not fit makes the file wrong, not the write, so
+    // refuse it here rather than clamping it to something it never was.
+    lda bmx_hdr+10              // entries (0 means 256)
+    dec                         // the last entry touched is start+count-1
+    clc
+    adc bmx_hdr+11
+    bcs bmx_load__bad_fmt                // it must land inside the 256-entry palette
     lda bmx_hdr+14
     beq bmx_load__fmt_ok
     lda #BMX_ERR_PACKED
@@ -353,6 +363,19 @@ bmx_save__hdr_out:
     cpx #16
     bne bmx_save__hdr_out
 
+    // CHROUT never says a word about a write that did not happen: an absent
+    // device, a write-protected card and a full disk all look the same from
+    // here, so the whole image went out and the file was reported as saved.
+    // ST is the only witness -- it is asked after the header, after the
+    // palette and once per row, the same cadence the load side uses, since
+    // a test per byte would cost more than it buys.
+    jsr READST
+    cmp #0
+    beq bmx_save__wr_pal
+    jmp bmx_save__wr_io                  // bmx_save__wr_io sits past the row loop: too far for
+                                // a relative branch from here
+bmx_save__wr_pal:
+
     // --- palette from the VRAM shadow ----------------------------------
     lda #VERA_CTRL_ADDRSEL
     tsb VERA_CTRL               // port 1 reads, so CHROUT stays safe
@@ -382,6 +405,11 @@ bmx_save__pal_out:
     jsr bmx_dec_cnt
     bra bmx_save__pal_out
 bmx_save__pal_wrote:
+    jsr READST                  // a palette is up to 512 bytes: worth one
+    cmp #0                      // look before spending the pixels too
+    beq bmx_save__wr_rows
+    jmp bmx_save__wr_io
+bmx_save__wr_rows:
 
     // --- pixel rows -----------------------------------------------------
     lda X16_P5
@@ -416,6 +444,9 @@ bmx_save__wpix:
     jsr bmx_dec_cnt
     bra bmx_save__wpix
 bmx_save__wrow_done:
+    jsr READST                  // the disk can fill up between any two rows
+    cmp #0
+    bne bmx_save__wr_io
     clc
     lda bmx_cur
     adc bmx_stride
@@ -437,6 +468,16 @@ bmx_save__wdec:
 bmx_save__wdone:
     jsr bmx_close_write
     clc
+    rts
+
+// The file is half written, but it still has to be closed: leaving it open
+// would keep logical file 2 and the output channel claimed, and the drive
+// would never flush what did make it out.
+bmx_save__wr_io:
+    jsr bmx_close_write
+    lda #BMX_ERR_IO
+    sta bmx_code
+    sec
     rts
 
 // ---------------------------------------------------------------------
@@ -700,6 +741,12 @@ bmx_load_hires__fallback:
     jsr CHRIN
     sta VERA2_DATA
     jsr bmx_dec_cnt
+    lda bmx_cnt                 // the count is met, so that byte was always
+    ora bmx_cnt+1               // going to be the last one: EOF is expected
+    beq bmx_load_hires__br_ok
+    jsr READST                  // past the end CHRIN keeps answering $0D,
+    cmp #0                      // which padded the rest of the request with
+    bne bmx_load_hires__br_short               // filler and still reported success
     bra bmx_load_hires__fallback
 
 // --- plumbing ---------------------------------------------------------
@@ -878,6 +925,12 @@ bmx_t__fallback:
     jsr CHRIN
     sta VERA_DATA0
     jsr bmx_dec_cnt
+    lda bmx_cnt                 // the count is met, so that byte was always
+    ora bmx_cnt+1               // going to be the last one: EOF is expected
+    beq bmx_t__br_ok
+    jsr READST                  // past the end CHRIN keeps answering $0D,
+    cmp #0                      // which padded the rest of the row with
+    bne bmx_t__br_short               // filler and still reported success
     bra bmx_t__fallback
 
 bmx_hdr: .fill 16, 0

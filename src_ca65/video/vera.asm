@@ -16,7 +16,8 @@
 ;   out: the chosen port points at that address
 ;
 ; The runtime equivalent of +vera_addr, for addresses not known at
-; assembly time. Compose Y yourself, or use vera_set_addr0_inc below.
+; assembly time. Compose Y yourself, or use the +vera_addr macro in
+; core/macros.asm, which takes the address and the increment together.
 ;
 ; A program that only fills does not need these, so they are behind
 ; X16_USE_VERA_ADDR (X16_USE_VERA / X16_USE_VERA_CORE still pull them in).

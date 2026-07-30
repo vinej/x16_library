@@ -35,11 +35,13 @@
 ; Add leaves the carry set on overflow past the width; subtract leaves it
 ; clear on borrow (result went below zero) -- the usual ADC/SBC carry.
 ;
-; INTERRUPTS: these run in decimal mode across the operation. The KERNAL's
-; IRQ handler is decimal-safe (it saves and restores the flags and does no
-; decimal-sensitive ADC/SBC), so ordinary use is fine. A CUSTOM interrupt
-; handler that does its own ADC/SBC must `cld` first, or bracket the call
-; in sei/cli -- otherwise it would run those adds in decimal by mistake.
+; INTERRUPTS: these run in decimal mode across the operation, which is
+; safe on the 65C02 this library requires. Taking an interrupt clears D
+; automatically (and RTI restores it from the stacked flags), so a handler
+; -- the KERNAL's or your own -- never inherits decimal mode from an
+; interrupted bcd_* call. No sei/cli bracketing is needed. That guarantee
+; is a 65C02 one: the NMOS 6502 leaves D alone on interrupt entry, so code
+; ported back to one would need the handler to `cld` first.
 ; =====================================================================
 
 ; (zone: file scope in dasm)

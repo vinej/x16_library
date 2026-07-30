@@ -55,16 +55,43 @@ str_isxdigit__yes:
     rts
 
 // ---------------------------------------------------------------------
-// str_islower -- carry set if A is 'a'..'z' (97-122). Same either encoding.
+// str_islower -- PETSCII: the lower-case range, 65-90.
+//
+// PETSCII puts lower case where ASCII puts upper: str_upperchar folds
+// 65-90 UP to 97-122, and str_isupper answers for 97-122 / 193-218. This
+// used to test 97-122 -- the same set as str_isupper, so a character
+// could be both, and no PETSCII lower-case letter answered yes.
 // ---------------------------------------------------------------------
 str_islower:
-    cmp #'a'
+    cmp #65
     bcc str_islower__no
-    cmp #'z'+1
+    cmp #90+1
     bcs str_islower__no
     sec
     rts
 str_islower__no:
+    clc
+    rts
+
+// ---------------------------------------------------------------------
+// str_islower_iso -- ISO: 'a'..'z' (97-122) and the accented smalls
+//   ($E0-$FE, less $F7 division sign) -- the set str_upperchar_iso folds
+// ---------------------------------------------------------------------
+str_islower_iso:
+    cmp #'a'
+    bcc str_islower_iso__no
+    cmp #'z'+1
+    bcc str_islower_iso__yes
+    cmp #$E0
+    bcc str_islower_iso__no
+    cmp #$FE+1
+    bcs str_islower_iso__no
+    cmp #$F7
+    beq str_islower_iso__no
+str_islower_iso__yes:
+    sec
+    rts
+str_islower_iso__no:
     clc
     rts
 
@@ -88,13 +115,21 @@ str_isupper__yes:
     rts
 
 // ---------------------------------------------------------------------
-// str_isupper_iso -- ISO: 'A'..'Z' (65-90)
+// str_isupper_iso -- ISO: 'A'..'Z' (65-90) and the accented capitals
+//   ($C0-$DE, less $D7 multiplication sign)
 // ---------------------------------------------------------------------
 str_isupper_iso:
     cmp #'A'
     bcc str_isupper_iso__no
     cmp #'Z'+1
+    bcc str_isupper_iso__yes
+    cmp #$C0
+    bcc str_isupper_iso__no
+    cmp #$DE+1
     bcs str_isupper_iso__no
+    cmp #$D7
+    beq str_isupper_iso__no
+str_isupper_iso__yes:
     sec
     rts
 str_isupper_iso__no:
@@ -103,6 +138,7 @@ str_isupper_iso__no:
 
 // ---------------------------------------------------------------------
 // str_isletter -- PETSCII: a lower- or upper-case letter
+//   (65-90 lower, plus 97-122 and 193-218 upper)
 // ---------------------------------------------------------------------
 str_isletter:
     jsr str_islower
@@ -115,7 +151,7 @@ str_isletter__yes:
 // str_isletter_iso -- ISO: a lower- or upper-case letter
 // ---------------------------------------------------------------------
 str_isletter_iso:
-    jsr str_islower
+    jsr str_islower_iso
     bcs str_isletter_iso__yes
     jmp str_isupper_iso
 str_isletter_iso__yes:

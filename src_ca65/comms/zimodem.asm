@@ -196,10 +196,23 @@ zi_hex_chunk
     lda #0
     rts
 @data
+    ; Everything below validates the line before decoding it. A modem
+    ; that answers mid-download ("ERROR", "NO CARRIER") or a noisy link
+    ; used to be fed straight to zi_hexdecode: an ODD digit count made
+    ; its `dec/dec : beq` terminator unreachable and it wrote through
+    ; X16_P0 across the whole address space, VERA registers included.
+    lda X16_P5
+    bne @notdata                ; longer than 255: not a payload line
     lda X16_P4                  ; digits = line length minus the CR/LF
     sec
     sbc #2
+    bcc @notdata                ; shorter than the CR/LF itself
+    beq @notdata                ; nothing but the CR/LF
     tay
+    lsr
+    bcs @notdata                ; odd digit count: not hex payload
+    jsr zimodem_zi_allhex              ; and every digit must really be hex
+    bcs @notdata
     lda zi_dest                 ; decode into the caller's buffer
     sta X16_P0
     lda zi_dest+1
@@ -207,6 +220,43 @@ zi_hex_chunk
     lda #<zi_linebuf
     ldx #>zi_linebuf
     jmp zi_hexdecode            ; returns A = bytes produced
+@notdata
+    lda #0                      ; end the transfer rather than hand the
+    rts                         ; caller decoded noise
+
+; carry CLEAR if the first Y bytes of zi_linebuf are all hex digits.
+; Y is at most 88 here (the 90-byte line cap less the CR/LF), so the
+; bpl walk is in range. Preserves nothing but the answer.
+zimodem_zi_allhex
+    dey
+zimodem_zi_ah_loop
+    lda zi_linebuf,y
+    jsr zimodem_zi_ishex
+    bcc zimodem_zi_ah_bad
+    dey
+    bpl zimodem_zi_ah_loop
+    clc
+    rts
+zimodem_zi_ah_bad
+    sec
+    rts
+
+; carry set if A is an uppercase hex digit, the only form ZiModem sends
+zimodem_zi_ishex
+    cmp #'0'
+    bcc zimodem_zi_ih_no
+    cmp #'9'+1
+    bcc zimodem_zi_ih_yes
+    cmp #'A'
+    bcc zimodem_zi_ih_no
+    cmp #'F'+1
+    bcs zimodem_zi_ih_no
+zimodem_zi_ih_yes
+    sec
+    rts
+zimodem_zi_ih_no
+    clc
+    rts
 
 ; ---------------------------------------------------------------------
 ; zi_hex_close -- swallow the trailing "OK" after the payload.
@@ -222,6 +272,10 @@ zi_hex_close
 ;   out: A = bytes written (Y / 2); X16_P0/P1 advanced past them
 ; The one piece of ZiModem logic with an independent oracle, so it is a
 ; standalone routine the test suite drives directly.
+;
+; An odd Y stops after the last WHOLE pair rather than running away: the
+; loop consumes two digits per pass, so testing for exactly 0 left a
+; dangling digit counting 1 -> 255 -> 253 ... and never terminating.
 ; ---------------------------------------------------------------------
 zi_hexdecode
     sta X16_T4                  ; T4/T5 = source cursor
@@ -230,7 +284,8 @@ zi_hexdecode
     stz X16_T7                  ; T7 = bytes produced
 @loop
     lda X16_T6
-    beq @done
+    cmp #2
+    bcc @done
     ldy #0
     lda (X16_T4),y              ; high nibble digit
     jsr zimodem_nib

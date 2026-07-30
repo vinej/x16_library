@@ -21,13 +21,24 @@
 ; str_lowerchar / str_lowerchar_iso -- fold one character to lower case
 ; str_upperchar / str_upperchar_iso -- ...to upper case.  in/out: A
 ; ---------------------------------------------------------------------
+; PETSCII upper case lives in TWO ranges, 97-122 and 193-218, and both
+; fold down to 65-90. This used to begin with an unconditional `and #$7f`,
+; which folded $80 to $00: str_lower then wrote a terminator into the
+; middle of the string, and every code $80-$FF (colour controls,
+; shift-space) was silently rewritten.
 str_lowerchar
-    and #$7f
     cmp #97
+    bcc _done                   ; below 97: already lower, or not a letter
+    cmp #122+1
+    bcs _high
+    and #%11011111              ; 97-122 -> 65-90
+    rts
+_high
+    cmp #193
     bcc _done
-    cmp #123
+    cmp #218+1
     bcs _done
-    and #%11011111
+    and #$7f                    ; 193-218 -> 65-90
 _done
     rts
 
@@ -35,7 +46,16 @@ str_lowerchar_iso
     cmp #65
     bcc _done
     cmp #91
+    bcs _high
+    ora #$20                    ; 'A'-'Z' -> 'a'-'z'
+    rts
+_high
+    cmp #$C0                    ; the ISO-8859-15 accented capitals,
+    bcc _done                   ; $C0-$DE -> $E0-$FE ...
+    cmp #$DE+1
     bcs _done
+    cmp #$D7                    ; ...except multiplication sign, no letter
+    beq _done
     ora #$20
 _done
     rts
@@ -53,7 +73,16 @@ str_upperchar_iso
     cmp #97
     bcc _done
     cmp #123
+    bcs _high
+    and #%11011111              ; 'a'-'z' -> 'A'-'Z'
+    rts
+_high
+    cmp #$E0                    ; the accented smalls, $E0-$FE -> $C0-$DE...
+    bcc _done
+    cmp #$FE+1
     bcs _done
+    cmp #$F7                    ; ...except division sign, no letter
+    beq _done
     and #%11011111
 _done
     rts

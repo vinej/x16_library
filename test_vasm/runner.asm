@@ -3803,6 +3803,31 @@ test_gfx_line_steep
     chkv $D1                   ; (5,3)
     chkv $00                   ; (6,3) clear
 
+    ; ...and a drop of 200 rows. y is unsigned 8-bit, so the sign of
+    ; y1 - y0 is the carry: testing bit 7 read this as a 56-row CLIMB
+    ; and drew the line upwards, wrapping off the top of the screen.
+    vera_addr 0, VRAM_BITMAP + (100 * 320) + 10, VERA_INC_0
+    stz VERA_DATA0              ; clear just the two pixels examined
+    vera_addr 0, VRAM_BITMAP + (220 * 320) + 10, VERA_INC_0
+    stz VERA_DATA0
+    lda #10                     ; (10,0) -> (10,200)
+    sta X16_P0
+    stz X16_P1
+    stz X16_P2
+    lda #10
+    sta X16_P3
+    stz X16_P4
+    lda #200
+    sta X16_P5
+    lda #$D1
+    sta X16_P6
+    jsr gfx8l_line
+    vera_addr 1, VRAM_BITMAP + (100 * 320) + 10, VERA_INC_0
+    chkv $D1                   ; halfway down the real line
+    vera_addr 1, VRAM_BITMAP + (220 * 320) + 10, VERA_INC_0
+    chkv $00                   ; past the end point: only the wrapped
+                                ; walk of the old sign test reached here
+
     lda chk_err
     ldx #<.name
     ldy #>.name

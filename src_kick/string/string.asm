@@ -98,14 +98,29 @@ str_append:
     bcc str_append__nc
     inc X16_T1
 str_append__nc:
+    // Measure the suffix BEFORE copying. Appending a string to ITSELF
+    // (doubling it) overwrites the suffix's own terminator with the first
+    // byte copied, so a copy-until-NUL loop never sees the end: it ran
+    // until Y wrapped, spraying 256 bytes past the buffer.
+    ldy #0
+str_append__meas:
+    lda (X16_P0),y
+    beq str_append__gotlen
+    iny
+    bne str_append__meas
+str_append__gotlen:
+    sty X16_T3                  // suffix length
     ldy #0
 str_append__loop:
+    cpy X16_T3
+    beq str_append__term
     lda (X16_P0),y              // copy the suffix in
     sta (X16_T0),y
-    beq str_append__done
     iny
     bne str_append__loop
-str_append__done:
+str_append__term:
+    lda #0
+    sta (X16_T0),y
     tya                         // result length = target + suffix
     clc
     adc X16_T2
@@ -115,8 +130,11 @@ str_append__done:
 // str_nappend -- append, but never let the target exceed maxlength.
 //   in:  A = target low, X = target high, X16_P0/P1 = suffix,
 //        Y = maxlength
-//   out: A = length of the resulting string (unchanged if it would
-//        overflow the cap)
+//   out: A = length of the resulting string
+//
+// The suffix is appended as far as it fits and the result is terminated
+// at the cap -- a partial append, like str_ncopy, NOT all-or-nothing. A
+// target already at or past the cap is left untouched.
 // ---------------------------------------------------------------------
 str_nappend:
     sty X16_T3                  // maxlength

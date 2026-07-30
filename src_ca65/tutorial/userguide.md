@@ -2731,11 +2731,18 @@ most 255 characters. Number ↔ string conversion is *not* here — it lives in
 ### `X16_USE_STRING_CTYPE` — character classification
 
 Each takes the character in `A` and answers in the carry (set = yes):
-`str_isdigit`, `str_isxdigit`, `str_islower`, `str_isspace` are the same in
-either encoding; `str_isupper`, `str_isletter`, `str_isprint` classify for
-PETSCII, and `str_isupper_iso` / `str_isletter_iso` / `str_isprint_iso` for
-ISO. (In PETSCII the letter codes overlap, so `str_isupper` accepts both
-97–122 and 193–218, and `str_isupper('A')` is *false* — 65 is an ISO code.)
+`str_isdigit`, `str_isxdigit` and `str_isspace` are the same in either
+encoding. The case-sensitive ones come in pairs — `str_islower`,
+`str_isupper`, `str_isletter`, `str_isprint` classify for PETSCII, and
+`str_islower_iso` / `str_isupper_iso` / `str_isletter_iso` /
+`str_isprint_iso` for ISO.
+
+PETSCII puts the cases where ASCII does not: **lower case is 65–90**, and
+upper case is 97–122 *and* 193–218. So `str_islower(65)` is true while
+`str_isupper(65)` is false, and both are the other way round for 97. The
+ISO forms read the ranges the familiar way, and also cover the accented
+letters (`$C0`–`$DE` upper, `$E0`–`$FE` lower, less the `$D7` and `$F7`
+sign characters).
 
 ### `X16_USE_STRING_CASE` — case folding
 

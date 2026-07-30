@@ -11,8 +11,13 @@
 ; MACPTR and MCIOUT are X16 block transfers for the current channel:
 ;       A   = byte count, 0 lets the implementation choose
 ;       X/Y = destination/source pointer
+;       C   = ON ENTRY, selects the addressing mode: clear advances the
+;             pointer through memory, SET holds it still so every byte
+;             lands on (or comes from) the same address -- which is how
+;             storage/bmx.asm streams to a VERA data port. Set it
+;             deliberately; do not inherit whatever the caller left.
 ;       X/Y = bytes transferred on return
-;       C   = set when unsupported/error
+;       C   = on return, set when unsupported/error
 ; =====================================================================
 
 ; (zone: locals promoted to globals in vasm)

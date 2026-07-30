@@ -88,6 +88,11 @@ sprite_pos
 ; sprite_get_pos -- read it back
 ;   in:  X = sprite
 ;   out: X16_P0/P1 = x, X16_P2/P3 = y
+;
+; VERA holds the position as 10-bit two's complement, so bit 9 is sign
+; extended into the high byte here: a sprite parked at x = -5 reads back
+; as -5 and not as 1019, and the value can be compared against the same
+; signed coordinates that were written.
 ; ---------------------------------------------------------------------
 sprite_get_pos
     lda #SPRITE_ATTR_X_L
@@ -96,12 +101,20 @@ sprite_get_pos
     sta X16_P0
     lda VERA_DATA0
     and #$03
-    sta X16_P1
+    cmp #$02                    ; bit 9 set: negative
+    bcc sprite_k1
+    ora #$FC
+sprite_k1
+	sta X16_P1
     lda VERA_DATA0
     sta X16_P2
     lda VERA_DATA0
     and #$03
-    sta X16_P3
+    cmp #$02
+    bcc sprite_k2
+    ora #$FC
+sprite_k2
+	sta X16_P3
     rts
 
 ; ---------------------------------------------------------------------

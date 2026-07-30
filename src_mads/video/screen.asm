@@ -464,7 +464,8 @@ screen_scroll__done
 ; ---------------------------------------------------------------------
 ; screen_puts -- print a NUL-terminated string
 ;   in:  A = address low, X = address high
-;   Strings longer than 255 bytes are truncated at 255.
+;   Prints at most 256 characters: the index is one byte, so a string
+;   with no NUL in its first 256 bytes stops when it wraps.
 ; ---------------------------------------------------------------------
 screen_puts
     sta X16_TPTR0

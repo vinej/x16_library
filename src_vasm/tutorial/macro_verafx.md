@@ -71,13 +71,13 @@ main
     include "x16_code.asm"
 ```
 
-## `xm_fx_fill val, count`
+## `xm_fx_fill val, addr, count`
 
 | Field | Details |
 |---|---|
-| Macro | `xm_fx_fill val, count` |
-| Purpose | fast fill from the current address |
-| Input parameters | `val, count` |
+| Macro | `xm_fx_fill val, addr, count` |
+| Purpose | fast fill of `count` VRAM bytes at `addr` |
+| Input parameters | `val, addr, count` — `addr` must be a multiple of 4 |
 | Output parameters | No direct return documented. Expect normal routine register/flag clobbers unless the macro description says otherwise. |
 | More info | Available when `X16_USE_VERAFX` is enabled. Related macros shown on the same line share the same purpose and calling pattern. |
 | Example | See below. |
@@ -93,8 +93,8 @@ X16_USE_VERAFX = 1
     basic_stub
 
 main
-  ; fast fill from the current address
-    xm_fx_fill $20, 32
+  ; fill 32 bytes of VRAM at $10000 with $20
+    xm_fx_fill $20, $10000, 32
     rts
 
     include "x16_code.asm"

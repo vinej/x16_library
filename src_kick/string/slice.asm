@@ -80,6 +80,11 @@ str_right__done:
 // str_slice -- copy `length` characters starting at `start`.
 //   in: A = source low, X = source high, X16_P0/P1 = target,
 //       X16_P2 = start, Y = length
+//
+// Target and source must not overlap unless they are the same address
+// with start = 0: the copy runs upwards, so slicing a string onto itself
+// from any later offset reads cells it has already overwritten. (str_left
+// is safe in place; str_right is not.)
 // ---------------------------------------------------------------------
 str_slice:
     sta X16_T0
@@ -185,12 +190,17 @@ str_ltrim__blank:
 // str_trim -- drop whitespace from both ends, in place.
 //   in: A = low, X = high.  out: Y = the new length
 // ---------------------------------------------------------------------
+// The pointer is kept here rather than in the T scratch: T bytes never
+// survive a call to another library routine, and str_rtrim is one.
+slice_trim_ptr:
+    .word 0
+
 str_trim:
-    sta X16_T6
-    stx X16_T7
+    sta slice_trim_ptr
+    stx slice_trim_ptr+1
     jsr str_rtrim
-    lda X16_T6
-    ldx X16_T7
+    lda slice_trim_ptr
+    ldx slice_trim_ptr+1
     jmp str_ltrim
 
 // whitespace test: A = char -> carry set if whitespace. Preserves A, X, Y.

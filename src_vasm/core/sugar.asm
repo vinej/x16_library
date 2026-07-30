@@ -668,6 +668,9 @@
     endm
     endif
     ifdef X16_USE_BITMAP8L
+; Same slot shift as xm_fx_line had: gfx8l_line copies P0..P6 straight
+; into x0/y0/x1/y1/colour, so x1 belongs in P3/P4, y1 in P5, colour in P6.
+; (gfx8l_pset wants the colour in P3, which is what the old order copied.)
     macro xm_gfx8l_line
     lda #<(\1)
     sta X16_P0
@@ -675,13 +678,13 @@
     sta X16_P1
     lda #(\2)
     sta X16_P2
-    lda #(\5)
-    sta X16_P3
     lda #<(\3)
-    sta X16_P4
+    sta X16_P3
     lda #>(\3)
-    sta X16_P5
+    sta X16_P4
     lda #(\4)
+    sta X16_P5
+    lda #(\5)
     sta X16_P6
     jsr gfx8l_line
     endm
@@ -2407,12 +2410,24 @@
     jsr fx_mult
     endm
     endif
-; fill `count` bytes with `val` from the current port address
+; fill `count` bytes of VRAM at `addr` with `val`.
+; This took only a value and a count in X/Y and set none of the parameter
+; block, so it filled whatever address and length happened to be left in
+; X16_P0-P4 by an earlier call. fx_fill wants the 17-bit destination in
+; P0/P1/P2 and the count in P3/P4; `^` supplies the bank byte.
     ifdef X16_USE_VERAFX
     macro xm_fx_fill
+    lda #<(\2)
+    sta X16_P0
+    lda #>(\2)
+    sta X16_P1
+    lda #((\2) >> 16)
+    sta X16_P2
+    lda #<(\3)
+    sta X16_P3
+    lda #>(\3)
+    sta X16_P4
     lda #(\1)
-    ldx #<(\2)
-    ldy #>(\2)
     jsr fx_fill
     endm
     endif
@@ -2442,6 +2457,10 @@
     endm
     endif
     ifdef X16_USE_VERAFX
+; fx_line reads x1 from P3/P4, y1 from P5 and the colour from P6. This
+; put the colour in P3 and shifted x1/y1 up a slot, so the target became
+; x1 = col | (x1.lo << 8) and the colour became y1 -- and fx_line does
+; not clip, so the run walked outside the bitmap.
     macro xm_fx_line
     lda #<(\1)
     sta X16_P0
@@ -2449,13 +2468,13 @@
     sta X16_P1
     lda #(\2)
     sta X16_P2
-    lda #(\5)
-    sta X16_P3
     lda #<(\3)
-    sta X16_P4
+    sta X16_P3
     lda #>(\3)
-    sta X16_P5
+    sta X16_P4
     lda #(\4)
+    sta X16_P5
+    lda #(\5)
     sta X16_P6
     jsr fx_line
     endm

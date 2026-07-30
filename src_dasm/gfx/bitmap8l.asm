@@ -414,6 +414,15 @@ bitmap8l_gp8l_done
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx8l_blit
+	ldx X16_P4                  ; a zero width or height draws nothing:
+	beq bitmap8l_gb8l_none              ; dec/bne and cpy would otherwise run the
+	ldx X16_P5                  ; loops 256 times, past the framebuffer
+	bne bitmap8l_gb8l_sized
+    SUBROUTINE
+bitmap8l_gb8l_none
+	rts
+    SUBROUTINE
+bitmap8l_gb8l_sized
 	and #3
 	sta gb8l_op
 	beq bitmap8l_gb8l_row                  ; copy: no opcode to patch
@@ -480,6 +489,13 @@ bitmap8l_gb8l_optab
 ; ---------------------------------------------------------------------
     SUBROUTINE
 gfx8l_blitm
+	ldx X16_P4                  ; as gfx8l_blit: zero width or height is
+	beq bitmap8l_gm8l_none              ; a no-op, not 256 rows
+	ldx X16_P5
+	bne bitmap8l_gm8l_row
+    SUBROUTINE
+bitmap8l_gm8l_none
+	rts
     SUBROUTINE
 bitmap8l_gm8l_row
 	lda #VERA_INC_1
@@ -571,11 +587,13 @@ gfx8l_line
     stz gl8l_sx+1
 .dx_done
 
-    ; dy = -|y1 - y0|, sy = sign
+    ; dy = -|y1 - y0|, sy = sign.  y is UNSIGNED 8-bit (0-239), so the
+    ; sign of the difference is the carry, not bit 7: bpl here read
+    ; |dy| >= 128 as negative and drew those lines upside down.
     sec
     lda gl8l_y1
     sbc gl8l_y0
-    bpl .dy_pos
+    bcs .dy_pos
     eor #$FF
     clc
     adc #1                      ; absolute value

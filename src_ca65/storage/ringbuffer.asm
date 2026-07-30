@@ -166,15 +166,19 @@ ringbuffer_notempty
     rts
 
 ; ---------------------------------------------------------------------
-; ring_isfull -- out: carry set if less than 2 bytes remain (fill >= 8191)
+; ring_isfull -- out: carry set if less than 2 bytes remain (fill >= 8190)
+;
+; 8190 and not 8191: only RING_CAP-1 bytes are usable, so a fill of 8190
+; leaves a single byte free -- a ring_putw on top of that takes fill to
+; 8192 and ring_free's (RING_CAP-1) - fill underflows to $FFFF.
 ; ---------------------------------------------------------------------
 ring_isfull
     lda ring_fill+1
-    cmp #>(RING_CAP-1)          ; $1F
+    cmp #>(RING_CAP-2)          ; $1F
     bcc ringbuffer_notfull
     bne ringbuffer_full
     lda ring_fill
-    cmp #<(RING_CAP-1)          ; $FF
+    cmp #<(RING_CAP-2)          ; $FE
     bcc ringbuffer_notfull
 ringbuffer_full
     sec

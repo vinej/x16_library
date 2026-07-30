@@ -78,19 +78,33 @@ gfx8h_pal_set
     sta VERA2_PAL_HI
     rts
 
+; Two source bytes per entry, so a count above 128 overruns an 8-bit Y:
+; the pointer is advanced by one entry each pass instead, and Y only ever
+; picks the low/high byte. Before this, entries 128+ re-read the start of
+; the source.
 gfx8h_pal_load
     cpx #0
     beq _done
     sta VERA2_PAL_IDX
     stx g8h_n
-    ldy #0
+    lda X16_PTR0                ; walk a private copy, so the caller's
+    sta X16_TPTR0               ; X16_PTR0 still points at its palette
+    lda X16_PTR0+1
+    sta X16_TPTR0+1
 _loop
-    lda (X16_PTR0),y
+    ldy #0
+    lda (X16_TPTR0),y
     sta VERA2_PAL_LO
     iny
-    lda (X16_PTR0),y
+    lda (X16_TPTR0),y
     sta VERA2_PAL_HI
-    iny
+    clc
+    lda X16_TPTR0
+    adc #2
+    sta X16_TPTR0
+    bcc _nohi
+    inc X16_TPTR0+1
+_nohi
     dec g8h_n
     bne _loop
 _done

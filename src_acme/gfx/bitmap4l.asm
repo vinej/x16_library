@@ -392,15 +392,17 @@ gfx4l_blit
     lda X16_P7
     sta g4l_src+1
     lda g4l_w
-    bne @gb4l_nonzero
+    beq @gb4l_none
+    lda g4l_h                   ; height 0 used to fall into dec/bne and
+    bne @gb4l_nonzero           ; blit 256 rows of marching source memory
+@gb4l_none
     rts
 
 @gb4l_nonzero
-    clc
-    lda g4l_w
-    adc #1
-    lsr
-    sta g4l_rowbytes
+    lda g4l_w                   ; rowbytes = ceil(w/2). `adc #1 : lsr` threw
+    lsr                         ; the carry away, so the documented maximum
+    adc #0                      ; width 255 gave 0 and every row re-read
+    sta g4l_rowbytes            ; the first source row.
 
     lda X16_P0
     sta g4l_x0
@@ -519,14 +521,16 @@ gfx4l_blitm
     lda X16_P7
     sta g4l_src+1
     lda g4l_w
-    bne @gm4l_nonzero
+    beq @gm4l_none
+    lda g4l_h                   ; as gfx4l_blit: height 0 is a no-op, not
+    bne @gm4l_nonzero           ; 256 rows
+@gm4l_none
     rts
 
 @gm4l_nonzero
-    clc
-    lda g4l_w
-    adc #1
+    lda g4l_w                   ; ceil(w/2) keeping the carry: see gfx4l_blit
     lsr
+    adc #0
     sta g4l_rowbytes
 
     lda X16_P0
@@ -758,10 +762,10 @@ gfx4l_line
     stz gl4l_sx+1
 @gl4l_dx_done
 
-    sec                         ; dy = -|y1 - y0|, sy = sign (y is 8-bit)
-    lda gl4l_y1
-    sbc gl4l_y0
-    bpl @gl4l_dy_pos
+    sec                         ; dy = -|y1 - y0|, sy = sign.  y is
+    lda gl4l_y1                 ; UNSIGNED 8-bit (0-239), so the sign is
+    sbc gl4l_y0                 ; the carry, not bit 7: bpl read |dy| >= 128
+    bcs @gl4l_dy_pos            ; as negative and drew upside down.
     eor #$FF
     clc
     adc #1                      ; absolute value
