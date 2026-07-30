@@ -361,9 +361,9 @@ bitmap8l_gp8l_out
 	adc #0
 	sta gp8l_cur
 	lda gb8l_t                   ; width--
-	bne bitmap8l_k1
+	bne .k1
 	dec gb8l_t+1
-bitmap8l_k1
+.k1
 	dec gb8l_t
 	lda gb8l_t
 	ora gb8l_t+1
@@ -430,9 +430,9 @@ bitmap8l_gb8l_next
 	lda X16_PTR3
 	adc X16_P4
 	sta X16_PTR3
-	bcc bitmap8l_k2
+	bcc .k2
 	inc X16_PTR3+1
-bitmap8l_k2
+.k2
 	inc X16_P2
 	dec X16_P5
 	bne bitmap8l_gb8l_row
@@ -477,9 +477,9 @@ bitmap8l_gm8l_next
 	lda X16_PTR3
 	adc X16_P4
 	sta X16_PTR3
-	bcc bitmap8l_k3
+	bcc .k3
 	inc X16_PTR3+1
-bitmap8l_k3
+.k3
 	inc X16_P2
 	dec X16_P5
 	bne bitmap8l_gm8l_row

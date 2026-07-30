@@ -800,11 +800,11 @@ bitmap2h_g2h_blit_none
 bitmap2h_g2h_blit_sized
     and #3
     sta g2h_op                   ; copy (op 0) needs no opcode patch
-    beq bitmap2h_k1
+    beq .k1
     tax
     lda bitmap2h_g2h_optab-1,x
     sta bitmap2h_g2h_blit_op
-bitmap2h_k1
+.k1
 	jsr bitmap2h_addr_calc
     lda X16_P5
     sta g2h_h
@@ -836,9 +836,9 @@ bitmap2h_g2h_blit_done
     lda X16_PTR3
     adc X16_P4
     sta X16_PTR3
-    bcc bitmap2h_k2
+    bcc .k2
     inc X16_PTR3+1
-bitmap2h_k2
+.k2
 	jsr bitmap2h_a_row                  ; dest += one row
     dec g2h_h
     bne bitmap2h_g2h_blit_row

@@ -38,25 +38,37 @@ SKIP = {
 
 DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 
-# ACME's only anonymous-label form in this tree: a single forward '+',
-# defined as "+<tab><insn>" and referenced by one branch above it. This
-# dialect has no equivalent tier that survives the conversion, so the
-# pre-pass turns each into a zone-local .k<N>; the normal zone-local
-# promotion then makes it a unique per-file global, as the ports always
-# spelled it (shp_k1 and friends).
+# ACME's forward anonymous label '+', in the two shapes the source uses:
+# "+<tab><insn>", and '+' alone on its line with the instruction under
+# it. This dialect has no equivalent tier that survives the conversion,
+# so the pre-pass turns each into a zone-local .k<N>; the normal
+# zone-local promotion then makes it a unique per-file global, as the
+# ports always spelled it (shp_k1 and friends).
+#
+# Reading only the first shape was worse than not reading it at all: the
+# lone '+' stayed in the output as a bare '+' line, which none of these
+# assemblers accept, AND every branch aiming at it was pointed at the
+# next "+<tab><insn>" instead -- a silent jump past the code it should
+# have run. That is what kept bitmap4h, bitmap4l and bitmap8h out.
+ANON_MARK = ''
+ANON_LONE = re.compile(r'^\+[ \t]*$')
 ANON_DEF = re.compile(r'^\+[ \t]+(.*)$')
 ANON_REF = re.compile(
     r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)\+[ \t]*$')
 
 def anon_labels(text):
     lines = text.split("\n")
-    defs = [i for i, ln in enumerate(lines) if ANON_DEF.match(ln)]
+    defs = [i for i, ln in enumerate(lines)
+            if ANON_DEF.match(ln) or ANON_LONE.match(ln)]
     names = {i: ".k%d" % (n + 1) for n, i in enumerate(defs)}
     out = []
     for i, ln in enumerate(lines):
+        if ANON_LONE.match(ln):
+            out.append(names[i] + ANON_MARK)
+            continue
         d = ANON_DEF.match(ln)
         if d:
-            out.append(names[i])
+            out.append(names[i] + ANON_MARK)
             out.append("\t" + d.group(1))
             continue
         r = ANON_REF.match(ln)

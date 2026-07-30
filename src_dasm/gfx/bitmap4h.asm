@@ -263,7 +263,6 @@ gfx4h_hline
     ora g4h_n
     bne bitmap4h_k1
     rts
-    SUBROUTINE
 bitmap4h_k1
 	lda X16_P0
     and #1
@@ -277,12 +276,10 @@ bitmap4h_k1
     inc X16_P0
     bne bitmap4h_k2
     inc X16_P1
-    SUBROUTINE
 bitmap4h_k2
 	lda g4h_n
     bne bitmap4h_k3
     dec g4h_n+1
-    SUBROUTINE
 bitmap4h_k3
 	dec g4h_n
     lda g4h_n
@@ -296,7 +293,6 @@ bitmap4h_k3
     lda #1
     sta g4h_phase               ; remember the trailing odd-width pixel
     bra .full                   ; named, not '++': ACME's second-level
-    SUBROUTINE
 bitmap4h_k4
 	stz g4h_phase               ; anonymous label has no equivalent in
 .full                           ; the ports, which take '+ only
@@ -383,12 +379,10 @@ gfx4h_vline
     sta g4h_a1
     bcc bitmap4h_k5
     inc g4h_a2
-    SUBROUTINE
 bitmap4h_k5
 	lda g4h_n
     bne bitmap4h_k6
     dec g4h_n+1
-    SUBROUTINE
 bitmap4h_k6
 	dec g4h_n
     lda g4h_n
@@ -423,12 +417,10 @@ gfx4h_rect
     inc X16_P2
     bne bitmap4h_k7
     inc X16_P3
-    SUBROUTINE
 bitmap4h_k7
 	lda X16_P6
     bne bitmap4h_k8
     dec X16_P7
-    SUBROUTINE
 bitmap4h_k8
 	dec X16_P6
     bra .row
@@ -461,7 +453,6 @@ gfx4h_frame
     lda X16_P2
     bne bitmap4h_k9
     dec X16_P3
-    SUBROUTINE
 bitmap4h_k9
 	dec X16_P2
     lda g4h_rc
@@ -482,7 +473,6 @@ bitmap4h_k9
     lda X16_P0
     bne bitmap4h_k10
     dec X16_P1
-    SUBROUTINE
 bitmap4h_k10
 	dec X16_P0
     lda g4h_rc
@@ -710,7 +700,7 @@ gfx4h_pattern_rect
     ora X16_P7
     bne bitmap4h_k11
     jmp .done
-+
+bitmap4h_k11
     lda X16_P2
     sta gp4h_by
     lda X16_P3
@@ -722,9 +712,9 @@ gfx4h_pattern_rect
 .row
     lda X16_P6
     ora X16_P7
-    bne bitmap4h_k11
+    bne bitmap4h_k12
     jmp .done
-+
+bitmap4h_k12
     lda gp4h_bx
     sta gp4h_x
     lda gp4h_bx+1
@@ -765,32 +755,28 @@ gfx4h_pattern_rect
     adc #0
     sta gp4h_bits
     inc gp4h_x
-    bne bitmap4h_k11
+    bne bitmap4h_k13
     inc gp4h_x+1
-    SUBROUTINE
-bitmap4h_k11
+bitmap4h_k13
 	lda gp4h_n
-    bne bitmap4h_k12
+    bne bitmap4h_k14
     dec gp4h_n+1
-    SUBROUTINE
-bitmap4h_k12
+bitmap4h_k14
 	dec gp4h_n
     jmp .col
 .next_row
     inc gp4h_by
-    bne bitmap4h_k13
+    bne bitmap4h_k15
     inc gp4h_by+1
-    SUBROUTINE
-bitmap4h_k13
+bitmap4h_k15
 	lda gp4h_by
     sta X16_P2
     lda gp4h_by+1
     sta X16_P3
     lda X16_P6
-    bne bitmap4h_k14
+    bne bitmap4h_k16
     dec X16_P7
-    SUBROUTINE
-bitmap4h_k14
+bitmap4h_k16
 	dec X16_P6
     jmp .row
 .done
@@ -823,9 +809,9 @@ bitmap4h_blit_common
     sta g4h_rowbytes            ; first source row.
 .row
     lda X16_P5
-    bne bitmap4h_k15
+    bne bitmap4h_k17
     jmp .done
-+
+bitmap4h_k17
     lda g4h_src
     sta X16_PTR3
     lda g4h_src+1
@@ -880,19 +866,17 @@ bitmap4h_blit_common
     jsr gfx4h_pset
 .advance
     inc X16_P0
-    bne bitmap4h_k15
+    bne bitmap4h_k18
     inc X16_P1
-    SUBROUTINE
-bitmap4h_k15
+bitmap4h_k18
 	lda g4h_phase
     eor #1
     sta g4h_phase
-    bne bitmap4h_k16
+    bne bitmap4h_k19
     inc X16_PTR3
-    bne bitmap4h_k16
+    bne bitmap4h_k19
     inc X16_PTR3+1
-    SUBROUTINE
-bitmap4h_k16
+bitmap4h_k19
 	dec g4h_w
     jmp .col
 .next_row
@@ -900,10 +884,9 @@ bitmap4h_k16
     lda X16_P0
     sbc X16_P4
     sta X16_P0
-    bcs bitmap4h_k17
+    bcs bitmap4h_k20
     dec X16_P1
-    SUBROUTINE
-bitmap4h_k17
+bitmap4h_k20
 	clc
     lda g4h_src
     adc g4h_rowbytes
@@ -912,10 +895,9 @@ bitmap4h_k17
     adc #0
     sta g4h_src+1
     inc X16_P2
-    bne bitmap4h_k18
+    bne bitmap4h_k21
     inc X16_P3
-    SUBROUTINE
-bitmap4h_k18
+bitmap4h_k21
 	dec X16_P5
     jmp .row
 .done
@@ -1003,10 +985,9 @@ bitmap4h_addr_calc
     lda g4h_a1
     adc #$40
     sta g4h_a1
-    bcc bitmap4h_k19
+    bcc bitmap4h_k22
     inc g4h_a2
-    SUBROUTINE
-bitmap4h_k19
+bitmap4h_k22
 	inc g4h_a2
 .addx
     lda X16_P1                  ; + x >> 1
@@ -1020,10 +1001,9 @@ bitmap4h_k19
     lda g4h_a1
     adc X16_T1
     sta g4h_a1
-    bcc bitmap4h_k20
+    bcc bitmap4h_k23
     inc g4h_a2
-    SUBROUTINE
-bitmap4h_k20
+bitmap4h_k23
 	rts
 
     SUBROUTINE
@@ -1050,10 +1030,9 @@ bitmap4h_fill_pages
     dex
     bne .inner
     lda g4h_n
-    bne bitmap4h_k21
+    bne bitmap4h_k24
     dec g4h_n+1
-    SUBROUTINE
-bitmap4h_k21
+bitmap4h_k24
 	dec g4h_n
     lda g4h_n
     ora g4h_n+1

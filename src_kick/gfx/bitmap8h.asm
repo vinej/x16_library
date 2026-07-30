@@ -517,7 +517,7 @@ gfx8h_pattern_rect:
     ora X16_P7
     bne bitmap8h_k5
     jmp gfx8h_pattern_rect__done
-+
+bitmap8h_k5:
     lda X16_P2
     sta gp8h_by
     lda X16_P3
@@ -529,9 +529,9 @@ gfx8h_pattern_rect:
 gfx8h_pattern_rect__row:
     lda X16_P6
     ora X16_P7
-    bne bitmap8h_k5
+    bne bitmap8h_k6
     jmp gfx8h_pattern_rect__done
-+
+bitmap8h_k6:
     lda gp8h_bx
     sta gp8h_x
     lda gp8h_bx+1
@@ -572,28 +572,28 @@ gfx8h_pattern_rect__plot:
     adc #0
     sta gp8h_bits
     inc gp8h_x
-    bne bitmap8h_k5
+    bne bitmap8h_k7
     inc gp8h_x+1
-bitmap8h_k5:
+bitmap8h_k7:
 	lda gp8h_n
-    bne bitmap8h_k6
+    bne bitmap8h_k8
     dec gp8h_n+1
-bitmap8h_k6:
+bitmap8h_k8:
 	dec gp8h_n
     jmp gfx8h_pattern_rect__col
 gfx8h_pattern_rect__next_row:
     inc gp8h_by
-    bne bitmap8h_k7
+    bne bitmap8h_k9
     inc gp8h_by+1
-bitmap8h_k7:
+bitmap8h_k9:
 	lda gp8h_by
     sta X16_P2
     lda gp8h_by+1
     sta X16_P3
     lda X16_P6
-    bne bitmap8h_k8
+    bne bitmap8h_k10
     dec X16_P7
-bitmap8h_k8:
+bitmap8h_k10:
 	dec X16_P6
     jmp gfx8h_pattern_rect__row
 gfx8h_pattern_rect__done:
@@ -658,9 +658,9 @@ gfx8h_blitm__store:
     jsr gfx8h_pset
 gfx8h_blitm__advance:
     inc X16_P0
-    bne bitmap8h_k9
+    bne bitmap8h_k11
     inc X16_P1
-bitmap8h_k9:
+bitmap8h_k11:
 	iny
     jmp gfx8h_blitm__col
 gfx8h_blitm__next_row:
@@ -668,20 +668,20 @@ gfx8h_blitm__next_row:
     lda X16_P0
     sbc X16_P4
     sta X16_P0
-    bcs bitmap8h_k10
+    bcs bitmap8h_k12
     dec X16_P1
-bitmap8h_k10:
+bitmap8h_k12:
 	clc
     lda X16_PTR3
     adc X16_P4
     sta X16_PTR3
-    bcc bitmap8h_k11
+    bcc bitmap8h_k13
     inc X16_PTR3+1
-bitmap8h_k11:
+bitmap8h_k13:
 	inc X16_P2
-    bne bitmap8h_k12
+    bne bitmap8h_k14
     inc X16_P3
-bitmap8h_k12:
+bitmap8h_k14:
 	dec X16_P5
     jmp gfx8h_blitm__row
 gfx8h_blitm__done:
@@ -760,9 +760,9 @@ bitmap8h_addr_calc:
     clc
     adc g8h_a1
     sta g8h_a1
-    bcc bitmap8h_k13
+    bcc bitmap8h_k15
     inc g8h_a2
-+
+bitmap8h_k15:
     lda X16_P3                  // y >= 256: + 256*640 = $28000
     beq gfx8h_copy_wait__addx
     clc
@@ -780,9 +780,9 @@ gfx8h_copy_wait__addx:
     lda g8h_a1
     adc X16_P1
     sta g8h_a1
-    bcc bitmap8h_k13
+    bcc bitmap8h_k16
     inc g8h_a2
-bitmap8h_k13:
+bitmap8h_k16:
 	rts
 
 bitmap8h_fill_count:
@@ -808,9 +808,9 @@ gfx8h_copy_wait__inner:
     dex
     bne gfx8h_copy_wait__inner
     lda g8h_n
-    bne bitmap8h_k14
+    bne bitmap8h_k17
     dec g8h_n+1
-bitmap8h_k14:
+bitmap8h_k17:
 	dec g8h_n
     lda g8h_n
     ora g8h_n+1

@@ -386,7 +386,6 @@ bitmap8l_gp8l_out
 	lda gb8l_t                   ; width--
 	bne bitmap8l_k1
 	dec gb8l_t+1
-    SUBROUTINE
 bitmap8l_k1
 	dec gb8l_t
 	lda gb8l_t
@@ -466,7 +465,6 @@ bitmap8l_gb8l_next
 	sta X16_PTR3
 	bcc bitmap8l_k2
 	inc X16_PTR3+1
-    SUBROUTINE
 bitmap8l_k2
 	inc X16_P2
 	dec X16_P5
@@ -521,7 +519,6 @@ bitmap8l_gm8l_next
 	sta X16_PTR3
 	bcc bitmap8l_k3
 	inc X16_PTR3+1
-    SUBROUTINE
 bitmap8l_k3
 	inc X16_P2
 	dec X16_P5

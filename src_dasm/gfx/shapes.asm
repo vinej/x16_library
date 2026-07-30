@@ -157,7 +157,6 @@ shapes_apply
 	inc shapes_t
 	bne shapes_k1
 	inc shapes_t+1
-    SUBROUTINE
 shapes_k1
 	clc
 	lda shapes_err
@@ -228,7 +227,6 @@ shapes_espan
 	inc X16_P4
 	bne shapes_k2
 	inc X16_P5
-    SUBROUTINE
 shapes_k2
 	lda shapes_col
 	jmp SHP_HLINE
@@ -664,7 +662,6 @@ shapes_wrdone
 	inc X16_P4
 	bne shapes_k3
 	inc X16_P5
-    SUBROUTINE
 shapes_k3
 	lda shapes_col
 	jsr SHP_HLINE
@@ -784,7 +781,6 @@ shapes_push
 	lda #1                      ; remembered; lsr at exit -> carry
 	sta shapes_ovf
 	rts
-    SUBROUTINE
 shapes_k4
 	tax                         ; four parallel arrays indexed by sp, NOT
 	lda shapes_qx                     ; one array at sp*4: 96 seeds is 384 bytes,
@@ -2110,7 +2106,6 @@ shapes_rr_begin
 	lda rr_x1                   ; x1 -= 1
 	bne shapes_k5
 	dec rr_x1+1
-    SUBROUTINE
 shapes_k5
 	dec rr_x1
 	lda rr_y                    ;   y0 = y, y1 = y + h - 1
@@ -2127,7 +2122,6 @@ shapes_k5
 	lda rr_y1                   ; y1 -= 1
 	bne shapes_k6
 	dec rr_y1+1
-    SUBROUTINE
 shapes_k6
 	dec rr_y1
 
@@ -2251,7 +2245,6 @@ shapes_rr_hspan
 	sbc rr_cxl+1
 	bvc shapes_k7
 	eor #$80
-    SUBROUTINE
 shapes_k7
 	bmi shapes_rr_hsd
 	lda X16_P2                  ; hold the row AND the x cursor: the
@@ -2300,7 +2293,6 @@ shapes_rr_vspan
 	sbc rr_cyt+1
 	bvc shapes_k8
 	eor #$80
-    SUBROUTINE
 shapes_k8
 	bmi shapes_rr_vsd
 	lda X16_P0                  ; hold the column AND the y cursor, for the
@@ -2476,7 +2468,6 @@ shapes_rr_wap
 	inc rr_wt
 	bne shapes_k9
 	inc rr_wt+1
-    SUBROUTINE
 shapes_k9
 	clc
 	lda rr_werr
@@ -2503,7 +2494,6 @@ shapes_rr_fl
 	sbc rr_ry+1
 	bvc shapes_k10
 	eor #$80
-    SUBROUTINE
 shapes_k10
 	bmi shapes_rr_fld
 	jsr shapes_rr_row
@@ -2525,7 +2515,6 @@ shapes_rr_row
 	sbc rr_cyt+1
 	bvc shapes_k11
 	eor #$80
-    SUBROUTINE
 shapes_k11
 	bmi shapes_rr_rtop
 	lda rr_cyb                  ; row > cyb ?  bottom band, d = row-cyb
@@ -2534,7 +2523,6 @@ shapes_k11
 	sbc rr_ry+1
 	bvc shapes_k12
 	eor #$80
-    SUBROUTINE
 shapes_k12
 	bmi shapes_rr_rbot
 	ldx #0                      ; middle band: d = 0, ext[0] = r -> full width
@@ -2585,7 +2573,6 @@ shapes_rr_inset
 	inc X16_P4
 	bne shapes_k13
 	inc X16_P5
-    SUBROUTINE
 shapes_k13
 	lda rr_col
 	jmp SHP_HLINE
@@ -2626,14 +2613,12 @@ shapes_rr_bwp
 	cmp rr_ext,x
 	bcc shapes_k14
 	sta rr_ext,x
-    SUBROUTINE
 shapes_k14
 	ldx rr_wx                   ; ext[x] = max(ext[x], y)
 	lda rr_wy
 	cmp rr_ext,x
 	bcc shapes_k15
 	sta rr_ext,x
-    SUBROUTINE
 shapes_k15
 	jsr shapes_rr_wstep
 	bra shapes_rr_bwl
@@ -3103,7 +3088,6 @@ shapes_tf_go
 	sbc tf_by+1
 	bvc shapes_k16
 	eor #$80
-    SUBROUTINE
 shapes_k16
 	bpl shapes_tf_p2init              ; ay >= by (flat top): skip to phase 2
 	lda tf_ax                   ; short edge a -> b  (index 2)
@@ -3133,7 +3117,6 @@ shapes_tf_p1loop
 	sbc tf_by+1
 	bvc shapes_k17
 	eor #$80
-    SUBROUTINE
 shapes_k17
 	bmi shapes_tf_p1do
 	jmp shapes_tf_p2init
@@ -3147,7 +3130,6 @@ shapes_tf_p1do
 	inc tf_y
 	bne shapes_k18
 	inc tf_y+1
-    SUBROUTINE
 shapes_k18
 	jmp shapes_tf_p1loop
     SUBROUTINE
@@ -3189,7 +3171,6 @@ shapes_tf_p2do
 	inc tf_y
 	bne shapes_k19
 	inc tf_y+1
-    SUBROUTINE
 shapes_k19
 	jmp shapes_tf_p2loop
 
@@ -3199,17 +3180,14 @@ shapes_tf_sort
 	jsr shapes_tf_cmp_ab
 	bpl shapes_k20
 	jsr shapes_tf_swap_ab
-    SUBROUTINE
 shapes_k20
 	jsr shapes_tf_cmp_bc
 	bpl shapes_k21
 	jsr shapes_tf_swap_bc
-    SUBROUTINE
 shapes_k21
 	jsr shapes_tf_cmp_ab
 	bpl shapes_k22
 	jsr shapes_tf_swap_ab
-    SUBROUTINE
 shapes_k22
 	rts
     SUBROUTINE
@@ -3221,7 +3199,6 @@ shapes_tf_cmp_ab
 	sbc tf_ay+1
 	bvc shapes_k23
 	eor #$80
-    SUBROUTINE
 shapes_k23
 	rts
     SUBROUTINE
@@ -3233,7 +3210,6 @@ shapes_tf_cmp_bc
 	sbc tf_by+1
 	bvc shapes_k24
 	eor #$80
-    SUBROUTINE
 shapes_k24
 	rts
     SUBROUTINE
@@ -3383,7 +3359,6 @@ shapes_te_len
 	inc X16_P4                  ; len = |diff| + 1
 	bne shapes_k25
 	inc X16_P5
-    SUBROUTINE
 shapes_k25
 	lda tf_y
 	sta X16_P2

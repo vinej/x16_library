@@ -110,7 +110,6 @@ sprite_get_pos
     cmp #$02                    ; bit 9 set: negative
     bcc sprite_k1
     ora #$FC
-    SUBROUTINE
 sprite_k1
 	sta X16_P1
     lda VERA_DATA0
@@ -120,7 +119,6 @@ sprite_k1
     cmp #$02
     bcc sprite_k2
     ora #$FC
-    SUBROUTINE
 sprite_k2
 	sta X16_P3
     rts

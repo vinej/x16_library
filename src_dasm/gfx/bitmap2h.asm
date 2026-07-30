@@ -826,7 +826,6 @@ bitmap2h_g2h_blit_sized
     tax
     lda bitmap2h_g2h_optab-1,x
     sta bitmap2h_g2h_blit_op
-    SUBROUTINE
 bitmap2h_k1
 	jsr bitmap2h_addr_calc
     lda X16_P5
@@ -866,7 +865,6 @@ bitmap2h_g2h_blit_done
     sta X16_PTR3
     bcc bitmap2h_k2
     inc X16_PTR3+1
-    SUBROUTINE
 bitmap2h_k2
 	jsr bitmap2h_a_row                  ; dest += one row
     dec g2h_h

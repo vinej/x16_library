@@ -243,13 +243,13 @@ gfx8h_rect
     lda g8h_rc
     jsr gfx8h_hline
     inc X16_P2
-    bne bitmap8h_k1
+    bne .k1
     inc X16_P3
-bitmap8h_k1
+.k1
 	lda X16_P6
-    bne bitmap8h_k2
+    bne .k2
     dec X16_P7
-bitmap8h_k2
+.k2
 	dec X16_P6
     bra .row
 .done
@@ -277,9 +277,9 @@ gfx8h_frame
     adc g8h_rh+1
     sta X16_P3
     lda X16_P2
-    bne bitmap8h_k3
+    bne .k3
     dec X16_P3
-bitmap8h_k3
+.k3
 	dec X16_P2
     lda g8h_rc
     jsr gfx8h_hline
@@ -297,9 +297,9 @@ bitmap8h_k3
     adc g8h_rw+1
     sta X16_P1
     lda X16_P0
-    bne bitmap8h_k4
+    bne .k4
     dec X16_P1
-bitmap8h_k4
+.k4
 	dec X16_P0
     lda g8h_rc
     jmp gfx8h_vline
@@ -515,9 +515,9 @@ gfx8h_pattern_rect
     ora X16_P5
     ora X16_P6
     ora X16_P7
-    bne bitmap8h_k5
+    bne .k5
     jmp .done
-+
+.k5
     lda X16_P2
     sta gp8h_by
     lda X16_P3
@@ -529,9 +529,9 @@ gfx8h_pattern_rect
 .row
     lda X16_P6
     ora X16_P7
-    bne bitmap8h_k5
+    bne .k6
     jmp .done
-+
+.k6
     lda gp8h_bx
     sta gp8h_x
     lda gp8h_bx+1
@@ -572,28 +572,28 @@ gfx8h_pattern_rect
     adc #0
     sta gp8h_bits
     inc gp8h_x
-    bne bitmap8h_k5
+    bne .k7
     inc gp8h_x+1
-bitmap8h_k5
+.k7
 	lda gp8h_n
-    bne bitmap8h_k6
+    bne .k8
     dec gp8h_n+1
-bitmap8h_k6
+.k8
 	dec gp8h_n
     jmp .col
 .next_row
     inc gp8h_by
-    bne bitmap8h_k7
+    bne .k9
     inc gp8h_by+1
-bitmap8h_k7
+.k9
 	lda gp8h_by
     sta X16_P2
     lda gp8h_by+1
     sta X16_P3
     lda X16_P6
-    bne bitmap8h_k8
+    bne .k10
     dec X16_P7
-bitmap8h_k8
+.k10
 	dec X16_P6
     jmp .row
 .done
@@ -658,9 +658,9 @@ bitmap8h_blit_common
     jsr gfx8h_pset
 .advance
     inc X16_P0
-    bne bitmap8h_k9
+    bne .k11
     inc X16_P1
-bitmap8h_k9
+.k11
 	iny
     jmp .col
 .next_row
@@ -668,20 +668,20 @@ bitmap8h_k9
     lda X16_P0
     sbc X16_P4
     sta X16_P0
-    bcs bitmap8h_k10
+    bcs .k12
     dec X16_P1
-bitmap8h_k10
+.k12
 	clc
     lda X16_PTR3
     adc X16_P4
     sta X16_PTR3
-    bcc bitmap8h_k11
+    bcc .k13
     inc X16_PTR3+1
-bitmap8h_k11
+.k13
 	inc X16_P2
-    bne bitmap8h_k12
+    bne .k14
     inc X16_P3
-bitmap8h_k12
+.k14
 	dec X16_P5
     jmp .row
 .done
@@ -760,9 +760,9 @@ bitmap8h_addr_calc
     clc
     adc g8h_a1
     sta g8h_a1
-    bcc bitmap8h_k13
+    bcc .k15
     inc g8h_a2
-+
+.k15
     lda X16_P3                  ; y >= 256: + 256*640 = $28000
     beq .addx
     clc
@@ -780,9 +780,9 @@ bitmap8h_addr_calc
     lda g8h_a1
     adc X16_P1
     sta g8h_a1
-    bcc bitmap8h_k13
+    bcc .k16
     inc g8h_a2
-bitmap8h_k13
+.k16
 	rts
 
 bitmap8h_fill_count
@@ -808,9 +808,9 @@ bitmap8h_fill_pages
     dex
     bne .inner
     lda g8h_n
-    bne bitmap8h_k14
+    bne .k17
     dec g8h_n+1
-bitmap8h_k14
+.k17
 	dec g8h_n
     lda g8h_n
     ora g8h_n+1

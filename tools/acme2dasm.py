@@ -47,25 +47,37 @@ SKIP = {
 
 DOT_IDENT = re.compile(r'(?<![\w!$.])\.([A-Za-z_][A-Za-z0-9_]*)')
 
-# ACME's only anonymous-label form in this tree: a single forward '+',
-# defined as "+<tab><insn>" and referenced by one branch above it. This
-# dialect has no equivalent tier that survives the conversion, so the
-# pre-pass turns each into a zone-local .k<N>; the normal zone-local
-# promotion then makes it a unique per-file global, as the ports always
-# spelled it (shp_k1 and friends).
+# ACME's forward anonymous label '+', in the two shapes the source uses:
+# "+<tab><insn>", and '+' alone on its line with the instruction under
+# it. This dialect has no equivalent tier that survives the conversion,
+# so the pre-pass turns each into a zone-local .k<N>; the normal
+# zone-local promotion then makes it a unique per-file global, as the
+# ports always spelled it (shp_k1 and friends).
+#
+# Reading only the first shape was worse than not reading it at all: the
+# lone '+' stayed in the output as a bare '+' line, which none of these
+# assemblers accept, AND every branch aiming at it was pointed at the
+# next "+<tab><insn>" instead -- a silent jump past the code it should
+# have run. That is what kept bitmap4h, bitmap4l and bitmap8h out.
+ANON_MARK = ''
+ANON_LONE = re.compile(r'^\+[ \t]*$')
 ANON_DEF = re.compile(r'^\+[ \t]+(.*)$')
 ANON_REF = re.compile(
     r'^([ \t]*(?:bne|beq|bcc|bcs|bmi|bpl|bra|bvc|bvs|jmp)[ \t]+)\+[ \t]*$')
 
 def anon_labels(text):
     lines = text.split("\n")
-    defs = [i for i, ln in enumerate(lines) if ANON_DEF.match(ln)]
+    defs = [i for i, ln in enumerate(lines)
+            if ANON_DEF.match(ln) or ANON_LONE.match(ln)]
     names = {i: ".k%d" % (n + 1) for n, i in enumerate(defs)}
     out = []
     for i, ln in enumerate(lines):
+        if ANON_LONE.match(ln):
+            out.append(names[i] + ANON_MARK)
+            continue
         d = ANON_DEF.match(ln)
         if d:
-            out.append(names[i])
+            out.append(names[i] + ANON_MARK)
             out.append("\t" + d.group(1))
             continue
         r = ANON_REF.match(ln)
@@ -314,12 +326,19 @@ def normalize(text):
     return "\n".join(res)
 
 
-def add_subroutines(text):
+def add_subroutines(text, stem):
     """dasm scopes .locals per SUBROUTINE; emit one before each global
-    label so .name locals reset exactly at ACME's cheap-local boundaries."""
+    label so .name locals reset exactly at ACME's cheap-local boundaries.
+
+    A converted anonymous label (<stem>_k<N>) is not one of those
+    boundaries. In ACME a '+' does not end a cheap-label zone, it sits
+    inside one; it is a global here only because dasm has no other tier
+    to put it in. Cutting the scope there halved gfx4h_hline, whose
+    `beq .aligned' then had no .aligned left to reach."""
+    anon = re.compile(r'%s_k\d+\b' % re.escape(stem))
     res = []
     for line in text.split("\n"):
-        if is_global_label(line):
+        if is_global_label(line) and not anon.match(line):
             res.append("    SUBROUTINE")
         res.append(line)
     return "\n".join(res)
@@ -374,7 +393,8 @@ def main():
         text = src.read_text(encoding="ascii", errors="replace")
         if src.name in CHEAP_PROMOTE:
             text = promote_cheap(text, CHEAP_PROMOTE[src.name])
-        converted = normalize(add_subroutines(convert(text, src.stem, include_map)))
+        converted = normalize(add_subroutines(convert(text, src.stem, include_map),
+                                              src.stem))
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(converted, encoding="ascii")
         print(f"conv  {src.name} -> {dst}")
@@ -390,7 +410,7 @@ def main():
         if rel in CHEAP_PROMOTE:                 # rename @locals BEFORE @->.
             text = promote_cheap(text, CHEAP_PROMOTE[rel])
         converted = convert(text, stem, include_map)
-        converted = normalize(add_subroutines(converted))
+        converted = normalize(add_subroutines(converted, stem))
         outp = dst / rel
         outp.parent.mkdir(parents=True, exist_ok=True)
         outp.write_text(converted, encoding="ascii")

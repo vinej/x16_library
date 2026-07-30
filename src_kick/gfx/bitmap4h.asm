@@ -678,7 +678,7 @@ gfx4h_pattern_rect:
     ora X16_P7
     bne bitmap4h_k11
     jmp gfx4h_pattern_rect__done
-+
+bitmap4h_k11:
     lda X16_P2
     sta gp4h_by
     lda X16_P3
@@ -690,9 +690,9 @@ gfx4h_pattern_rect:
 gfx4h_pattern_rect__row:
     lda X16_P6
     ora X16_P7
-    bne bitmap4h_k11
+    bne bitmap4h_k12
     jmp gfx4h_pattern_rect__done
-+
+bitmap4h_k12:
     lda gp4h_bx
     sta gp4h_x
     lda gp4h_bx+1
@@ -733,28 +733,28 @@ gfx4h_pattern_rect__plot:
     adc #0
     sta gp4h_bits
     inc gp4h_x
-    bne bitmap4h_k11
+    bne bitmap4h_k13
     inc gp4h_x+1
-bitmap4h_k11:
+bitmap4h_k13:
 	lda gp4h_n
-    bne bitmap4h_k12
+    bne bitmap4h_k14
     dec gp4h_n+1
-bitmap4h_k12:
+bitmap4h_k14:
 	dec gp4h_n
     jmp gfx4h_pattern_rect__col
 gfx4h_pattern_rect__next_row:
     inc gp4h_by
-    bne bitmap4h_k13
+    bne bitmap4h_k15
     inc gp4h_by+1
-bitmap4h_k13:
+bitmap4h_k15:
 	lda gp4h_by
     sta X16_P2
     lda gp4h_by+1
     sta X16_P3
     lda X16_P6
-    bne bitmap4h_k14
+    bne bitmap4h_k16
     dec X16_P7
-bitmap4h_k14:
+bitmap4h_k16:
 	dec X16_P6
     jmp gfx4h_pattern_rect__row
 gfx4h_pattern_rect__done:
@@ -784,9 +784,9 @@ bitmap4h_blit_common:
     sta g4h_rowbytes            // first source row.
 gfx4h_blitm__row:
     lda X16_P5
-    bne bitmap4h_k15
+    bne bitmap4h_k17
     jmp gfx4h_blitm__done
-+
+bitmap4h_k17:
     lda g4h_src
     sta X16_PTR3
     lda g4h_src+1
@@ -841,17 +841,17 @@ gfx4h_blitm__store:
     jsr gfx4h_pset
 gfx4h_blitm__advance:
     inc X16_P0
-    bne bitmap4h_k15
+    bne bitmap4h_k18
     inc X16_P1
-bitmap4h_k15:
+bitmap4h_k18:
 	lda g4h_phase
     eor #1
     sta g4h_phase
-    bne bitmap4h_k16
+    bne bitmap4h_k19
     inc X16_PTR3
-    bne bitmap4h_k16
+    bne bitmap4h_k19
     inc X16_PTR3+1
-bitmap4h_k16:
+bitmap4h_k19:
 	dec g4h_w
     jmp gfx4h_blitm__col
 gfx4h_blitm__next_row:
@@ -859,9 +859,9 @@ gfx4h_blitm__next_row:
     lda X16_P0
     sbc X16_P4
     sta X16_P0
-    bcs bitmap4h_k17
+    bcs bitmap4h_k20
     dec X16_P1
-bitmap4h_k17:
+bitmap4h_k20:
 	clc
     lda g4h_src
     adc g4h_rowbytes
@@ -870,9 +870,9 @@ bitmap4h_k17:
     adc #0
     sta g4h_src+1
     inc X16_P2
-    bne bitmap4h_k18
+    bne bitmap4h_k21
     inc X16_P3
-bitmap4h_k18:
+bitmap4h_k21:
 	dec X16_P5
     jmp gfx4h_blitm__row
 gfx4h_blitm__done:
@@ -956,9 +956,9 @@ bitmap4h_addr_calc:
     lda g4h_a1
     adc #$40
     sta g4h_a1
-    bcc bitmap4h_k19
+    bcc bitmap4h_k22
     inc g4h_a2
-bitmap4h_k19:
+bitmap4h_k22:
 	inc g4h_a2
 gfx4h_copy_wait__addx:
     lda X16_P1                  // + x >> 1
@@ -972,9 +972,9 @@ gfx4h_copy_wait__addx:
     lda g4h_a1
     adc X16_T1
     sta g4h_a1
-    bcc bitmap4h_k20
+    bcc bitmap4h_k23
     inc g4h_a2
-bitmap4h_k20:
+bitmap4h_k23:
 	rts
 
 bitmap4h_fill_count:
@@ -999,9 +999,9 @@ gfx4h_copy_wait__inner:
     dex
     bne gfx4h_copy_wait__inner
     lda g4h_n
-    bne bitmap4h_k21
+    bne bitmap4h_k24
     dec g4h_n+1
-bitmap4h_k21:
+bitmap4h_k24:
 	dec g4h_n
     lda g4h_n
     ora g4h_n+1

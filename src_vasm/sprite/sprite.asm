@@ -103,18 +103,18 @@ sprite_get_pos
     lda VERA_DATA0
     and #$03
     cmp #$02                    ; bit 9 set: negative
-    bcc sprite_k1
+    bcc .k1
     ora #$FC
-sprite_k1
+.k1
 	sta X16_P1
     lda VERA_DATA0
     sta X16_P2
     lda VERA_DATA0
     and #$03
     cmp #$02
-    bcc sprite_k2
+    bcc .k2
     ora #$FC
-sprite_k2
+.k2
 	sta X16_P3
     rts
 

@@ -638,11 +638,11 @@ gfx4l_pattern_rect:
     ora X16_P5
     bne bitmap4l_k1
     rts
-+
+bitmap4l_k1:
     lda X16_P6
-    bne bitmap4l_k1
+    bne bitmap4l_k2
     rts
-+
+bitmap4l_k2:
     lda X16_P0
     and #7
     sta gp4l_rot
@@ -702,9 +702,9 @@ bitmap4l_gp4l_tail:
     adc #0
     sta gp4l_cur
     lda g4l_n
-    bne bitmap4l_k1
+    bne bitmap4l_k3
     dec g4l_n+1
-bitmap4l_k1:
+bitmap4l_k3:
 	dec g4l_n
     lda g4l_n
     ora g4l_n+1
