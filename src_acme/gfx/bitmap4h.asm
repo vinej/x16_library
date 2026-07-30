@@ -276,9 +276,10 @@ gfx4h_hline
     bcc +
     lda #1
     sta g4h_phase               ; remember the trailing odd-width pixel
-    bra ++
-+   stz g4h_phase
-++  lda g4h_n
+    bra @full                   ; named, not '++': ACME's second-level
++   stz g4h_phase               ; anonymous label has no equivalent in
+@full                           ; the ports, which take '+' only
+    lda g4h_n
     ora g4h_n+1
     beq @nofull
     lda #VERA2_INC_1

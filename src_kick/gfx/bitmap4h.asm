@@ -279,10 +279,11 @@ gfx4h_hline__aligned:
     bcc bitmap4h_k4
     lda #1
     sta g4h_phase               // remember the trailing odd-width pixel
-    bra ++
+    bra gfx4h_hline__full                   // named, not '++': ACME's second-level
 bitmap4h_k4:
-	stz g4h_phase
-++  lda g4h_n
+	stz g4h_phase               // anonymous label has no equivalent in
+gfx4h_hline__full: // the ports, which take '+' only
+    lda g4h_n
     ora g4h_n+1
     beq gfx4h_hline__nofull
     lda #VERA2_INC_1

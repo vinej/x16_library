@@ -70,6 +70,38 @@ def bank_op(s):
     return re.sub(r'\^(?=[\w($])', '`', s)
 
 
+# Two ACME spellings 64tass reads as something else, silently, and only
+# where the module is gated on -- which is why both survived until a
+# build turned every gate on one at a time:
+#
+#   ++  insn     ACME's second-level anonymous label. 64tass defines with
+#                a plain '+' and counts on the REFERENCE ('++' = second
+#                following '+'), so a '++' definition is a syntax error.
+#
+#   _name        nothing in ACME, a cheap local in 64tass -- scoped to
+#                whatever normal label precedes it, so a sibling routine
+#                jumping to it cannot see the name at all.
+#
+# Both are wrong at the source, where every port reads them, not just
+# here: name the label instead (@name, which becomes _name per routine).
+BAD_ANON = re.compile(r'^\+{2,}[ \t]')
+BAD_GLOBAL = re.compile(r'^_[A-Za-z]\w*')
+
+
+def reject_untranslatable(text, rel):
+    for n, ln in enumerate(text.split("\n"), 1):
+        if BAD_ANON.match(ln):
+            raise SystemExit(
+                f"{rel}:{n}: ACME '++' label -- 64tass takes '+' as the "
+                f"definition and '++' only as a reference. Use a named "
+                f"@cheap label.\n  {ln}")
+        if BAD_GLOBAL.match(ln):
+            raise SystemExit(
+                f"{rel}:{n}: label '{ln.split()[0]}' starts with '_', which "
+                f"64tass makes cheap-local to the routine above it. Rename "
+                f"it, or make it @cheap if that is what it is.\n  {ln}")
+
+
 def convert(text, stem, include_map):
     lines = text.split("\n")
     out = []
@@ -396,6 +428,7 @@ def main():
             print(f"gen   {rel} (gate model)")
         else:
             text = f.read_text(encoding="ascii", errors="replace")
+            reject_untranslatable(text, rel)
             if rel in CHEAP_PROMOTE:
                 text = promote_cheap(text, CHEAP_PROMOTE[rel])
             converted = convert(text, f.stem, include_map)
