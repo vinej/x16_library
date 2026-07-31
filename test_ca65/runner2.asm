@@ -3227,19 +3227,22 @@ test_shape_r0
 @name .byte "SHAPE_R0", 0
 
 ; =====================================================================
-; A negative sprite position must survive the round trip: VERA stores
-; the 10-bit coordinate in two's complement, so sprite_get_pos has to
-; sign extend it back to 16 bits instead of reporting -5 as 1019.
+; VERA's sprite position field is 10 bits and UNSIGNED, 0..1023, and
+; the whole 640-wide display is inside it. x = 600 is an ordinary
+; on-screen position whose bit 9 is set, so a sprite_get_pos that read
+; bit 9 as a sign would answer -424 for it. A coordinate written
+; negative is masked into the field and comes back as what is actually
+; stored -- 1019 for -5, which is where the hardware draws it.
 ; =====================================================================
 test_sprite_pos_signed
     jsr sprite_init_all
-    lda #<-5
+    lda #<600
     sta X16_P0
-    lda #>-5
+    lda #>600
     sta X16_P1
-    lda #<-300
+    lda #<-5
     sta X16_P2
-    lda #>-300
+    lda #>-5
     sta X16_P3
     ldx #4
     jsr sprite_pos
@@ -3250,17 +3253,17 @@ test_sprite_pos_signed
     stz X16_P3
     ldx #4
     jsr sprite_get_pos
-    lda X16_P0
-    cmp #<-5
+    lda X16_P0                  ; 600 stays 600, not -424
+    cmp #<600
     bne @fail
     lda X16_P1
-    cmp #>-5
+    cmp #>600
     bne @fail
-    lda X16_P2
-    cmp #<-300
+    lda X16_P2                  ; -5 was masked to 1019 on the way in
+    cmp #<1019
     bne @fail
     lda X16_P3
-    cmp #>-300
+    cmp #>1019
     bne @fail
     lda #0
     bra @report
@@ -3270,7 +3273,7 @@ test_sprite_pos_signed
     ldx #<@name
     ldy #>@name
     jmp t_result
-@name .byte "SPRITE_POS_SIGNED", 0
+@name .byte "SPRITE_POS_UNSIGNED", 0
 
 ; =====================================================================
 ; The wildcard shapes the old recursive matcher could not survive: a

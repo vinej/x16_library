@@ -3308,19 +3308,22 @@ test_shape_r0__name: .text "SHAPE_R0"
     .byte 0
 
 // =====================================================================
-// A negative sprite position must survive the round trip: VERA stores
-// the 10-bit coordinate in two's complement, so sprite_get_pos has to
-// sign extend it back to 16 bits instead of reporting -5 as 1019.
+// VERA's sprite position field is 10 bits and UNSIGNED, 0..1023, and
+// the whole 640-wide display is inside it. x = 600 is an ordinary
+// on-screen position whose bit 9 is set, so a sprite_get_pos that read
+// bit 9 as a sign would answer -424 for it. A coordinate written
+// negative is masked into the field and comes back as what is stored
+// -- 1019 for -5, which is where the hardware draws it.
 // =====================================================================
 test_sprite_pos_signed:
     jsr sprite_init_all
-    lda #<-5
+    lda #<600
     sta X16_P0
-    lda #>-5
+    lda #>600
     sta X16_P1
-    lda #<-300
+    lda #<-5
     sta X16_P2
-    lda #>-300
+    lda #>-5
     sta X16_P3
     ldx #4
     jsr sprite_pos
@@ -3332,16 +3335,16 @@ test_sprite_pos_signed:
     ldx #4
     jsr sprite_get_pos
     lda X16_P0
-    cmp #<-5
+    cmp #<600
     bne test_sprite_pos_signed__fail
     lda X16_P1
-    cmp #>-5
+    cmp #>600
     bne test_sprite_pos_signed__fail
     lda X16_P2
-    cmp #<-300
+    cmp #<1019
     bne test_sprite_pos_signed__fail
     lda X16_P3
-    cmp #>-300
+    cmp #>1019
     bne test_sprite_pos_signed__fail
     lda #0
     bra test_sprite_pos_signed__report
@@ -3351,7 +3354,7 @@ test_sprite_pos_signed__report:
     ldx #<test_sprite_pos_signed__name
     ldy #>test_sprite_pos_signed__name
     jmp t_result
-test_sprite_pos_signed__name: .text "SPRITE_POS_SIGNED"
+test_sprite_pos_signed__name: .text "SPRITE_POS_UNSIGNED"
     .byte 0
 
 // =====================================================================
